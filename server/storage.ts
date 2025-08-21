@@ -663,39 +663,39 @@ export class DatabaseStorage implements IStorage {
     completedAssignments: number;
     pendingSubmissions: number;
   }> {
-    const [studentCount] = await db
-      .select({ count: count() })
-      .from(studentClassrooms)
-      .where(eq(studentClassrooms.classroomId, classroomId));
-
-    const [assignmentCount] = await db
-      .select({ count: count() })
-      .from(assignments)
-      .where(eq(assignments.classroomId, classroomId));
-
-    const [completedCount] = await db
-      .select({ count: count() })
-      .from(submissions)
-      .innerJoin(assignments, eq(submissions.assignmentId, assignments.id))
-      .where(and(
-        eq(assignments.classroomId, classroomId),
-        eq(submissions.status, 'approved')
-      ));
-
-    const [pendingCount] = await db
-      .select({ count: count() })
-      .from(submissions)
-      .innerJoin(assignments, eq(submissions.assignmentId, assignments.id))
-      .where(and(
-        eq(assignments.classroomId, classroomId),
-        eq(submissions.status, 'pending')
-      ));
+    // PERFORMANCE: Execute all counts in parallel instead of sequential
+    // This reduces total query time for large classrooms
+    const [studentCount, assignmentCount, completedCount, pendingCount] = await Promise.all([
+      db.select({ count: count() })
+        .from(studentClassrooms)
+        .where(eq(studentClassrooms.classroomId, classroomId)),
+      
+      db.select({ count: count() })
+        .from(assignments)
+        .where(eq(assignments.classroomId, classroomId)),
+      
+      db.select({ count: count() })
+        .from(submissions)
+        .innerJoin(assignments, eq(submissions.assignmentId, assignments.id))
+        .where(and(
+          eq(assignments.classroomId, classroomId),
+          eq(submissions.status, 'approved')
+        )),
+      
+      db.select({ count: count() })
+        .from(submissions)
+        .innerJoin(assignments, eq(submissions.assignmentId, assignments.id))
+        .where(and(
+          eq(assignments.classroomId, classroomId),
+          eq(submissions.status, 'pending')
+        ))
+    ]);
 
     return {
-      totalStudents: studentCount.count,
-      totalAssignments: assignmentCount.count,
-      completedAssignments: completedCount.count,
-      pendingSubmissions: pendingCount.count
+      totalStudents: studentCount[0].count,
+      totalAssignments: assignmentCount[0].count,
+      completedAssignments: completedCount[0].count,
+      pendingSubmissions: pendingCount[0].count
     };
   }
 

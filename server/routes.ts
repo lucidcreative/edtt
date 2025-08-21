@@ -8,7 +8,10 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
+// SECURITY: Proper JWT secret management for classroom data protection
+const JWT_SECRET = process.env.JWT_SECRET || 
+  (process.env.NODE_ENV === 'development' ? 'dev-jwt-secret-bizcoin-2024-secure' : 
+   (() => { throw new Error('JWT_SECRET environment variable is required for security'); })());
 const JWT_EXPIRES_IN = "8h";
 
 // Authentication middleware
@@ -394,7 +397,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const students = await storage.getClassroomStudents(req.params.id);
-      res.json(students);
+      
+      // SECURITY: FERPA Compliance - Student data must be private, never public cache
+      res.set('Cache-Control', 'private, max-age=120'); // 2 minutes private cache only
+      
+      // SECURITY: Data minimization - Only return essential student info
+      const minimalStudents = students.map(student => ({
+        id: student.id,
+        nickname: student.nickname || `${student.firstName} ${student.lastName}`.trim(),
+        firstName: student.firstName,
+        lastName: student.lastName,
+        tokens: student.tokens,
+        level: student.level,
+        joinedAt: student.joinedAt,
+        profileImageUrl: student.profileImageUrl
+      }));
+      
+      res.json(minimalStudents);
     } catch (error) {
       console.error("Get classroom students error:", error);
       res.status(500).json({ message: "Internal server error" });
@@ -414,6 +433,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const stats = await storage.getClassroomStats(req.params.id);
+      
+      // SECURITY: FERPA Compliance - Classroom stats contain student data, must be private
+      res.set('Cache-Control', 'private, max-age=60'); // 1 minute private cache
       res.json(stats);
     } catch (error) {
       console.error("Get classroom stats error:", error);
@@ -430,7 +452,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const limit = parseInt(req.query.limit as string) || 10;
       const leaderboard = await storage.getLeaderboard(req.params.id, limit);
-      res.json(leaderboard);
+      
+      // SECURITY: FERPA Compliance - Leaderboard contains student performance data
+      res.set('Cache-Control', 'private, max-age=30'); // 30 seconds private cache
+      
+      // SECURITY: Data minimization - Only show essential leaderboard info
+      const minimalLeaderboard = leaderboard.map(student => ({
+        id: student.id,
+        nickname: student.nickname || `${student.firstName} ${student.lastName}`.trim(),
+        tokens: student.tokens,
+        level: student.level,
+        profileImageUrl: student.profileImageUrl
+      }));
+      
+      res.json(minimalLeaderboard);
     } catch (error) {
       console.error("Get leaderboard error:", error);
       res.status(500).json({ message: "Internal server error" });
@@ -470,6 +505,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/classrooms/:id/store', authenticate, async (req: any, res) => {
     try {
       const items = await storage.getStoreItemsByClassroom(req.params.id);
+      
+      // PERFORMANCE: Cache store items for 10 minutes (relatively static)
+      res.set('Cache-Control', 'public, max-age=600, s-maxage=600'); // 10 minutes
       res.json(items);
     } catch (error) {
       console.error("Get store items error:", error);

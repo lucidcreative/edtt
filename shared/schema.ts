@@ -172,16 +172,18 @@ export const challengeProgress = pgTable("challenge_progress", {
   updatedAt: timestamp("updated_at").defaultNow()
 });
 
-// Student classroom enrollment tracking
-export const classroomEnrollments = pgTable("classroom_enrollments", {
+// Student classroom enrollment tracking (matches database table 'enrollments')
+export const classroomEnrollments = pgTable("enrollments", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   studentId: uuid("student_id").references(() => users.id).notNull(),
   classroomId: uuid("classroom_id").references(() => classrooms.id).notNull(),
-  enrollmentStatus: varchar("enrollment_status", { length: 20 }).notNull().default('approved').$type<'pending' | 'approved' | 'denied' | 'withdrawn'>(),
+  enrollmentStatus: varchar("enrollment_status", { length: 20 }).notNull().default('pending').$type<'pending' | 'approved' | 'denied' | 'withdrawn'>(),
   enrolledAt: timestamp("enrolled_at").defaultNow(),
   approvedAt: timestamp("approved_at"),
   approvedBy: uuid("approved_by").references(() => users.id)
-});
+}, (table) => ({
+  uniqueStudentClassroom: unique().on(table.studentId, table.classroomId)
+}));
 
 // Announcements and communication
 export const announcements = pgTable("announcements", {
@@ -238,7 +240,7 @@ export const tokenTransactions = pgTable("token_transactions", {
   transactionDate: timestamp("transaction_date").defaultNow(),
   academicPeriod: varchar("academic_period", { length: 20 }),
   auditHash: varchar("audit_hash", { length: 255 }),
-  parentTransactionId: uuid("parent_transaction_id").references(() => tokenTransactions.id),
+  parentTransactionId: uuid("parent_transaction_id"),
   isCorrection: boolean("is_correction").default(false),
   correctionReason: text("correction_reason")
 });
