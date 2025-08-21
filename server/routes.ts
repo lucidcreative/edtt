@@ -571,6 +571,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         subject,
         gradeLevel,
         academicYear,
+        code: joinCode, // Set both code and joinCode for backwards compatibility
         joinCode,
         teacherId: req.user.id,
         description,

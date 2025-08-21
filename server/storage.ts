@@ -201,7 +201,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createClassroom(classroom: InsertClassroom): Promise<Classroom> {
-    const [newClassroom] = await db.insert(classrooms).values(classroom).returning();
+    // Ensure code is set if not provided (for backwards compatibility)
+    const classroomData = {
+      ...classroom,
+      code: classroom.code || classroom.joinCode
+    };
+    const [newClassroom] = await db.insert(classrooms).values(classroomData).returning();
     return newClassroom;
   }
 

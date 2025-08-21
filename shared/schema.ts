@@ -43,6 +43,7 @@ export const classrooms = pgTable("classrooms", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   teacherId: uuid("teacher_id").references(() => users.id).notNull(),
   name: varchar("name", { length: 100 }).notNull(),
+  code: varchar("code", { length: 6 }), // Keep for backwards compatibility
   subject: varchar("subject", { length: 50 }),
   gradeLevel: varchar("grade_level", { length: 20 }),
   academicYear: varchar("academic_year", { length: 10 }),
