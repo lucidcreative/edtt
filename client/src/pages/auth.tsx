@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { setAuthToken } from "@/lib/authUtils";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
@@ -34,6 +34,9 @@ export default function AuthPage() {
 
       const data = await response.json();
       setAuthToken(data.token);
+      
+      // Invalidate auth query to refetch user data
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       
       toast({
         title: "Welcome back!",
@@ -70,6 +73,9 @@ export default function AuthPage() {
 
       const data = await response.json();
       setAuthToken(data.token);
+      
+      // Invalidate auth query to refetch user data
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       
       toast({
         title: "Welcome back!",
@@ -136,6 +142,9 @@ export default function AuthPage() {
         const data = await response.json();
         setAuthToken(data.token);
         
+        // Invalidate auth query to refetch user data
+        await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+        
         toast({
           title: "Demo Login Successful!",
           description: "Welcome to the BizCoin demo as a teacher!",
@@ -149,6 +158,9 @@ export default function AuthPage() {
         
         const data = await response.json();
         setAuthToken(data.token);
+        
+        // Invalidate auth query to refetch user data
+        await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
         
         toast({
           title: "Demo Login Successful!",
@@ -186,6 +198,9 @@ export default function AuthPage() {
 
       const data = await response.json();
       setAuthToken(data.token);
+      
+      // Invalidate auth query to refetch user data
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       
       toast({
         title: "Welcome to the classroom!",
