@@ -238,7 +238,7 @@ export const tokenTransactions = pgTable("token_transactions", {
   transactionDate: timestamp("transaction_date").defaultNow(),
   academicPeriod: varchar("academic_period", { length: 20 }),
   auditHash: varchar("audit_hash", { length: 255 }),
-  parentTransactionId: uuid("parent_transaction_id"),
+  parentTransactionId: uuid("parent_transaction_id").references(() => tokenTransactions.id),
   isCorrection: boolean("is_correction").default(false),
   correctionReason: text("correction_reason")
 });
