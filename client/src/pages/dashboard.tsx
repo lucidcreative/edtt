@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
+import { Plus } from "lucide-react";
 import MetricCard from "@/components/dashboard/metric-card";
-import CategorySelector from "@/components/dashboard/category-selector";
+import ClassroomSwitcher from "@/components/dashboard/classroom-switcher";
 import ProgressChart from "@/components/dashboard/progress-chart";
 import Leaderboard from "@/components/dashboard/leaderboard";
 import Badges from "@/components/dashboard/badges";
@@ -14,6 +16,7 @@ import { Button } from "@/components/ui/button";
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const [selectedClassroom, setSelectedClassroom] = useState<any>(null);
 
   // Show student dashboard for students
   if (user?.role === 'student') {
@@ -21,22 +24,34 @@ export default function Dashboard() {
   }
 
   // Get user's classrooms
-  const { data: classrooms } = useQuery({
+  const { data: classrooms = [] } = useQuery({
     queryKey: ["/api/classrooms"],
     enabled: !!user
   });
 
-  const currentClassroom = classrooms?.[0]; // For now, use the first classroom
+  // Auto-select first classroom when available
+  const currentClassroom = selectedClassroom || classrooms[0];
+  
+  // Update selected classroom when classrooms load
+  if (!selectedClassroom && classrooms.length > 0) {
+    setSelectedClassroom(classrooms[0]);
+  }
 
-  // Get classroom stats for teachers
+  // Get classroom stats for teachers - ONLY real data, no fake data
   const { data: stats } = useQuery({
     queryKey: ["/api/classrooms", currentClassroom?.id, "stats"],
     enabled: !!currentClassroom && user?.role === 'teacher'
   });
 
-  // Get leaderboard
-  const { data: leaderboard } = useQuery({
+  // Get leaderboard - ONLY real data, no fake data
+  const { data: leaderboard = [] } = useQuery({
     queryKey: ["/api/classrooms", currentClassroom?.id, "leaderboard"],
+    enabled: !!currentClassroom
+  });
+
+  // Get real student count
+  const { data: students = [] } = useQuery({
+    queryKey: ["/api/classrooms", currentClassroom?.id, "students"],
     enabled: !!currentClassroom
   });
 
@@ -109,23 +124,38 @@ export default function Dashboard() {
     );
   }
 
-  const completionPercentage = stats ? Math.round((stats.completedAssignments / Math.max(stats.totalAssignments, 1)) * 100) : 56;
-  const assignmentText = stats ? `${stats.completedAssignments}/${stats.totalAssignments}` : "12/20";
-  const progressText = user?.tokens ? `${user.tokens}/150` : "120/150";
+  // Use ONLY real data - no fake data loading
+  const completionPercentage = stats ? Math.round((stats.completedAssignments / Math.max(stats.totalAssignments, 1)) * 100) : 0;
+  const assignmentText = stats ? `${stats.completedAssignments}/${stats.totalAssignments}` : "0/0";
+  const progressText = user?.tokens ? `${user.tokens}` : "0";
+  const studentCount = students?.length || 0;
 
   return (
-    <div className="p-4 lg:p-6 space-y-8">
-      {/* First Row - Main Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="p-4 lg:p-6 space-y-6">
+      {/* Header with Classroom Switcher */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="mb-6"
+      >
+        <ClassroomSwitcher 
+          currentClassroom={currentClassroom}
+          onClassroomChange={setSelectedClassroom}
+        />
+      </motion.div>
+
+      {/* Main Metrics Row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
           <MetricCard
-            title="Completed"
-            value={`${completionPercentage}%`}
-            subtitle="+12% from last week"
+            title="Completion Rate"
+            value={stats ? `${completionPercentage}%` : "No data"}
+            subtitle={stats ? `${stats.completedAssignments} completed` : "Create assignments to track progress"}
             icon="fas fa-check-circle"
             gradient="from-blue-500 to-blue-600"
             progress={completionPercentage}
@@ -139,8 +169,8 @@ export default function Dashboard() {
         >
           <MetricCard
             title="Assignments"
-            value={assignmentText}
-            subtitle={stats ? `${stats.pendingSubmissions} pending review` : "8 pending review"}
+            value={stats ? assignmentText : "0/0"}
+            subtitle={stats ? `${stats.pendingSubmissions || 0} pending review` : "No assignments yet"}
             icon="fas fa-tasks"
             gradient="from-purple-500 to-purple-600"
           />
@@ -152,52 +182,37 @@ export default function Dashboard() {
           transition={{ duration: 0.5, delay: 0.2 }}
         >
           <MetricCard
-            title="Progress"
-            value={progressText}
-            subtitle="30 points to goal"
-            icon="fas fa-chart-line"
-            gradient="from-pink-500 to-rose-500"
+            title="Students"
+            value={`${studentCount}`}
+            subtitle={studentCount > 0 ? `${studentCount} enrolled` : "Share join code to get students"}
+            icon="fas fa-users"
+            gradient="from-green-500 to-emerald-500"
           />
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-        >
-          <Leaderboard students={leaderboard} />
-        </motion.div>
       </div>
 
-      {/* Second Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Data Visualization Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.4 }}
         >
-          <CategorySelector />
+          <ProgressChart />
         </motion.div>
-
+        
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.5 }}
         >
-          <ProgressChart />
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.6 }}
-        >
-          <IncomeCard tokens={user?.tokens || 0} />
+          <Leaderboard students={leaderboard} />
         </motion.div>
       </div>
 
-      {/* Third Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Classroom Management Tools */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -212,23 +227,6 @@ export default function Dashboard() {
           transition={{ duration: 0.5, delay: 0.8 }}
         >
           <Challenges classroomId={currentClassroom.id} />
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.9 }}
-          className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300"
-        >
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h3>
-          <div className="flex items-center space-x-4">
-            <div className="w-16 h-16 bg-yellow-100 rounded-2xl flex items-center justify-center">
-              <i className="fas fa-trophy text-yellow-600 text-2xl animate-bounce"></i>
-            </div>
-            <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center">
-              <i className="fas fa-star text-blue-600 text-2xl"></i>
-            </div>
-          </div>
         </motion.div>
       </div>
     </div>
