@@ -1,7 +1,9 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema, insertClassroomSchema, insertAssignmentSchema, insertSubmissionSchema, insertStoreItemSchema } from "@shared/schema";
+import { insertUserSchema, insertClassroomSchema, insertAssignmentSchema, insertSubmissionSchema, insertStoreItemSchema, users } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
@@ -40,7 +42,60 @@ function generateClassroomCode(): string {
   return result;
 }
 
+// Demo data seeding function
+async function ensureDemoData() {
+  try {
+    // Check if demo teacher exists
+    let demoTeacher = await storage.getUserByEmail('demo@teacher.com');
+    if (!demoTeacher) {
+      const hashedPassword = await bcrypt.hash('demo123', 12);
+      demoTeacher = await storage.createUser({
+        email: 'demo@teacher.com',
+        passwordHash: hashedPassword,
+        role: 'teacher' as const,
+        firstName: 'Demo',
+        lastName: 'Teacher',
+        emailVerified: true,
+        accountApproved: true
+      });
+    }
+
+    // Check if demo classroom exists
+    let demoClassroom = await storage.getClassroomByCode('DEMO01');
+    if (!demoClassroom) {
+      demoClassroom = await storage.createClassroom({
+        name: 'Demo Classroom',
+        description: 'A classroom for testing BizCoin features',
+        code: 'DEMO01',
+        teacherId: demoTeacher.id
+      });
+    }
+
+    // Check if demo student exists
+    let demoStudent = await storage.getUserByNickname('DemoStudent', demoClassroom.id);
+    if (!demoStudent) {
+      const hashedPin = await bcrypt.hash('1234', 12);
+      demoStudent = await storage.createUser({
+        nickname: 'DemoStudent',
+        pinHash: hashedPin,
+        role: 'student' as const,
+        tokens: 150,
+        level: 2,
+        totalEarnings: 200,
+        isActive: true
+      });
+      await storage.joinClassroom(demoStudent.id, demoClassroom.id);
+    }
+    
+    console.log('Demo data ensured');
+  } catch (error) {
+    console.error('Error ensuring demo data:', error);
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Ensure demo data on startup
+  await ensureDemoData();
   
   // Authentication routes
   app.post('/api/auth/register/teacher', async (req, res) => {
@@ -102,7 +157,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
       // Update last login
-      await storage.updateUser(user.id, { lastLogin: new Date() });
+      await db.update(users).set({ lastLogin: new Date() }).where(eq(users.id, user.id));
 
       res.json({
         token,
@@ -151,7 +206,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
       // Update last login
-      await storage.updateUser(user.id, { lastLogin: new Date() });
+      await db.update(users).set({ lastLogin: new Date() }).where(eq(users.id, user.id));
 
       res.json({
         token,

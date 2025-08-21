@@ -135,7 +135,7 @@ export class DatabaseStorage implements IStorage {
     return newUser;
   }
 
-  async updateUser(id: string, updates: Partial<InsertUser>): Promise<User> {
+  async updateUser(id: string, updates: Partial<Omit<InsertUser, 'role'>> & { role?: 'teacher' | 'student' | 'admin' }): Promise<User> {
     const [updatedUser] = await db
       .update(users)
       .set({ ...updates, updatedAt: new Date() })
@@ -149,7 +149,7 @@ export class DatabaseStorage implements IStorage {
       .update(users)
       .set({ 
         tokens,
-        totalEarnings: sql`${users.totalEarnings} + ${tokens - users.tokens}`,
+        totalEarnings: sql`${users.totalEarnings} + ${tokens}`,
         updatedAt: new Date()
       })
       .where(eq(users.id, id))
@@ -198,7 +198,27 @@ export class DatabaseStorage implements IStorage {
   async getClassroomStudents(classroomId: string): Promise<(User & { joinedAt: Date })[]> {
     const result = await db
       .select({
-        ...users,
+        id: users.id,
+        email: users.email,
+        role: users.role,
+        passwordHash: users.passwordHash,
+        pinHash: users.pinHash,
+        nickname: users.nickname,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+        tempPasswordFlag: users.tempPasswordFlag,
+        emailVerified: users.emailVerified,
+        accountApproved: users.accountApproved,
+        loginAttempts: users.loginAttempts,
+        lockoutUntil: users.lockoutUntil,
+        tokens: users.tokens,
+        level: users.level,
+        totalEarnings: users.totalEarnings,
+        isActive: users.isActive,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+        lastLogin: users.lastLogin,
         joinedAt: studentClassrooms.joinedAt
       })
       .from(users)
@@ -274,7 +294,7 @@ export class DatabaseStorage implements IStorage {
     return newSubmission;
   }
 
-  async updateSubmission(id: string, updates: Partial<InsertSubmission>): Promise<Submission> {
+  async updateSubmission(id: string, updates: Partial<Omit<InsertSubmission, 'status'>> & { status?: 'pending' | 'approved' | 'rejected' }): Promise<Submission> {
     const [updatedSubmission] = await db
       .update(submissions)
       .set(updates)

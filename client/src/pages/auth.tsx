@@ -15,6 +15,8 @@ export default function AuthPage() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [showTeacherSignup, setShowTeacherSignup] = useState(false);
 
   const handleTeacherLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,6 +81,86 @@ export default function AuthPage() {
       toast({
         title: "Login failed",
         description: error instanceof Error ? error.message : "Invalid credentials",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleTeacherSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsRegistering(true);
+
+    const formData = new FormData(e.currentTarget as HTMLFormElement);
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+    const firstName = formData.get('firstName') as string;
+    const lastName = formData.get('lastName') as string;
+
+    try {
+      await apiRequest('POST', '/api/auth/register/teacher', {
+        email,
+        password,
+        firstName,
+        lastName
+      });
+      
+      toast({
+        title: "Account created!",
+        description: "Your teacher account has been created. You can now sign in.",
+      });
+
+      setShowTeacherSignup(false);
+    } catch (error) {
+      toast({
+        title: "Registration failed",
+        description: error instanceof Error ? error.message : "Failed to create account",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRegistering(false);
+    }
+  };
+
+  const handleDemoLogin = async (role: 'teacher' | 'student') => {
+    setIsLoading(true);
+
+    try {
+      if (role === 'teacher') {
+        const response = await apiRequest('POST', '/api/auth/login/teacher', {
+          email: 'demo@teacher.com',
+          password: 'demo123'
+        });
+        
+        const data = await response.json();
+        setAuthToken(data.token);
+        
+        toast({
+          title: "Demo Login Successful!",
+          description: "Welcome to the BizCoin demo as a teacher!",
+        });
+      } else {
+        const response = await apiRequest('POST', '/api/auth/login/student', {
+          nickname: 'DemoStudent',
+          pin: '1234',
+          classroomCode: 'DEMO01'
+        });
+        
+        const data = await response.json();
+        setAuthToken(data.token);
+        
+        toast({
+          title: "Demo Login Successful!",
+          description: "Welcome to the BizCoin demo as a student!",
+        });
+      }
+
+      setLocation('/');
+    } catch (error) {
+      toast({
+        title: "Demo login failed",
+        description: "Demo accounts may not be available right now. Please try creating a regular account.",
         variant: "destructive",
       });
     } finally {
@@ -153,11 +235,13 @@ export default function AuthPage() {
               </TabsList>
 
               <TabsContent value="teacher" className="space-y-6">
-                <div className="text-center">
-                  <h2 className="text-2xl font-bold text-gray-800">Teacher Login</h2>
-                </div>
-                
-                <form onSubmit={handleTeacherLogin} className="space-y-4">
+                {!showTeacherSignup ? (
+                  <>
+                    <div className="text-center">
+                      <h2 className="text-2xl font-bold text-gray-800">Teacher Login</h2>
+                    </div>
+                    
+                    <form onSubmit={handleTeacherLogin} className="space-y-4">
                   <div>
                     <Label htmlFor="teacher-email">Email</Label>
                     <Input
@@ -184,15 +268,130 @@ export default function AuthPage() {
                     />
                   </div>
 
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={isLoading}
-                    data-testid="button-teacher-login"
-                  >
-                    {isLoading ? "Signing in..." : "Sign In"}
-                  </Button>
-                </form>
+                      <Button
+                        type="submit"
+                        className="w-full"
+                        disabled={isLoading}
+                        data-testid="button-teacher-login"
+                      >
+                        {isLoading ? "Signing in..." : "Sign In"}
+                      </Button>
+                    </form>
+
+                    <div className="space-y-3">
+                      <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                          <span className="w-full border-t" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                          <span className="bg-white px-2 text-muted-foreground">Or</span>
+                        </div>
+                      </div>
+                      
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => setShowTeacherSignup(true)}
+                        data-testid="button-create-teacher-account"
+                      >
+                        Create Teacher Account
+                      </Button>
+                      
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+                        onClick={() => handleDemoLogin('teacher')}
+                        disabled={isLoading}
+                        data-testid="button-demo-teacher"
+                      >
+                        🚀 Try Demo as Teacher
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-center">
+                      <h2 className="text-2xl font-bold text-gray-800">Create Teacher Account</h2>
+                    </div>
+                    
+                    <form onSubmit={handleTeacherSignup} className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="signup-first-name">First Name</Label>
+                          <Input
+                            id="signup-first-name"
+                            name="firstName"
+                            placeholder="John"
+                            required
+                            data-testid="input-signup-first-name"
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="signup-last-name">Last Name</Label>
+                          <Input
+                            id="signup-last-name"
+                            name="lastName"
+                            placeholder="Doe"
+                            required
+                            data-testid="input-signup-last-name"
+                            className="mt-1"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="signup-email">Email</Label>
+                        <Input
+                          id="signup-email"
+                          name="email"
+                          type="email"
+                          placeholder="teacher@example.com"
+                          required
+                          data-testid="input-signup-email"
+                          className="mt-1"
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="signup-password">Password</Label>
+                        <Input
+                          id="signup-password"
+                          name="password"
+                          type="password"
+                          placeholder="••••••••"
+                          minLength={6}
+                          required
+                          data-testid="input-signup-password"
+                          className="mt-1"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Minimum 6 characters</p>
+                      </div>
+
+                      <div className="flex gap-3">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => setShowTeacherSignup(false)}
+                          data-testid="button-signup-cancel"
+                        >
+                          Back to Login
+                        </Button>
+                        <Button
+                          type="submit"
+                          className="flex-1"
+                          disabled={isRegistering}
+                          data-testid="button-signup-submit"
+                        >
+                          {isRegistering ? "Creating..." : "Create Account"}
+                        </Button>
+                      </div>
+                    </form>
+                  </>
+                )}
               </TabsContent>
 
               <TabsContent value="student" className="space-y-6">
@@ -257,6 +456,28 @@ export default function AuthPage() {
                         {isLoading ? "Signing in..." : "Sign In"}
                       </Button>
                     </form>
+                    
+                    <div className="mt-4">
+                      <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                          <span className="w-full border-t" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                          <span className="bg-white px-2 text-muted-foreground">Or</span>
+                        </div>
+                      </div>
+                      
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full mt-3 bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
+                        onClick={() => handleDemoLogin('student')}
+                        disabled={isLoading}
+                        data-testid="button-demo-student"
+                      >
+                        🚀 Try Demo as Student
+                      </Button>
+                    </div>
                   </TabsContent>
 
                   <TabsContent value="join" className="space-y-4 mt-6">
