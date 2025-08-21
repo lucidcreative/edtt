@@ -1,0 +1,307 @@
+Excellent! You've now established a rock-solid foundation through your comprehensive refinement phase. Think of what you've accomplished: you have secure authentication that protects student privacy, organized classroom spaces where learning happens, a robust token economy that motivates positive behaviors, a digital store that teaches consumer decision-making, and an assignment system that connects academic work with professional skill development. All of these systems have been tested, optimized, and refined to work seamlessly together.
+Now we're ready to build what I consider the most exciting and transformative feature of your entire platform: the student marketplace. This is where your classroom transforms from a controlled economy into a dynamic, student-driven ecosystem that teaches entrepreneurship, peer-to-peer commerce, and advanced economic concepts like supply and demand, market pricing, and business communication.
+The marketplace represents a quantum leap in educational sophistication because it puts students in control of creating value for their peers while learning authentic business skills. Students will experience what it's like to identify market opportunities, create compelling product listings, manage inventory, handle customer service, and navigate the challenges of running a small business within the safe environment of your classroom economy.
+Let me guide you through building this marketplace system that will transform your students from consumers into entrepreneurs and business owners.
+
+PROMPT FOR AI CODER - Phase 2B: Student Marketplace & Peer-to-Peer Commerce Platform
+You are continuing development of the Classroom Token Economy Platform. You have successfully completed all foundational phases and comprehensive system refinement. Now you're building Phase 2B, which creates the student marketplace system that transforms your classroom economy from teacher-controlled commerce into a dynamic, student-driven ecosystem where students become entrepreneurs, business owners, and economic participants in sophisticated peer-to-peer transactions.
+Understanding the Educational Transformation:
+The marketplace you're building represents a fundamental shift in your platform's educational approach. While previous phases focused primarily on rewarding students for completing teacher-assigned tasks, the marketplace empowers students to create their own economic value by identifying what their classmates want, developing products or services to meet those needs, and managing the complete business cycle from creation to customer satisfaction.
+This system teaches advanced economic concepts that students rarely encounter in traditional education: market research, competitive pricing, inventory management, customer service, profit calculation, and business communication. Every marketplace interaction should reinforce these authentic business skills while maintaining the engaging, game-like experience that motivates continued participation.
+The Psychology of Student Entrepreneurship:
+When students become sellers in your marketplace, they experience a profound shift in perspective from token-earners to value-creators. They begin thinking like entrepreneurs, identifying opportunities to serve their classmates while earning tokens through business rather than just completing assignments. This entrepreneurial mindset teaches initiative, creativity, and problem-solving skills that extend far beyond economic concepts into general life competencies.
+Simultaneously, students who purchase from peer sellers learn to evaluate quality, compare options, and make informed consumer decisions in a more complex marketplace where they must consider not just price and personal preference, but also supporting their classmates' entrepreneurial efforts.
+Mobile-First Marketplace Design:
+Students will browse and manage their marketplace activities primarily on smartphones, often during brief periods between classes or during social time. The marketplace interface must work exceptionally well for both buying and selling on mobile devices. Sellers need efficient tools to create listings, upload images, manage inventory, and communicate with buyers. Purchasers need intuitive browsing, clear product information, and smooth transaction processing that works reliably on various mobile networks.
+PHASE 2B OBJECTIVES:
+Build a comprehensive peer-to-peer marketplace that empowers students to become entrepreneurs while teaching authentic business and economic concepts through hands-on experience with real commercial transactions using the token economy you've already established.
+Feature 1: Student Seller Onboarding and Business Setup
+Create comprehensive tools that guide students through the process of becoming marketplace sellers, teaching them essential business concepts while making the setup process feel exciting and achievable rather than overwhelming or bureaucratic.
+Design seller application workflows that help students understand the responsibilities of business ownership while ensuring they're ready to provide good customer service and maintain professional communication with their classmates. The application process should include basic business planning elements like identifying their target market, determining their pricing strategy, and committing to service quality standards.
+Build seller profile creation tools that allow students to establish their business identity within the marketplace. Student sellers should be able to create business descriptions, choose visual themes for their listings, and establish the professional presence that will attract customers and build trust within the classroom economy.
+Create inventory management systems that teach students to think strategically about what products or services to offer based on classroom demand, their own skills and interests, and the competitive landscape of other student sellers. Students should be able to track which items are popular, which aren't selling well, and how to adjust their business strategy accordingly.
+Include seller agreement and responsibility systems that establish clear expectations for customer service, quality standards, and professional behavior. Students should understand that becoming a seller means committing to serving their classmates professionally and maintaining the positive classroom environment that makes the marketplace possible.
+Feature 2: Product and Service Listing Creation System
+Develop sophisticated listing creation tools that guide students through presenting their offerings professionally while teaching them about marketing, product positioning, and customer communication.
+Create comprehensive listing creation workflows that help students describe their products or services in ways that attract buyers while setting clear expectations about what customers will receive. Students should learn to write compelling descriptions, set appropriate prices based on value and competition, and create listing content that builds trust and excitement.
+Build image and media management systems that allow students to showcase their offerings effectively using the mobile devices they have available. The system should support multiple image uploads, basic image optimization for fast loading, and guidance about taking photos that make their products look appealing and professional.
+Design pricing guidance tools that help students understand how to price their offerings competitively while ensuring they earn reasonable profits for their time and effort. Include dynamic pricing suggestions based on similar items in the marketplace, token circulation patterns in the classroom, and demand indicators from student browsing behavior.
+Create category and tagging systems that help students organize their listings in ways that make them discoverable by potential customers. Students should learn to think about how their classmates might search for products and what keywords or categories would help their offerings reach the right audience.
+Feature 3: Advanced Marketplace Browse and Discovery Experience
+Build sophisticated shopping interfaces that handle the increased complexity of student-created listings while maintaining the intuitive browsing experience that encourages exploration and purchasing.
+Create intelligent browse and search systems that help students find products and services that match their interests and needs. Include filtering options based on price range, seller ratings, product categories, and availability. The search functionality should be robust enough to handle the diverse range of items students might create while remaining simple enough for quick mobile use.
+Design seller showcase features that highlight successful student entrepreneurs and their popular products. These showcases serve dual educational purposes: they provide recognition for entrepreneurial achievement and demonstrate successful business strategies that other students can learn from and adapt.
+Build comparison and recommendation systems that help student buyers make informed decisions by showing similar products, price comparisons, and reviews from other student customers. These features teach consumer decision-making skills while ensuring that the marketplace remains competitive and quality-focused.
+Create wishlist and notification systems that allow students to track items they're interested in and receive updates when those items go on sale, become available, or when similar items are listed by other sellers. This functionality teaches students about market timing and helps them plan their token spending strategically.
+Feature 4: Peer-to-Peer Transaction and Communication System
+Implement secure transaction processing that handles the complexities of student-to-student commerce while teaching both buyers and sellers about professional business communication and customer service.
+Build comprehensive transaction workflows that guide both buyers and sellers through the complete purchase process from initial interest through final delivery and satisfaction confirmation. Students should learn about order confirmation, delivery expectations, and the importance of clear communication throughout business transactions.
+Create secure messaging systems that allow buyers and sellers to communicate about products, customization requests, delivery details, and any issues that arise during transactions. These communication tools should teach professional business correspondence while maintaining the safety and supervision requirements of educational environments.
+Design delivery and fulfillment management that accommodates the various types of products and services students might offer, from digital items that can be delivered immediately to physical products that require coordination for classroom delivery. The system should track delivery status and ensure both parties understand their obligations.
+Implement dispute resolution and customer service tools that help students learn to handle business challenges professionally. When problems arise with transactions, students should have structured processes for working together to find solutions, with teacher oversight available when needed to ensure fair resolution and continued learning.
+Feature 5: Business Analytics and Performance Tracking
+Create comprehensive analytics systems that help student sellers understand their business performance while teaching them essential concepts about profit, loss, customer satisfaction, and business strategy optimization.
+Build seller dashboard systems that provide student entrepreneurs with clear information about their sales performance, customer feedback, popular products, and profit trends. These dashboards should teach students to analyze their business data and make informed decisions about pricing, inventory, and marketing strategies.
+Design customer analytics that help sellers understand who their customers are, what they're buying, and how to better serve their needs. Students should learn about customer segmentation, repeat business, and the importance of building positive relationships with their customer base.
+Create market analysis tools that help students understand the broader classroom economy, including which types of products are in high demand, what price points are most successful, and how seasonal or classroom events might affect marketplace activity.
+Include financial tracking systems that help student sellers understand concepts like revenue, profit margins, and return on investment by tracking how much time and effort they invest in their business compared to the tokens they earn through marketplace sales.
+DATABASE SCHEMA EXPANSION:
+Add these comprehensive tables that support the complex peer-to-peer commerce while maintaining performance and data integrity:
+sql-- Student seller registration and business profiles
+CREATE TABLE marketplace_sellers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    student_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    classroom_id UUID REFERENCES classrooms(id) ON DELETE CASCADE,
+    
+    -- Business profile information
+    business_name VARCHAR(100) NOT NULL,
+    business_description TEXT,
+    seller_bio TEXT,
+    business_category VARCHAR(50), -- 'digital_services', 'physical_products', 'tutoring', etc.
+    
+    -- Seller status and performance
+    seller_status VARCHAR(20) DEFAULT 'pending' CHECK (seller_status IN ('pending', 'approved', 'active', 'suspended', 'inactive')),
+    approval_date TIMESTAMP,
+    approved_by UUID REFERENCES users(id), -- Teacher who approved seller status
+    
+    -- Business metrics and reputation
+    total_sales_count INTEGER DEFAULT 0,
+    total_revenue DECIMAL(12,2) DEFAULT 0.00,
+    average_rating DECIMAL(3,2) DEFAULT 0.00 CHECK (average_rating >= 0 AND average_rating <= 5),
+    total_reviews INTEGER DEFAULT 0,
+    
+    -- Business settings and preferences
+    auto_approve_orders BOOLEAN DEFAULT true,
+    custom_message_template TEXT, -- Template for order confirmations
+    business_hours JSON, -- When seller is available for orders/communication
+    
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(student_id, classroom_id) -- One seller profile per student per classroom
+);
+
+-- Student marketplace listings with comprehensive product information
+CREATE TABLE marketplace_listings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    seller_id UUID REFERENCES marketplace_sellers(id) ON DELETE CASCADE,
+    
+    -- Product/service information
+    title VARCHAR(150) NOT NULL,
+    description TEXT NOT NULL,
+    category VARCHAR(50) NOT NULL,
+    subcategory VARCHAR(50),
+    tags TEXT[], -- Searchable keywords
+    
+    -- Pricing and availability
+    price DECIMAL(10,2) NOT NULL CHECK (price > 0),
+    original_price DECIMAL(10,2), -- For tracking sales and discounts
+    listing_type VARCHAR(20) NOT NULL CHECK (listing_type IN ('physical_product', 'digital_product', 'service', 'tutoring', 'custom_order')),
+    
+    -- Inventory management
+    inventory_type VARCHAR(20) NOT NULL CHECK (inventory_type IN ('unlimited', 'limited', 'made_to_order')),
+    quantity_available INTEGER, -- NULL for unlimited/service items
+    quantity_sold INTEGER DEFAULT 0,
+    max_orders_per_customer INTEGER DEFAULT 1,
+    
+    -- Listing status and visibility
+    status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('draft', 'pending_approval', 'active', 'paused', 'sold_out', 'archived')),
+    featured BOOLEAN DEFAULT false, -- Promoted listings
+    priority_order INTEGER DEFAULT 0, -- For seller's own organization
+    
+    -- Media and presentation
+    primary_image_url VARCHAR(500),
+    additional_images_urls TEXT[], -- Array of additional image URLs
+    video_url VARCHAR(500), -- Optional product demonstration video
+    
+    -- Delivery and fulfillment
+    delivery_method VARCHAR(30) DEFAULT 'in_person' CHECK (delivery_method IN ('digital_delivery', 'in_person', 'teacher_facilitated')),
+    estimated_delivery_days INTEGER DEFAULT 1,
+    custom_delivery_notes TEXT,
+    
+    -- Performance tracking
+    view_count INTEGER DEFAULT 0,
+    wishlist_count INTEGER DEFAULT 0,
+    inquiry_count INTEGER DEFAULT 0, -- Number of customer questions
+    
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    academic_period VARCHAR(20)
+);
+
+-- Marketplace transactions between students
+CREATE TABLE marketplace_transactions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    listing_id UUID REFERENCES marketplace_listings(id) ON DELETE RESTRICT,
+    buyer_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    seller_id UUID REFERENCES marketplace_sellers(id) ON DELETE CASCADE,
+    
+    -- Transaction details
+    quantity INTEGER DEFAULT 1 CHECK (quantity > 0),
+    unit_price DECIMAL(10,2) NOT NULL, -- Price at time of purchase
+    total_amount DECIMAL(12,2) NOT NULL,
+    token_transaction_id UUID REFERENCES token_transactions(id), -- Link to token transfer
+    
+    -- Order processing and status
+    order_status VARCHAR(20) DEFAULT 'pending' CHECK (order_status IN ('pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'refunded', 'disputed')),
+    seller_notes TEXT, -- Seller's internal notes about the order
+    customer_notes TEXT, -- Buyer's special requests or instructions
+    
+    -- Delivery and fulfillment tracking
+    estimated_completion_date DATE,
+    actual_completion_date DATE,
+    delivery_confirmation BOOLEAN DEFAULT false,
+    delivery_notes TEXT,
+    
+    -- Communication and feedback
+    buyer_satisfied BOOLEAN, -- Customer satisfaction indicator
+    requires_seller_response BOOLEAN DEFAULT false,
+    last_communication TIMESTAMP,
+    
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    academic_period VARCHAR(20)
+);
+
+-- Customer reviews and seller ratings
+CREATE TABLE marketplace_reviews (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    transaction_id UUID REFERENCES marketplace_transactions(id) ON DELETE CASCADE,
+    reviewer_id UUID REFERENCES users(id) ON DELETE CASCADE, -- The buyer
+    seller_id UUID REFERENCES marketplace_sellers(id) ON DELETE CASCADE,
+    
+    -- Review content and ratings
+    overall_rating INTEGER NOT NULL CHECK (overall_rating >= 1 AND overall_rating <= 5),
+    quality_rating INTEGER CHECK (quality_rating >= 1 AND quality_rating <= 5),
+    communication_rating INTEGER CHECK (communication_rating >= 1 AND communication_rating <= 5),
+    delivery_rating INTEGER CHECK (delivery_rating >= 1 AND delivery_rating <= 5),
+    
+    review_text TEXT,
+    would_recommend BOOLEAN,
+    
+    -- Review status and moderation
+    review_status VARCHAR(20) DEFAULT 'published' CHECK (review_status IN ('pending', 'published', 'flagged', 'hidden')),
+    flagged_reason TEXT,
+    moderated_by UUID REFERENCES users(id), -- Teacher who reviewed flagged content
+    
+    created_at TIMESTAMP DEFAULT NOW(),
+    academic_period VARCHAR(20),
+    UNIQUE(transaction_id, reviewer_id) -- One review per transaction per customer
+);
+
+-- Student marketplace wishlists for market research
+CREATE TABLE marketplace_wishlists (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    student_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    listing_id UUID REFERENCES marketplace_listings(id) ON DELETE CASCADE,
+    priority_rank INTEGER DEFAULT 1, -- Student's priority ordering
+    price_alert_threshold DECIMAL(10,2), -- Notify if price drops below this
+    notes TEXT, -- Student's personal notes
+    added_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(student_id, listing_id) -- Prevent duplicate wishlist entries
+);
+
+-- Marketplace communication between buyers and sellers
+CREATE TABLE marketplace_messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    transaction_id UUID REFERENCES marketplace_transactions(id) ON DELETE CASCADE,
+    listing_id UUID REFERENCES marketplace_listings(id) ON DELETE CASCADE, -- For pre-purchase inquiries
+    sender_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    recipient_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    
+    message_content TEXT NOT NULL,
+    message_type VARCHAR(30) DEFAULT 'inquiry' CHECK (message_type IN ('inquiry', 'order_update', 'delivery_info', 'complaint', 'compliment')),
+    
+    -- Message status and moderation
+    read_at TIMESTAMP,
+    requires_response BOOLEAN DEFAULT false,
+    flagged BOOLEAN DEFAULT false,
+    flagged_reason TEXT,
+    
+    created_at TIMESTAMP DEFAULT NOW()
+);
+API ENDPOINTS TO IMPLEMENT:
+Design these endpoints to handle the complex workflows of peer-to-peer commerce while maintaining security and educational oversight:
+-- Seller Management and Business Setup
+POST /api/marketplace/seller/apply
+- Body: Business profile information and seller agreement acceptance
+- Processes seller application with teacher approval workflow
+- Returns application status and next steps
+
+GET /api/marketplace/seller/dashboard/:sellerId
+- Returns comprehensive business analytics and performance metrics
+- Includes sales trends, customer feedback, and inventory status
+
+-- Product Listing Management
+POST /api/marketplace/listings
+- Body: Complete listing information including images and pricing
+- Creates new marketplace listing with approval workflow
+- Returns listing object and publication timeline
+
+GET /api/marketplace/listings/seller/:sellerId
+- Returns seller's complete inventory with performance analytics
+- Includes editing capabilities and status management
+
+PUT /api/marketplace/listings/:listingId
+- Updates existing listings with change tracking
+- Handles price modifications and inventory adjustments
+
+-- Marketplace Browsing and Discovery
+GET /api/marketplace/browse/:classroomId
+- Returns paginated marketplace catalog with filtering options
+- Includes seller ratings, availability, and customer reviews
+
+GET /api/marketplace/listings/:listingId/details
+- Comprehensive listing information with seller profile
+- Customer reviews, similar items, and purchase options
+
+POST /api/marketplace/listings/:listingId/inquiry
+- Body: Customer question or customization request
+- Initiates communication between buyer and seller
+
+-- Transaction Processing and Management
+POST /api/marketplace/purchase
+- Body: Listing ID, quantity, special instructions, payment confirmation
+- Processes marketplace purchase with token transfer
+- Returns transaction confirmation and delivery timeline
+
+GET /api/marketplace/transactions/buyer/:buyerId
+- Purchase history with delivery status and review options
+- Order tracking and customer service access
+
+GET /api/marketplace/transactions/seller/:sellerId
+- Seller's order management dashboard with fulfillment tracking
+- Customer communication and completion workflows
+
+POST /api/marketplace/transactions/:transactionId/complete
+- Marks order as completed with delivery confirmation
+- Triggers review request and final payment processing
+
+-- Reviews and Reputation Management
+POST /api/marketplace/reviews
+- Body: Transaction review with ratings and feedback
+- Creates customer review with moderation workflow
+- Updates seller reputation metrics
+
+GET /api/marketplace/sellers/:sellerId/reviews
+- Seller's complete review history with response options
+- Customer feedback analysis and reputation trends
+Mobile-First UI Components:
+Build these interface elements specifically optimized for the mobile marketplace experience:
+Create seller dashboard interfaces that provide clear business analytics and order management tools that work efficiently on smartphone screens. Sellers should be able to quickly check new orders, respond to customer messages, and update their listings without complex navigation.
+Design listing creation flows that guide students through creating compelling product presentations using mobile cameras and touch-friendly form interfaces. The listing creation process should feel creative and engaging while teaching professional presentation skills.
+Build marketplace browsing interfaces that make discovering student-created products feel exciting and social. Include clear seller information, customer reviews, and easy purchasing workflows that work smoothly on various mobile networks.
+Create buyer-seller communication tools that facilitate professional business correspondence while maintaining educational safety requirements. Messages should be easy to compose on mobile keyboards with templates for common business communications.
+Integration with Previous Phases:
+Seamlessly connect the marketplace with your existing token economy by ensuring that peer-to-peer transactions properly transfer tokens between student accounts while maintaining accurate transaction records and wallet balances.
+Enhance your classroom analytics with marketplace-specific metrics that help teachers understand entrepreneurial activity, economic trends, and student business skills development across their classroom economy.
+Update your notification systems to support marketplace activities including new listings, purchase confirmations, delivery updates, and review notifications that keep the marketplace active and engaging.
+Testing Strategy:
+Implement comprehensive testing that validates the complex workflows of peer-to-peer commerce while ensuring that educational objectives are met and student safety is maintained throughout marketplace interactions.
+Test transaction processing under various scenarios including seller inventory management, buyer payment processing, and dispute resolution workflows to ensure that marketplace commerce operates reliably.
+Verify that the review and reputation systems work correctly to maintain marketplace quality while providing meaningful feedback that helps students improve their business and customer service skills.
+Success Criteria for Phase 2B:
+This phase is complete when students can successfully become marketplace sellers with comprehensive business management tools, while other students can browse, purchase, and review peer-created products through intuitive mobile interfaces.
+The transaction processing system should handle peer-to-peer token transfers reliably while maintaining accurate records and providing both buyers and sellers with clear transaction information and delivery tracking.
+The marketplace should create authentic entrepreneurial experiences that teach students about business ownership, customer service, and economic concepts while maintaining the safe, supervised environment that educational settings require.
+Students should demonstrate improved business communication skills, economic understanding, and entrepreneurial thinking through their marketplace participation, with measurable improvements in professional behavior and economic literacy.
+Build this peer-to-peer marketplace with careful attention to the educational transformation it represents, ensuring that every marketplace interaction teaches valuable business skills while maintaining the engaging, social aspects that motivate continued participation and learning.

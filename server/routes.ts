@@ -1,12 +1,17 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema, insertClassroomSchema, insertAssignmentSchema, insertSubmissionSchema, insertStoreItemSchema, users, insertAssignmentAdvancedSchema, insertAssignmentSubmissionSchema, insertAssignmentFeedbackSchema, insertAssignmentTemplateSchema } from "@shared/schema";
+import { insertUserSchema, insertClassroomSchema, insertAssignmentSchema, insertSubmissionSchema, insertStoreItemSchema, users, insertAssignmentAdvancedSchema, insertAssignmentSubmissionSchema, insertAssignmentFeedbackSchema, insertAssignmentTemplateSchema, insertMarketplaceSellerSchema, insertMarketplaceListingSchema, insertMarketplaceTransactionSchema, insertMarketplaceReviewSchema, insertMarketplaceWishlistSchema, insertMarketplaceMessageSchema, type User } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
+
+// Extend Express Request type to include user property
+interface AuthenticatedRequest extends Request {
+  user: User;
+}
 
 // SECURITY: Proper JWT secret management for classroom data protection
 const JWT_SECRET = process.env.JWT_SECRET || 
@@ -15,7 +20,7 @@ const JWT_SECRET = process.env.JWT_SECRET ||
 const JWT_EXPIRES_IN = "8h";
 
 // Authentication middleware
-const authenticate = async (req: any, res: any, next: any) => {
+const authenticate = async (req: AuthenticatedRequest, res: Response, next: any) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
     if (!token) {
@@ -1444,6 +1449,691 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Get assignment analytics error:', error);
       res.status(500).json({ message: 'Failed to fetch analytics' });
+    }
+  });
+
+  // PHASE 2B: MARKETPLACE & PEER-TO-PEER COMMERCE ROUTES
+
+  // ===================
+  // SELLER MANAGEMENT
+  // ===================
+
+  // Create seller profile
+  app.post('/api/marketplace/sellers', authenticate, async (req, res) => {
+    try {
+      const sellerData = insertMarketplaceSellerSchema.parse(req.body);
+      
+      // Check if user is a student and in the classroom
+      const user = req.user;
+      if (user.role !== 'student') {
+        return res.status(403).json({ message: 'Only students can become sellers' });
+      }
+
+      // Check if seller already exists for this student in this classroom
+      const existingSeller = await storage.getSellerByStudent(user.id, sellerData.classroomId);
+      if (existingSeller) {
+        return res.status(400).json({ message: 'Seller profile already exists for this classroom' });
+      }
+
+      const seller = await storage.createSeller({
+        ...sellerData,
+        studentId: user.id
+      });
+      
+      res.json(seller);
+    } catch (error: any) {
+      console.error('Error creating seller:', error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: 'Invalid seller data', errors: error.errors });
+      }
+      res.status(500).json({ message: 'Failed to create seller profile' });
+    }
+  });
+
+  // Get seller profile by student
+  app.get('/api/marketplace/sellers/me/:classroomId', authenticate, async (req, res) => {
+    try {
+      const { classroomId } = req.params;
+      const user = req.user;
+      
+      if (user.role !== 'student') {
+        return res.status(403).json({ message: 'Only students can have seller profiles' });
+      }
+
+      const seller = await storage.getSellerByStudent(user.id, classroomId);
+      if (!seller) {
+        return res.status(404).json({ message: 'Seller profile not found' });
+      }
+      
+      res.json(seller);
+    } catch (error) {
+      console.error('Error fetching seller profile:', error);
+      res.status(500).json({ message: 'Failed to fetch seller profile' });
+    }
+  });
+
+  // Get classroom sellers (teacher view)
+  app.get('/api/marketplace/sellers/classroom/:classroomId', authenticate, async (req, res) => {
+    try {
+      const { classroomId } = req.params;
+      const { status } = req.query;
+      const user = req.user;
+
+      // Verify teacher has access to this classroom
+      if (user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Only teachers can view all sellers' });
+      }
+
+      const classroom = await storage.getClassroom(classroomId);
+      if (!classroom || classroom.teacherId !== user.id) {
+        return res.status(403).json({ message: 'Access denied to classroom' });
+      }
+
+      const sellers = await storage.getClassroomSellers(classroomId, status as string);
+      res.json(sellers);
+    } catch (error) {
+      console.error('Error fetching classroom sellers:', error);
+      res.status(500).json({ message: 'Failed to fetch sellers' });
+    }
+  });
+
+  // Approve seller
+  app.put('/api/marketplace/sellers/:sellerId/approve', authenticate, async (req, res) => {
+    try {
+      const { sellerId } = req.params;
+      const user = req.user;
+
+      if (user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Only teachers can approve sellers' });
+      }
+
+      // Verify teacher has access to this seller's classroom
+      const seller = await storage.getSeller(sellerId);
+      if (!seller) {
+        return res.status(404).json({ message: 'Seller not found' });
+      }
+
+      const classroom = await storage.getClassroom(seller.classroomId);
+      if (!classroom || classroom.teacherId !== user.id) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      const updatedSeller = await storage.approveSeller(sellerId, user.id);
+      res.json(updatedSeller);
+    } catch (error) {
+      console.error('Error approving seller:', error);
+      res.status(500).json({ message: 'Failed to approve seller' });
+    }
+  });
+
+  // Update seller profile
+  app.put('/api/marketplace/sellers/:sellerId', authenticate, async (req, res) => {
+    try {
+      const { sellerId } = req.params;
+      const updates = req.body;
+      const user = req.user;
+
+      // Get seller to verify ownership or teacher access
+      const seller = await storage.getSeller(sellerId);
+      if (!seller) {
+        return res.status(404).json({ message: 'Seller not found' });
+      }
+
+      // Check permissions
+      if (user.role === 'student' && seller.studentId !== user.id) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      if (user.role === 'teacher') {
+        const classroom = await storage.getClassroom(seller.classroomId);
+        if (!classroom || classroom.teacherId !== user.id) {
+          return res.status(403).json({ message: 'Access denied' });
+        }
+      }
+
+      const updatedSeller = await storage.updateSeller(sellerId, updates);
+      res.json(updatedSeller);
+    } catch (error) {
+      console.error('Error updating seller:', error);
+      res.status(500).json({ message: 'Failed to update seller profile' });
+    }
+  });
+
+  // ===================
+  // LISTING MANAGEMENT
+  // ===================
+
+  // Create listing
+  app.post('/api/marketplace/listings', authenticate, async (req, res) => {
+    try {
+      const listingData = insertMarketplaceListingSchema.parse(req.body);
+      const user = req.user;
+
+      // Verify user owns this seller profile
+      const seller = await storage.getSeller(listingData.sellerId);
+      if (!seller || seller.studentId !== user.id) {
+        return res.status(403).json({ message: 'Access denied to seller profile' });
+      }
+
+      // Check if seller is approved
+      if (seller.sellerStatus !== 'approved' && seller.sellerStatus !== 'active') {
+        return res.status(403).json({ message: 'Seller must be approved to create listings' });
+      }
+
+      const listing = await storage.createListing(listingData);
+      res.json(listing);
+    } catch (error: any) {
+      console.error('Error creating listing:', error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: 'Invalid listing data', errors: error.errors });
+      }
+      res.status(500).json({ message: 'Failed to create listing' });
+    }
+  });
+
+  // Get marketplace listings (browse)
+  app.get('/api/marketplace/listings/classroom/:classroomId', async (req, res) => {
+    try {
+      const { classroomId } = req.params;
+      const { category, status = 'active', minPrice, maxPrice, tags, sellerId } = req.query;
+
+      const filters: any = { status };
+      if (category) filters.category = category;
+      if (minPrice) filters.minPrice = parseFloat(minPrice as string);
+      if (maxPrice) filters.maxPrice = parseFloat(maxPrice as string);
+      if (tags) filters.tags = (tags as string).split(',');
+      if (sellerId) filters.sellerId = sellerId;
+
+      const listings = await storage.searchListings(classroomId, filters);
+      res.json(listings);
+    } catch (error) {
+      console.error('Error fetching listings:', error);
+      res.status(500).json({ message: 'Failed to fetch listings' });
+    }
+  });
+
+  // Get featured listings
+  app.get('/api/marketplace/listings/featured/:classroomId', async (req, res) => {
+    try {
+      const { classroomId } = req.params;
+      const { limit = 6 } = req.query;
+
+      const listings = await storage.getFeaturedListings(classroomId, parseInt(limit as string));
+      res.json(listings);
+    } catch (error) {
+      console.error('Error fetching featured listings:', error);
+      res.status(500).json({ message: 'Failed to fetch featured listings' });
+    }
+  });
+
+  // Get single listing with details
+  app.get('/api/marketplace/listings/:listingId', async (req, res) => {
+    try {
+      const { listingId } = req.params;
+
+      const listing = await storage.getListing(listingId);
+      if (!listing) {
+        return res.status(404).json({ message: 'Listing not found' });
+      }
+
+      // Update view count
+      await storage.updateListingViews(listingId);
+
+      res.json(listing);
+    } catch (error) {
+      console.error('Error fetching listing:', error);
+      res.status(500).json({ message: 'Failed to fetch listing' });
+    }
+  });
+
+  // Get seller's listings
+  app.get('/api/marketplace/sellers/:sellerId/listings', authenticate, async (req, res) => {
+    try {
+      const { sellerId } = req.params;
+      const { status } = req.query;
+      const user = req.user;
+
+      // Verify access to seller
+      const seller = await storage.getSeller(sellerId);
+      if (!seller) {
+        return res.status(404).json({ message: 'Seller not found' });
+      }
+
+      // Check permissions
+      if (user.role === 'student' && seller.studentId !== user.id) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      if (user.role === 'teacher') {
+        const classroom = await storage.getClassroom(seller.classroomId);
+        if (!classroom || classroom.teacherId !== user.id) {
+          return res.status(403).json({ message: 'Access denied' });
+        }
+      }
+
+      const listings = await storage.getSellerListings(sellerId, status as string);
+      res.json(listings);
+    } catch (error) {
+      console.error('Error fetching seller listings:', error);
+      res.status(500).json({ message: 'Failed to fetch listings' });
+    }
+  });
+
+  // Update listing
+  app.put('/api/marketplace/listings/:listingId', authenticate, async (req, res) => {
+    try {
+      const { listingId } = req.params;
+      const updates = req.body;
+      const user = req.user;
+
+      // Get listing to verify ownership
+      const listing = await storage.getListing(listingId);
+      if (!listing) {
+        return res.status(404).json({ message: 'Listing not found' });
+      }
+
+      // Check permissions
+      if (user.role === 'student' && listing.seller.studentId !== user.id) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      if (user.role === 'teacher') {
+        const classroom = await storage.getClassroom(listing.seller.classroomId);
+        if (!classroom || classroom.teacherId !== user.id) {
+          return res.status(403).json({ message: 'Access denied' });
+        }
+      }
+
+      const updatedListing = await storage.updateListing(listingId, updates);
+      res.json(updatedListing);
+    } catch (error) {
+      console.error('Error updating listing:', error);
+      res.status(500).json({ message: 'Failed to update listing' });
+    }
+  });
+
+  // Delete listing
+  app.delete('/api/marketplace/listings/:listingId', authenticate, async (req, res) => {
+    try {
+      const { listingId } = req.params;
+      const user = req.user;
+
+      // Get listing to verify ownership
+      const listing = await storage.getListing(listingId);
+      if (!listing) {
+        return res.status(404).json({ message: 'Listing not found' });
+      }
+
+      // Check permissions
+      if (user.role === 'student' && listing.seller.studentId !== user.id) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      if (user.role === 'teacher') {
+        const classroom = await storage.getClassroom(listing.seller.classroomId);
+        if (!classroom || classroom.teacherId !== user.id) {
+          return res.status(403).json({ message: 'Access denied' });
+        }
+      }
+
+      await storage.deleteListing(listingId);
+      res.json({ message: 'Listing deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting listing:', error);
+      res.status(500).json({ message: 'Failed to delete listing' });
+    }
+  });
+
+  // ===================
+  // TRANSACTION PROCESSING
+  // ===================
+
+  // Create transaction (purchase)
+  app.post('/api/marketplace/transactions', authenticate, async (req, res) => {
+    try {
+      const transactionData = insertMarketplaceTransactionSchema.parse(req.body);
+      const user = req.user;
+
+      if (user.role !== 'student') {
+        return res.status(403).json({ message: 'Only students can make purchases' });
+      }
+
+      // Verify listing exists and is available
+      const listing = await storage.getListing(transactionData.listingId);
+      if (!listing) {
+        return res.status(404).json({ message: 'Listing not found' });
+      }
+
+      if (listing.status !== 'active') {
+        return res.status(400).json({ message: 'Listing is not available for purchase' });
+      }
+
+      // Check if student has enough tokens
+      if (user.tokens < parseFloat(transactionData.totalAmount)) {
+        return res.status(400).json({ message: 'Insufficient tokens' });
+      }
+
+      // Prevent self-purchase
+      if (listing.seller.studentId === user.id) {
+        return res.status(400).json({ message: 'Cannot purchase your own listing' });
+      }
+
+      const transaction = await storage.createTransaction({
+        ...transactionData,
+        buyerId: user.id
+      });
+
+      res.json(transaction);
+    } catch (error: any) {
+      console.error('Error creating transaction:', error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: 'Invalid transaction data', errors: error.errors });
+      }
+      res.status(500).json({ message: 'Failed to create transaction' });
+    }
+  });
+
+  // Get seller transactions (orders)
+  app.get('/api/marketplace/sellers/:sellerId/transactions', authenticate, async (req, res) => {
+    try {
+      const { sellerId } = req.params;
+      const { status } = req.query;
+      const user = req.user;
+
+      // Verify access to seller
+      const seller = await storage.getSeller(sellerId);
+      if (!seller || seller.studentId !== user.id) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      const transactions = await storage.getSellerTransactions(sellerId, status as string);
+      res.json(transactions);
+    } catch (error) {
+      console.error('Error fetching seller transactions:', error);
+      res.status(500).json({ message: 'Failed to fetch transactions' });
+    }
+  });
+
+  // Get buyer transactions (purchases)
+  app.get('/api/marketplace/transactions/my-purchases', authenticate, async (req, res) => {
+    try {
+      const { status } = req.query;
+      const user = req.user;
+
+      if (user.role !== 'student') {
+        return res.status(403).json({ message: 'Only students can have purchases' });
+      }
+
+      const transactions = await storage.getBuyerTransactions(user.id, status as string);
+      res.json(transactions);
+    } catch (error) {
+      console.error('Error fetching buyer transactions:', error);
+      res.status(500).json({ message: 'Failed to fetch purchases' });
+    }
+  });
+
+  // Update transaction status
+  app.put('/api/marketplace/transactions/:transactionId', authenticate, async (req, res) => {
+    try {
+      const { transactionId } = req.params;
+      const updates = req.body;
+      const user = req.user;
+
+      // Get transaction to verify access
+      const transaction = await storage.getTransaction(transactionId);
+      if (!transaction) {
+        return res.status(404).json({ message: 'Transaction not found' });
+      }
+
+      // Check permissions (seller can update, buyer can confirm delivery)
+      const canUpdate = 
+        (user.role === 'student' && transaction.seller.studentId === user.id) ||
+        (user.role === 'student' && transaction.buyer.id === user.id && updates.deliveryConfirmation !== undefined) ||
+        user.role === 'teacher';
+
+      if (!canUpdate) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      const updatedTransaction = await storage.updateTransaction(transactionId, updates);
+      res.json(updatedTransaction);
+    } catch (error) {
+      console.error('Error updating transaction:', error);
+      res.status(500).json({ message: 'Failed to update transaction' });
+    }
+  });
+
+  // ===================
+  // REVIEWS & RATINGS
+  // ===================
+
+  // Create review
+  app.post('/api/marketplace/reviews', authenticate, async (req, res) => {
+    try {
+      const reviewData = insertMarketplaceReviewSchema.parse(req.body);
+      const user = req.user;
+
+      if (user.role !== 'student') {
+        return res.status(403).json({ message: 'Only students can leave reviews' });
+      }
+
+      // Verify transaction exists and user is the buyer
+      const transaction = await storage.getTransaction(reviewData.transactionId);
+      if (!transaction || transaction.buyer.id !== user.id) {
+        return res.status(403).json({ message: 'Access denied to review this transaction' });
+      }
+
+      // Check if transaction is completed
+      if (transaction.orderStatus !== 'completed') {
+        return res.status(400).json({ message: 'Can only review completed transactions' });
+      }
+
+      const review = await storage.createReview({
+        ...reviewData,
+        reviewerId: user.id
+      });
+
+      res.json(review);
+    } catch (error: any) {
+      console.error('Error creating review:', error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: 'Invalid review data', errors: error.errors });
+      }
+      res.status(500).json({ message: 'Failed to create review' });
+    }
+  });
+
+  // Get seller reviews
+  app.get('/api/marketplace/sellers/:sellerId/reviews', async (req, res) => {
+    try {
+      const { sellerId } = req.params;
+      const { status = 'published' } = req.query;
+
+      const reviews = await storage.getSellerReviews(sellerId, status as string);
+      res.json(reviews);
+    } catch (error) {
+      console.error('Error fetching seller reviews:', error);
+      res.status(500).json({ message: 'Failed to fetch reviews' });
+    }
+  });
+
+  // ===================
+  // WISHLIST MANAGEMENT
+  // ===================
+
+  // Add to wishlist
+  app.post('/api/marketplace/wishlist', authenticate, async (req, res) => {
+    try {
+      const wishlistData = insertMarketplaceWishlistSchema.parse(req.body);
+      const user = req.user;
+
+      if (user.role !== 'student') {
+        return res.status(403).json({ message: 'Only students can have wishlists' });
+      }
+
+      const wishlist = await storage.addToWishlist({
+        ...wishlistData,
+        studentId: user.id
+      });
+
+      res.json(wishlist);
+    } catch (error: any) {
+      console.error('Error adding to wishlist:', error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: 'Invalid wishlist data', errors: error.errors });
+      }
+      res.status(500).json({ message: 'Failed to add to wishlist' });
+    }
+  });
+
+  // Remove from wishlist
+  app.delete('/api/marketplace/wishlist/:listingId', authenticate, async (req, res) => {
+    try {
+      const { listingId } = req.params;
+      const user = req.user;
+
+      if (user.role !== 'student') {
+        return res.status(403).json({ message: 'Only students can have wishlists' });
+      }
+
+      await storage.removeFromWishlist(user.id, listingId);
+      res.json({ message: 'Removed from wishlist' });
+    } catch (error) {
+      console.error('Error removing from wishlist:', error);
+      res.status(500).json({ message: 'Failed to remove from wishlist' });
+    }
+  });
+
+  // Get student wishlist
+  app.get('/api/marketplace/wishlist/me', authenticate, async (req, res) => {
+    try {
+      const user = req.user;
+
+      if (user.role !== 'student') {
+        return res.status(403).json({ message: 'Only students can have wishlists' });
+      }
+
+      const wishlist = await storage.getStudentWishlist(user.id);
+      res.json(wishlist);
+    } catch (error) {
+      console.error('Error fetching wishlist:', error);
+      res.status(500).json({ message: 'Failed to fetch wishlist' });
+    }
+  });
+
+  // ===================
+  // ANALYTICS & INSIGHTS
+  // ===================
+
+  // Get seller analytics
+  app.get('/api/marketplace/sellers/:sellerId/analytics', authenticate, async (req, res) => {
+    try {
+      const { sellerId } = req.params;
+      const { timeframe = '30d' } = req.query;
+      const user = req.user;
+
+      // Verify access to seller
+      const seller = await storage.getSeller(sellerId);
+      if (!seller || seller.studentId !== user.id) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      const analytics = await storage.getSellerAnalytics(sellerId, timeframe as string);
+      res.json(analytics);
+    } catch (error) {
+      console.error('Error fetching seller analytics:', error);
+      res.status(500).json({ message: 'Failed to fetch analytics' });
+    }
+  });
+
+  // Get marketplace analytics (teacher view)
+  app.get('/api/marketplace/analytics/:classroomId', authenticate, async (req, res) => {
+    try {
+      const { classroomId } = req.params;
+      const { timeframe = '30d' } = req.query;
+      const user = req.user;
+
+      if (user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Only teachers can view marketplace analytics' });
+      }
+
+      // Verify teacher has access to classroom
+      const classroom = await storage.getClassroom(classroomId);
+      if (!classroom || classroom.teacherId !== user.id) {
+        return res.status(403).json({ message: 'Access denied to classroom' });
+      }
+
+      const analytics = await storage.getMarketplaceAnalytics(classroomId, timeframe as string);
+      res.json(analytics);
+    } catch (error) {
+      console.error('Error fetching marketplace analytics:', error);
+      res.status(500).json({ message: 'Failed to fetch marketplace analytics' });
+    }
+  });
+
+  // ===================
+  // MESSAGING SYSTEM
+  // ===================
+
+  // Create message
+  app.post('/api/marketplace/messages', authenticate, async (req, res) => {
+    try {
+      const messageData = insertMarketplaceMessageSchema.parse(req.body);
+      const user = req.user;
+
+      if (user.role !== 'student') {
+        return res.status(403).json({ message: 'Only students can send marketplace messages' });
+      }
+
+      const message = await storage.createMessage({
+        ...messageData,
+        senderId: user.id
+      });
+
+      res.json(message);
+    } catch (error: any) {
+      console.error('Error creating message:', error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: 'Invalid message data', errors: error.errors });
+      }
+      res.status(500).json({ message: 'Failed to send message' });
+    }
+  });
+
+  // Get messages for user
+  app.get('/api/marketplace/messages', authenticate, async (req, res) => {
+    try {
+      const { transactionId, listingId, conversationWith } = req.query;
+      const user = req.user;
+
+      if (user.role !== 'student') {
+        return res.status(403).json({ message: 'Only students can access marketplace messages' });
+      }
+
+      const filters: any = {};
+      if (transactionId) filters.transactionId = transactionId as string;
+      if (listingId) filters.listingId = listingId as string;
+      if (conversationWith) filters.conversationWith = conversationWith as string;
+
+      const messages = await storage.getMessages(user.id, filters);
+      res.json(messages);
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      res.status(500).json({ message: 'Failed to fetch messages' });
+    }
+  });
+
+  // Mark message as read
+  app.put('/api/marketplace/messages/:messageId/read', authenticate, async (req, res) => {
+    try {
+      const { messageId } = req.params;
+      const user = req.user;
+
+      const message = await storage.markMessageAsRead(messageId);
+      res.json(message);
+    } catch (error) {
+      console.error('Error marking message as read:', error);
+      res.status(500).json({ message: 'Failed to mark message as read' });
     }
   });
 

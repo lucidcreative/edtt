@@ -73,6 +73,13 @@ import {
   assignmentSubmissions,
   assignmentFeedback,
   assignmentTemplates,
+  // Phase 2B Marketplace Tables
+  marketplaceSellers,
+  marketplaceListings,
+  marketplaceTransactions,
+  marketplaceReviews,
+  marketplaceWishlists,
+  marketplaceMessages,
   type AssignmentAdvanced,
   type InsertAssignmentAdvanced,
   type AssignmentSubmission,
@@ -80,7 +87,20 @@ import {
   type AssignmentFeedback,
   type InsertAssignmentFeedback,
   type AssignmentTemplate,
-  type InsertAssignmentTemplate
+  type InsertAssignmentTemplate,
+  // Phase 2B Marketplace Types
+  type MarketplaceSeller,
+  type InsertMarketplaceSeller,
+  type MarketplaceListing,
+  type InsertMarketplaceListing,
+  type MarketplaceTransaction,
+  type InsertMarketplaceTransaction,
+  type MarketplaceReview,
+  type InsertMarketplaceReview,
+  type MarketplaceWishlist,
+  type InsertMarketplaceWishlist,
+  type MarketplaceMessage,
+  type InsertMarketplaceMessage
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, and, or, sql, count } from "drizzle-orm";
@@ -294,6 +314,86 @@ export interface IStorage {
   getAssignmentTemplates(createdBy?: string): Promise<AssignmentTemplate[]>;
   createAssignmentTemplate(template: InsertAssignmentTemplate): Promise<AssignmentTemplate>;
   getAssignmentAnalytics(classroomId: string, assignmentId?: string): Promise<any>;
+
+  // PHASE 2B: MARKETPLACE & PEER-TO-PEER COMMERCE METHODS
+
+  // Seller management
+  createSeller(seller: InsertMarketplaceSeller): Promise<MarketplaceSeller>;
+  updateSeller(sellerId: string, updates: Partial<InsertMarketplaceSeller>): Promise<MarketplaceSeller>;
+  getSeller(sellerId: string): Promise<MarketplaceSeller | undefined>;
+  getSellerByStudent(studentId: string, classroomId: string): Promise<MarketplaceSeller | undefined>;
+  getClassroomSellers(classroomId: string, status?: string): Promise<(MarketplaceSeller & { student: Pick<User, 'id' | 'nickname' | 'firstName' | 'lastName'> })[]>;
+  approveSeller(sellerId: string, approverId: string): Promise<MarketplaceSeller>;
+  suspendSeller(sellerId: string, reason: string): Promise<MarketplaceSeller>;
+  
+  // Listing management
+  createListing(listing: InsertMarketplaceListing): Promise<MarketplaceListing>;
+  updateListing(listingId: string, updates: Partial<InsertMarketplaceListing>): Promise<MarketplaceListing>;
+  deleteListing(listingId: string): Promise<void>;
+  getListing(listingId: string): Promise<(MarketplaceListing & { seller: MarketplaceSeller & { student: Pick<User, 'id' | 'nickname'> } }) | undefined>;
+  getSellerListings(sellerId: string, status?: string): Promise<MarketplaceListing[]>;
+  searchListings(classroomId: string, filters?: { 
+    category?: string; 
+    status?: string; 
+    minPrice?: number; 
+    maxPrice?: number; 
+    tags?: string[];
+    sellerId?: string;
+  }): Promise<(MarketplaceListing & { seller: MarketplaceSeller & { student: Pick<User, 'id' | 'nickname'> } })[]>;
+  getFeaturedListings(classroomId: string, limit?: number): Promise<(MarketplaceListing & { seller: MarketplaceSeller & { student: Pick<User, 'id' | 'nickname'> } })[]>;
+  updateListingViews(listingId: string): Promise<void>;
+  
+  // Transaction management
+  createTransaction(transaction: InsertMarketplaceTransaction): Promise<MarketplaceTransaction>;
+  updateTransaction(transactionId: string, updates: Partial<InsertMarketplaceTransaction>): Promise<MarketplaceTransaction>;
+  getTransaction(transactionId: string): Promise<(MarketplaceTransaction & { listing: MarketplaceListing, buyer: Pick<User, 'id' | 'nickname'>, seller: MarketplaceSeller & { student: Pick<User, 'id' | 'nickname'> } }) | undefined>;
+  getSellerTransactions(sellerId: string, status?: string): Promise<(MarketplaceTransaction & { listing: Pick<MarketplaceListing, 'id' | 'title'>, buyer: Pick<User, 'id' | 'nickname'> })[]>;
+  getBuyerTransactions(buyerId: string, status?: string): Promise<(MarketplaceTransaction & { listing: Pick<MarketplaceListing, 'id' | 'title'>, seller: MarketplaceSeller & { student: Pick<User, 'id' | 'nickname'> } })[]>;
+  getClassroomTransactions(classroomId: string, filters?: { status?: string; timeframe?: string }): Promise<any[]>;
+  
+  // Review management
+  createReview(review: InsertMarketplaceReview): Promise<MarketplaceReview>;
+  updateReview(reviewId: string, updates: Partial<InsertMarketplaceReview>): Promise<MarketplaceReview>;
+  getReview(reviewId: string): Promise<MarketplaceReview | undefined>;
+  getSellerReviews(sellerId: string, status?: string): Promise<(MarketplaceReview & { reviewer: Pick<User, 'id' | 'nickname'> })[]>;
+  getListingReviews(listingId: string): Promise<(MarketplaceReview & { reviewer: Pick<User, 'id' | 'nickname'> })[]>;
+  flagReview(reviewId: string, reason: string): Promise<MarketplaceReview>;
+  moderateReview(reviewId: string, moderatorId: string, action: 'approve' | 'hide'): Promise<MarketplaceReview>;
+  
+  // Wishlist management
+  addToWishlist(wishlist: InsertMarketplaceWishlist): Promise<MarketplaceWishlist>;
+  removeFromWishlist(studentId: string, listingId: string): Promise<void>;
+  getStudentWishlist(studentId: string): Promise<(MarketplaceWishlist & { listing: MarketplaceListing & { seller: MarketplaceSeller & { student: Pick<User, 'id' | 'nickname'> } } })[]>;
+  getListingWishlistCount(listingId: string): Promise<number>;
+  
+  // Message management
+  createMessage(message: InsertMarketplaceMessage): Promise<MarketplaceMessage>;
+  getMessages(userId: string, filters?: { transactionId?: string; listingId?: string; conversationWith?: string }): Promise<(MarketplaceMessage & { sender: Pick<User, 'id' | 'nickname'>, recipient: Pick<User, 'id' | 'nickname'> })[]>;
+  markMessageAsRead(messageId: string): Promise<MarketplaceMessage>;
+  flagMessage(messageId: string, reason: string): Promise<MarketplaceMessage>;
+  
+  // Analytics and insights
+  getSellerAnalytics(sellerId: string, timeframe?: string): Promise<{
+    totalSales: number;
+    totalRevenue: string;
+    averageRating: number;
+    totalReviews: number;
+    activeListings: number;
+    pendingOrders: number;
+    completedOrders: number;
+    topSellingItems: any[];
+    revenueByMonth: any[];
+  }>;
+  getMarketplaceAnalytics(classroomId: string, timeframe?: string): Promise<{
+    totalTransactions: number;
+    totalVolume: string;
+    activeSellers: number;
+    activeListings: number;
+    averageTransactionValue: string;
+    topCategories: any[];
+    topSellers: any[];
+    transactionsByMonth: any[];
+  }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1595,6 +1695,698 @@ export class DatabaseStorage implements IStorage {
         tags: ['games', 'educational', 'fun']
       }
     ];
+  }
+
+  // PHASE 2B: MARKETPLACE & PEER-TO-PEER COMMERCE IMPLEMENTATION
+
+  // Seller management methods
+  async createSeller(seller: InsertMarketplaceSeller): Promise<MarketplaceSeller> {
+    const [newSeller] = await db
+      .insert(marketplaceSellers)
+      .values(seller)
+      .returning();
+    return newSeller;
+  }
+
+  async updateSeller(sellerId: string, updates: Partial<InsertMarketplaceSeller>): Promise<MarketplaceSeller> {
+    const [seller] = await db
+      .update(marketplaceSellers)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(marketplaceSellers.id, sellerId))
+      .returning();
+    return seller;
+  }
+
+  async getSeller(sellerId: string): Promise<MarketplaceSeller | undefined> {
+    const [seller] = await db
+      .select()
+      .from(marketplaceSellers)
+      .where(eq(marketplaceSellers.id, sellerId));
+    return seller;
+  }
+
+  async getSellerByStudent(studentId: string, classroomId: string): Promise<MarketplaceSeller | undefined> {
+    const [seller] = await db
+      .select()
+      .from(marketplaceSellers)
+      .where(and(
+        eq(marketplaceSellers.studentId, studentId),
+        eq(marketplaceSellers.classroomId, classroomId)
+      ));
+    return seller;
+  }
+
+  async getClassroomSellers(classroomId: string, status?: string): Promise<(MarketplaceSeller & { student: Pick<User, 'id' | 'nickname' | 'firstName' | 'lastName'> })[]> {
+    let query = db
+      .select({
+        seller: marketplaceSellers,
+        student: {
+          id: users.id,
+          nickname: users.nickname,
+          firstName: users.firstName,
+          lastName: users.lastName
+        }
+      })
+      .from(marketplaceSellers)
+      .innerJoin(users, eq(users.id, marketplaceSellers.studentId))
+      .where(eq(marketplaceSellers.classroomId, classroomId));
+
+    if (status) {
+      query = query.where(eq(marketplaceSellers.sellerStatus, status));
+    }
+
+    const result = await query.orderBy(desc(marketplaceSellers.createdAt));
+    return result.map(row => ({ ...row.seller, student: row.student }));
+  }
+
+  async approveSeller(sellerId: string, approverId: string): Promise<MarketplaceSeller> {
+    const [seller] = await db
+      .update(marketplaceSellers)
+      .set({
+        sellerStatus: 'approved',
+        approvedBy: approverId,
+        approvalDate: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(marketplaceSellers.id, sellerId))
+      .returning();
+    return seller;
+  }
+
+  async suspendSeller(sellerId: string, reason: string): Promise<MarketplaceSeller> {
+    const [seller] = await db
+      .update(marketplaceSellers)
+      .set({
+        sellerStatus: 'suspended',
+        updatedAt: new Date()
+      })
+      .where(eq(marketplaceSellers.id, sellerId))
+      .returning();
+    return seller;
+  }
+
+  // Listing management methods
+  async createListing(listing: InsertMarketplaceListing): Promise<MarketplaceListing> {
+    const [newListing] = await db
+      .insert(marketplaceListings)
+      .values(listing)
+      .returning();
+    return newListing;
+  }
+
+  async updateListing(listingId: string, updates: Partial<InsertMarketplaceListing>): Promise<MarketplaceListing> {
+    const [listing] = await db
+      .update(marketplaceListings)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(marketplaceListings.id, listingId))
+      .returning();
+    return listing;
+  }
+
+  async deleteListing(listingId: string): Promise<void> {
+    await db.delete(marketplaceListings).where(eq(marketplaceListings.id, listingId));
+  }
+
+  async getListing(listingId: string): Promise<(MarketplaceListing & { seller: MarketplaceSeller & { student: Pick<User, 'id' | 'nickname'> } }) | undefined> {
+    const result = await db
+      .select({
+        listing: marketplaceListings,
+        seller: marketplaceSellers,
+        student: {
+          id: users.id,
+          nickname: users.nickname
+        }
+      })
+      .from(marketplaceListings)
+      .innerJoin(marketplaceSellers, eq(marketplaceSellers.id, marketplaceListings.sellerId))
+      .innerJoin(users, eq(users.id, marketplaceSellers.studentId))
+      .where(eq(marketplaceListings.id, listingId))
+      .limit(1);
+
+    if (result.length === 0) return undefined;
+
+    const row = result[0];
+    return { ...row.listing, seller: { ...row.seller, student: row.student } };
+  }
+
+  async getSellerListings(sellerId: string, status?: string): Promise<MarketplaceListing[]> {
+    let query = db
+      .select()
+      .from(marketplaceListings)
+      .where(eq(marketplaceListings.sellerId, sellerId));
+
+    if (status) {
+      query = query.where(eq(marketplaceListings.status, status));
+    }
+
+    return await query.orderBy(desc(marketplaceListings.createdAt));
+  }
+
+  async searchListings(classroomId: string, filters?: { 
+    category?: string; 
+    status?: string; 
+    minPrice?: number; 
+    maxPrice?: number; 
+    tags?: string[];
+    sellerId?: string;
+  }): Promise<(MarketplaceListing & { seller: MarketplaceSeller & { student: Pick<User, 'id' | 'nickname'> } })[]> {
+    let conditions = [eq(marketplaceSellers.classroomId, classroomId)];
+
+    if (filters?.category) {
+      conditions.push(eq(marketplaceListings.category, filters.category));
+    }
+    if (filters?.status) {
+      conditions.push(eq(marketplaceListings.status, filters.status));
+    }
+    if (filters?.sellerId) {
+      conditions.push(eq(marketplaceListings.sellerId, filters.sellerId));
+    }
+
+    const result = await db
+      .select({
+        listing: marketplaceListings,
+        seller: marketplaceSellers,
+        student: {
+          id: users.id,
+          nickname: users.nickname
+        }
+      })
+      .from(marketplaceListings)
+      .innerJoin(marketplaceSellers, eq(marketplaceSellers.id, marketplaceListings.sellerId))
+      .innerJoin(users, eq(users.id, marketplaceSellers.studentId))
+      .where(and(...conditions))
+      .orderBy(desc(marketplaceListings.featured), desc(marketplaceListings.createdAt));
+
+    return result.map(row => ({ ...row.listing, seller: { ...row.seller, student: row.student } }));
+  }
+
+  async getFeaturedListings(classroomId: string, limit: number = 6): Promise<(MarketplaceListing & { seller: MarketplaceSeller & { student: Pick<User, 'id' | 'nickname'> } })[]> {
+    const result = await db
+      .select({
+        listing: marketplaceListings,
+        seller: marketplaceSellers,
+        student: {
+          id: users.id,
+          nickname: users.nickname
+        }
+      })
+      .from(marketplaceListings)
+      .innerJoin(marketplaceSellers, eq(marketplaceSellers.id, marketplaceListings.sellerId))
+      .innerJoin(users, eq(users.id, marketplaceSellers.studentId))
+      .where(and(
+        eq(marketplaceSellers.classroomId, classroomId),
+        eq(marketplaceListings.featured, true),
+        eq(marketplaceListings.status, 'active')
+      ))
+      .orderBy(desc(marketplaceListings.viewCount))
+      .limit(limit);
+
+    return result.map(row => ({ ...row.listing, seller: { ...row.seller, student: row.student } }));
+  }
+
+  async updateListingViews(listingId: string): Promise<void> {
+    await db
+      .update(marketplaceListings)
+      .set({
+        viewCount: sql`${marketplaceListings.viewCount} + 1`
+      })
+      .where(eq(marketplaceListings.id, listingId));
+  }
+
+  // Transaction management methods
+  async createTransaction(transaction: InsertMarketplaceTransaction): Promise<MarketplaceTransaction> {
+    const [newTransaction] = await db
+      .insert(marketplaceTransactions)
+      .values(transaction)
+      .returning();
+    return newTransaction;
+  }
+
+  async updateTransaction(transactionId: string, updates: Partial<InsertMarketplaceTransaction>): Promise<MarketplaceTransaction> {
+    const [transaction] = await db
+      .update(marketplaceTransactions)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(marketplaceTransactions.id, transactionId))
+      .returning();
+    return transaction;
+  }
+
+  async getTransaction(transactionId: string): Promise<(MarketplaceTransaction & { listing: MarketplaceListing, buyer: Pick<User, 'id' | 'nickname'>, seller: MarketplaceSeller & { student: Pick<User, 'id' | 'nickname'> } }) | undefined> {
+    const result = await db
+      .select({
+        transaction: marketplaceTransactions,
+        listing: marketplaceListings,
+        buyer: {
+          id: users.id,
+          nickname: users.nickname
+        },
+        seller: marketplaceSellers,
+        sellerStudent: {
+          id: users.id,
+          nickname: users.nickname
+        }
+      })
+      .from(marketplaceTransactions)
+      .innerJoin(marketplaceListings, eq(marketplaceListings.id, marketplaceTransactions.listingId))
+      .innerJoin(users, eq(users.id, marketplaceTransactions.buyerId))
+      .innerJoin(marketplaceSellers, eq(marketplaceSellers.id, marketplaceTransactions.sellerId))
+      .innerJoin(users, eq(users.id, marketplaceSellers.studentId))
+      .where(eq(marketplaceTransactions.id, transactionId))
+      .limit(1);
+
+    if (result.length === 0) return undefined;
+
+    const row = result[0];
+    return {
+      ...row.transaction,
+      listing: row.listing,
+      buyer: row.buyer,
+      seller: { ...row.seller, student: row.sellerStudent }
+    };
+  }
+
+  async getSellerTransactions(sellerId: string, status?: string): Promise<(MarketplaceTransaction & { listing: Pick<MarketplaceListing, 'id' | 'title'>, buyer: Pick<User, 'id' | 'nickname'> })[]> {
+    let query = db
+      .select({
+        transaction: marketplaceTransactions,
+        listing: {
+          id: marketplaceListings.id,
+          title: marketplaceListings.title
+        },
+        buyer: {
+          id: users.id,
+          nickname: users.nickname
+        }
+      })
+      .from(marketplaceTransactions)
+      .innerJoin(marketplaceListings, eq(marketplaceListings.id, marketplaceTransactions.listingId))
+      .innerJoin(users, eq(users.id, marketplaceTransactions.buyerId))
+      .where(eq(marketplaceTransactions.sellerId, sellerId));
+
+    if (status) {
+      query = query.where(eq(marketplaceTransactions.orderStatus, status));
+    }
+
+    const result = await query.orderBy(desc(marketplaceTransactions.createdAt));
+    return result.map(row => ({ ...row.transaction, listing: row.listing, buyer: row.buyer }));
+  }
+
+  async getBuyerTransactions(buyerId: string, status?: string): Promise<(MarketplaceTransaction & { listing: Pick<MarketplaceListing, 'id' | 'title'>, seller: MarketplaceSeller & { student: Pick<User, 'id' | 'nickname'> } })[]> {
+    let conditions = [eq(marketplaceTransactions.buyerId, buyerId)];
+    if (status) {
+      conditions.push(eq(marketplaceTransactions.orderStatus, status));
+    }
+
+    const result = await db
+      .select({
+        transaction: marketplaceTransactions,
+        listing: {
+          id: marketplaceListings.id,
+          title: marketplaceListings.title
+        },
+        seller: marketplaceSellers,
+        sellerStudent: {
+          id: users.id,
+          nickname: users.nickname
+        }
+      })
+      .from(marketplaceTransactions)
+      .innerJoin(marketplaceListings, eq(marketplaceListings.id, marketplaceTransactions.listingId))
+      .innerJoin(marketplaceSellers, eq(marketplaceSellers.id, marketplaceTransactions.sellerId))
+      .innerJoin(users, eq(users.id, marketplaceSellers.studentId))
+      .where(and(...conditions))
+      .orderBy(desc(marketplaceTransactions.createdAt));
+
+    return result.map(row => ({ ...row.transaction, listing: row.listing, seller: { ...row.seller, student: row.sellerStudent } }));
+  }
+
+  async getClassroomTransactions(classroomId: string, filters?: { status?: string; timeframe?: string }): Promise<any[]> {
+    let conditions = [eq(marketplaceSellers.classroomId, classroomId)];
+    if (filters?.status) {
+      conditions.push(eq(marketplaceTransactions.orderStatus, filters.status));
+    }
+
+    const result = await db
+      .select({
+        transaction: marketplaceTransactions,
+        listing: {
+          id: marketplaceListings.id,
+          title: marketplaceListings.title
+        },
+        seller: {
+          id: marketplaceSellers.id,
+          businessName: marketplaceSellers.businessName
+        },
+        buyer: {
+          id: users.id,
+          nickname: users.nickname
+        }
+      })
+      .from(marketplaceTransactions)
+      .innerJoin(marketplaceListings, eq(marketplaceListings.id, marketplaceTransactions.listingId))
+      .innerJoin(marketplaceSellers, eq(marketplaceSellers.id, marketplaceTransactions.sellerId))
+      .innerJoin(users, eq(users.id, marketplaceTransactions.buyerId))
+      .where(and(...conditions))
+      .orderBy(desc(marketplaceTransactions.createdAt));
+
+    return result.map(row => ({ ...row.transaction, listing: row.listing, seller: row.seller, buyer: row.buyer }));
+  }
+
+  // Review management methods
+  async createReview(review: InsertMarketplaceReview): Promise<MarketplaceReview> {
+    const [newReview] = await db
+      .insert(marketplaceReviews)
+      .values(review)
+      .returning();
+    return newReview;
+  }
+
+  async updateReview(reviewId: string, updates: Partial<InsertMarketplaceReview>): Promise<MarketplaceReview> {
+    const [review] = await db
+      .update(marketplaceReviews)
+      .set(updates)
+      .where(eq(marketplaceReviews.id, reviewId))
+      .returning();
+    return review;
+  }
+
+  async getReview(reviewId: string): Promise<MarketplaceReview | undefined> {
+    const [review] = await db
+      .select()
+      .from(marketplaceReviews)
+      .where(eq(marketplaceReviews.id, reviewId));
+    return review;
+  }
+
+  async getSellerReviews(sellerId: string, status?: string): Promise<(MarketplaceReview & { reviewer: Pick<User, 'id' | 'nickname'> })[]> {
+    let conditions = [eq(marketplaceReviews.sellerId, sellerId)];
+    if (status) {
+      conditions.push(eq(marketplaceReviews.reviewStatus, status));
+    }
+
+    const result = await db
+      .select({
+        review: marketplaceReviews,
+        reviewer: {
+          id: users.id,
+          nickname: users.nickname
+        }
+      })
+      .from(marketplaceReviews)
+      .innerJoin(users, eq(users.id, marketplaceReviews.reviewerId))
+      .where(and(...conditions))
+      .orderBy(desc(marketplaceReviews.createdAt));
+
+    return result.map(row => ({ ...row.review, reviewer: row.reviewer }));
+  }
+
+  async getListingReviews(listingId: string): Promise<(MarketplaceReview & { reviewer: Pick<User, 'id' | 'nickname'> })[]> {
+    const result = await db
+      .select({
+        review: marketplaceReviews,
+        reviewer: {
+          id: users.id,
+          nickname: users.nickname
+        }
+      })
+      .from(marketplaceReviews)
+      .innerJoin(marketplaceTransactions, eq(marketplaceTransactions.id, marketplaceReviews.transactionId))
+      .innerJoin(users, eq(users.id, marketplaceReviews.reviewerId))
+      .where(eq(marketplaceTransactions.listingId, listingId))
+      .orderBy(desc(marketplaceReviews.createdAt));
+
+    return result.map(row => ({ ...row.review, reviewer: row.reviewer }));
+  }
+
+  async flagReview(reviewId: string, reason: string): Promise<MarketplaceReview> {
+    const [review] = await db
+      .update(marketplaceReviews)
+      .set({
+        reviewStatus: 'flagged',
+        flaggedReason: reason
+      })
+      .where(eq(marketplaceReviews.id, reviewId))
+      .returning();
+    return review;
+  }
+
+  async moderateReview(reviewId: string, moderatorId: string, action: 'approve' | 'hide'): Promise<MarketplaceReview> {
+    const [review] = await db
+      .update(marketplaceReviews)
+      .set({
+        reviewStatus: action === 'approve' ? 'published' : 'hidden',
+        moderatedBy: moderatorId
+      })
+      .where(eq(marketplaceReviews.id, reviewId))
+      .returning();
+    return review;
+  }
+
+  // Wishlist management methods
+  async addToWishlist(wishlist: InsertMarketplaceWishlist): Promise<MarketplaceWishlist> {
+    const [newWishlist] = await db
+      .insert(marketplaceWishlists)
+      .values(wishlist)
+      .returning();
+    return newWishlist;
+  }
+
+  async removeFromWishlist(studentId: string, listingId: string): Promise<void> {
+    await db
+      .delete(marketplaceWishlists)
+      .where(and(
+        eq(marketplaceWishlists.studentId, studentId),
+        eq(marketplaceWishlists.listingId, listingId)
+      ));
+  }
+
+  async getStudentWishlist(studentId: string): Promise<(MarketplaceWishlist & { listing: MarketplaceListing & { seller: MarketplaceSeller & { student: Pick<User, 'id' | 'nickname'> } } })[]> {
+    const result = await db
+      .select({
+        wishlist: marketplaceWishlists,
+        listing: marketplaceListings,
+        seller: marketplaceSellers,
+        sellerStudent: {
+          id: users.id,
+          nickname: users.nickname
+        }
+      })
+      .from(marketplaceWishlists)
+      .innerJoin(marketplaceListings, eq(marketplaceListings.id, marketplaceWishlists.listingId))
+      .innerJoin(marketplaceSellers, eq(marketplaceSellers.id, marketplaceListings.sellerId))
+      .innerJoin(users, eq(users.id, marketplaceSellers.studentId))
+      .where(eq(marketplaceWishlists.studentId, studentId))
+      .orderBy(asc(marketplaceWishlists.priorityRank), desc(marketplaceWishlists.addedAt));
+
+    return result.map(row => ({ 
+      ...row.wishlist, 
+      listing: { 
+        ...row.listing, 
+        seller: { ...row.seller, student: row.sellerStudent } 
+      } 
+    }));
+  }
+
+  async getListingWishlistCount(listingId: string): Promise<number> {
+    const result = await db
+      .select({ count: count() })
+      .from(marketplaceWishlists)
+      .where(eq(marketplaceWishlists.listingId, listingId));
+    return result[0]?.count || 0;
+  }
+
+  // Message management methods
+  async createMessage(message: InsertMarketplaceMessage): Promise<MarketplaceMessage> {
+    const [newMessage] = await db
+      .insert(marketplaceMessages)
+      .values(message)
+      .returning();
+    return newMessage;
+  }
+
+  async getMessages(userId: string, filters?: { transactionId?: string; listingId?: string; conversationWith?: string }): Promise<(MarketplaceMessage & { sender: Pick<User, 'id' | 'nickname'>, recipient: Pick<User, 'id' | 'nickname'> })[]> {
+    let conditions = [
+      or(
+        eq(marketplaceMessages.senderId, userId),
+        eq(marketplaceMessages.recipientId, userId)
+      )
+    ];
+
+    if (filters?.transactionId) {
+      conditions.push(eq(marketplaceMessages.transactionId, filters.transactionId));
+    }
+    if (filters?.listingId) {
+      conditions.push(eq(marketplaceMessages.listingId, filters.listingId));
+    }
+    if (filters?.conversationWith) {
+      conditions.push(
+        or(
+          and(eq(marketplaceMessages.senderId, userId), eq(marketplaceMessages.recipientId, filters.conversationWith)),
+          and(eq(marketplaceMessages.senderId, filters.conversationWith), eq(marketplaceMessages.recipientId, userId))
+        )
+      );
+    }
+
+    const result = await db
+      .select({
+        message: marketplaceMessages,
+        sender: {
+          id: users.id,
+          nickname: users.nickname
+        },
+        recipient: {
+          id: users.id,
+          nickname: users.nickname
+        }
+      })
+      .from(marketplaceMessages)
+      .innerJoin(users, eq(users.id, marketplaceMessages.senderId))
+      .innerJoin(users, eq(users.id, marketplaceMessages.recipientId))
+      .where(and(...conditions))
+      .orderBy(desc(marketplaceMessages.createdAt));
+
+    return result.map(row => ({ ...row.message, sender: row.sender, recipient: row.recipient }));
+  }
+
+  async markMessageAsRead(messageId: string): Promise<MarketplaceMessage> {
+    const [message] = await db
+      .update(marketplaceMessages)
+      .set({ readAt: new Date() })
+      .where(eq(marketplaceMessages.id, messageId))
+      .returning();
+    return message;
+  }
+
+  async flagMessage(messageId: string, reason: string): Promise<MarketplaceMessage> {
+    const [message] = await db
+      .update(marketplaceMessages)
+      .set({
+        flagged: true,
+        flaggedReason: reason
+      })
+      .where(eq(marketplaceMessages.id, messageId))
+      .returning();
+    return message;
+  }
+
+  // Analytics and insights methods
+  async getSellerAnalytics(sellerId: string, timeframe?: string): Promise<{
+    totalSales: number;
+    totalRevenue: string;
+    averageRating: number;
+    totalReviews: number;
+    activeListings: number;
+    pendingOrders: number;
+    completedOrders: number;
+    topSellingItems: any[];
+    revenueByMonth: any[];
+  }> {
+    // Get seller info with aggregated stats
+    const [sellerStats] = await db
+      .select()
+      .from(marketplaceSellers)
+      .where(eq(marketplaceSellers.id, sellerId));
+
+    if (!sellerStats) {
+      throw new Error('Seller not found');
+    }
+
+    // Get active listings count
+    const [activeListingsResult] = await db
+      .select({ count: count() })
+      .from(marketplaceListings)
+      .where(and(
+        eq(marketplaceListings.sellerId, sellerId),
+        eq(marketplaceListings.status, 'active')
+      ));
+
+    // Get pending orders count
+    const [pendingOrdersResult] = await db
+      .select({ count: count() })
+      .from(marketplaceTransactions)
+      .where(and(
+        eq(marketplaceTransactions.sellerId, sellerId),
+        eq(marketplaceTransactions.orderStatus, 'pending')
+      ));
+
+    // Get completed orders count
+    const [completedOrdersResult] = await db
+      .select({ count: count() })
+      .from(marketplaceTransactions)
+      .where(and(
+        eq(marketplaceTransactions.sellerId, sellerId),
+        eq(marketplaceTransactions.orderStatus, 'completed')
+      ));
+
+    return {
+      totalSales: sellerStats.totalSalesCount,
+      totalRevenue: sellerStats.totalRevenue,
+      averageRating: parseFloat(sellerStats.averageRating),
+      totalReviews: sellerStats.totalReviews,
+      activeListings: activeListingsResult?.count || 0,
+      pendingOrders: pendingOrdersResult?.count || 0,
+      completedOrders: completedOrdersResult?.count || 0,
+      topSellingItems: [], // TODO: Implement top selling items query
+      revenueByMonth: [] // TODO: Implement revenue by month query
+    };
+  }
+
+  async getMarketplaceAnalytics(classroomId: string, timeframe?: string): Promise<{
+    totalTransactions: number;
+    totalVolume: string;
+    activeSellers: number;
+    activeListings: number;
+    averageTransactionValue: string;
+    topCategories: any[];
+    topSellers: any[];
+    transactionsByMonth: any[];
+  }> {
+    // Get total transactions count and volume
+    const transactionStats = await db
+      .select({
+        count: count(),
+        totalVolume: sql<string>`COALESCE(SUM(${marketplaceTransactions.totalAmount}), 0)`
+      })
+      .from(marketplaceTransactions)
+      .innerJoin(marketplaceSellers, eq(marketplaceSellers.id, marketplaceTransactions.sellerId))
+      .where(eq(marketplaceSellers.classroomId, classroomId));
+
+    // Get active sellers count
+    const [activeSellersResult] = await db
+      .select({ count: count() })
+      .from(marketplaceSellers)
+      .where(and(
+        eq(marketplaceSellers.classroomId, classroomId),
+        eq(marketplaceSellers.sellerStatus, 'active')
+      ));
+
+    // Get active listings count
+    const activeListingsResult = await db
+      .select({ count: count() })
+      .from(marketplaceListings)
+      .innerJoin(marketplaceSellers, eq(marketplaceSellers.id, marketplaceListings.sellerId))
+      .where(and(
+        eq(marketplaceSellers.classroomId, classroomId),
+        eq(marketplaceListings.status, 'active')
+      ));
+
+    const stats = transactionStats[0];
+    const totalTransactions = stats?.count || 0;
+    const totalVolume = stats?.totalVolume || '0';
+    const averageTransactionValue = totalTransactions > 0 
+      ? (parseFloat(totalVolume) / totalTransactions).toFixed(2) 
+      : '0.00';
+
+    return {
+      totalTransactions,
+      totalVolume,
+      activeSellers: activeSellersResult?.count || 0,
+      activeListings: activeListingsResult[0]?.count || 0,
+      averageTransactionValue,
+      topCategories: [], // TODO: Implement top categories query
+      topSellers: [], // TODO: Implement top sellers query
+      transactionsByMonth: [] // TODO: Implement transactions by month query
+    };
   }
 }
 

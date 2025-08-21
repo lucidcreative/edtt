@@ -852,3 +852,334 @@ export type InsertAssignmentFeedback = z.infer<typeof insertAssignmentFeedbackSc
 
 export type AssignmentTemplate = typeof assignmentTemplates.$inferSelect;
 export type InsertAssignmentTemplate = z.infer<typeof insertAssignmentTemplateSchema>;
+
+// PHASE 2B: STUDENT MARKETPLACE & PEER-TO-PEER COMMERCE
+
+// Student seller registration and business profiles
+export const marketplaceSellers = pgTable("marketplace_sellers", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  studentId: uuid("student_id").references(() => users.id).notNull(),
+  classroomId: uuid("classroom_id").references(() => classrooms.id).notNull(),
+  
+  // Business profile information
+  businessName: varchar("business_name", { length: 100 }).notNull(),
+  businessDescription: text("business_description"),
+  sellerBio: text("seller_bio"),
+  businessCategory: varchar("business_category", { length: 50 }), // 'digital_services', 'physical_products', 'tutoring', etc.
+  
+  // Seller status and performance
+  sellerStatus: varchar("seller_status", { length: 20 }).default('pending').$type<'pending' | 'approved' | 'active' | 'suspended' | 'inactive'>(),
+  approvalDate: timestamp("approval_date"),
+  approvedBy: uuid("approved_by").references(() => users.id), // Teacher who approved seller status
+  
+  // Business metrics and reputation
+  totalSalesCount: integer("total_sales_count").default(0),
+  totalRevenue: decimal("total_revenue", { precision: 12, scale: 2 }).default("0.00"),
+  averageRating: decimal("average_rating", { precision: 3, scale: 2 }).default("0.00"),
+  totalReviews: integer("total_reviews").default(0),
+  
+  // Business settings and preferences
+  autoApproveOrders: boolean("auto_approve_orders").default(true),
+  customMessageTemplate: text("custom_message_template"), // Template for order confirmations
+  businessHours: jsonb("business_hours"), // When seller is available for orders/communication
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+}, (table) => ({
+  uniqueStudentClassroom: unique().on(table.studentId, table.classroomId) // One seller profile per student per classroom
+}));
+
+// Student marketplace listings with comprehensive product information
+export const marketplaceListings = pgTable("marketplace_listings", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  sellerId: uuid("seller_id").references(() => marketplaceSellers.id).notNull(),
+  
+  // Product/service information
+  title: varchar("title", { length: 150 }).notNull(),
+  description: text("description").notNull(),
+  category: varchar("category", { length: 50 }).notNull(),
+  subcategory: varchar("subcategory", { length: 50 }),
+  tags: text("tags").array().default([]), // Searchable keywords
+  
+  // Pricing and availability
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  originalPrice: decimal("original_price", { precision: 10, scale: 2 }), // For tracking sales and discounts
+  listingType: varchar("listing_type", { length: 20 }).notNull().$type<'physical_product' | 'digital_product' | 'service' | 'tutoring' | 'custom_order'>(),
+  
+  // Inventory management
+  inventoryType: varchar("inventory_type", { length: 20 }).notNull().$type<'unlimited' | 'limited' | 'made_to_order'>(),
+  quantityAvailable: integer("quantity_available"), // NULL for unlimited/service items
+  quantitySold: integer("quantity_sold").default(0),
+  maxOrdersPerCustomer: integer("max_orders_per_customer").default(1),
+  
+  // Listing status and visibility
+  status: varchar("status", { length: 20 }).default('draft').$type<'draft' | 'pending_approval' | 'active' | 'paused' | 'sold_out' | 'archived'>(),
+  featured: boolean("featured").default(false), // Promoted listings
+  priorityOrder: integer("priority_order").default(0), // For seller's own organization
+  
+  // Media and presentation
+  primaryImageUrl: varchar("primary_image_url", { length: 500 }),
+  additionalImagesUrls: text("additional_images_urls").array().default([]), // Array of additional image URLs
+  videoUrl: varchar("video_url", { length: 500 }), // Optional product demonstration video
+  
+  // Delivery and fulfillment
+  deliveryMethod: varchar("delivery_method", { length: 30 }).default('in_person').$type<'digital_delivery' | 'in_person' | 'teacher_facilitated'>(),
+  estimatedDeliveryDays: integer("estimated_delivery_days").default(1),
+  customDeliveryNotes: text("custom_delivery_notes"),
+  
+  // Performance tracking
+  viewCount: integer("view_count").default(0),
+  wishlistCount: integer("wishlist_count").default(0),
+  inquiryCount: integer("inquiry_count").default(0), // Number of customer questions
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  academicPeriod: varchar("academic_period", { length: 20 })
+});
+
+// Marketplace transactions between students
+export const marketplaceTransactions = pgTable("marketplace_transactions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  listingId: uuid("listing_id").references(() => marketplaceListings.id).notNull(),
+  buyerId: uuid("buyer_id").references(() => users.id).notNull(),
+  sellerId: uuid("seller_id").references(() => marketplaceSellers.id).notNull(),
+  
+  // Transaction details
+  quantity: integer("quantity").default(1).notNull(),
+  unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(), // Price at time of purchase
+  totalAmount: decimal("total_amount", { precision: 12, scale: 2 }).notNull(),
+  tokenTransactionId: uuid("token_transaction_id").references(() => tokenTransactions.id), // Link to token transfer
+  
+  // Order processing and status
+  orderStatus: varchar("order_status", { length: 20 }).default('pending').$type<'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'refunded' | 'disputed'>(),
+  sellerNotes: text("seller_notes"), // Seller's internal notes about the order
+  customerNotes: text("customer_notes"), // Buyer's special requests or instructions
+  
+  // Delivery and fulfillment tracking
+  estimatedCompletionDate: timestamp("estimated_completion_date"),
+  actualCompletionDate: timestamp("actual_completion_date"),
+  deliveryConfirmation: boolean("delivery_confirmation").default(false),
+  deliveryNotes: text("delivery_notes"),
+  
+  // Communication and feedback
+  buyerSatisfied: boolean("buyer_satisfied"), // Customer satisfaction indicator
+  requiresSellerResponse: boolean("requires_seller_response").default(false),
+  lastCommunication: timestamp("last_communication"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  academicPeriod: varchar("academic_period", { length: 20 })
+});
+
+// Customer reviews and seller ratings
+export const marketplaceReviews = pgTable("marketplace_reviews", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  transactionId: uuid("transaction_id").references(() => marketplaceTransactions.id).notNull(),
+  reviewerId: uuid("reviewer_id").references(() => users.id).notNull(), // The buyer
+  sellerId: uuid("seller_id").references(() => marketplaceSellers.id).notNull(),
+  
+  // Review content and ratings
+  overallRating: integer("overall_rating").notNull(),
+  qualityRating: integer("quality_rating"),
+  communicationRating: integer("communication_rating"),
+  deliveryRating: integer("delivery_rating"),
+  
+  reviewText: text("review_text"),
+  wouldRecommend: boolean("would_recommend"),
+  
+  // Review status and moderation
+  reviewStatus: varchar("review_status", { length: 20 }).default('published').$type<'pending' | 'published' | 'flagged' | 'hidden'>(),
+  flaggedReason: text("flagged_reason"),
+  moderatedBy: uuid("moderated_by").references(() => users.id), // Teacher who reviewed flagged content
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  academicPeriod: varchar("academic_period", { length: 20 })
+}, (table) => ({
+  uniqueTransactionReviewer: unique().on(table.transactionId, table.reviewerId) // One review per transaction per customer
+}));
+
+// Student marketplace wishlists for market research
+export const marketplaceWishlists = pgTable("marketplace_wishlists", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  studentId: uuid("student_id").references(() => users.id).notNull(),
+  listingId: uuid("listing_id").references(() => marketplaceListings.id).notNull(),
+  priorityRank: integer("priority_rank").default(1), // Student's priority ordering
+  priceAlertThreshold: decimal("price_alert_threshold", { precision: 10, scale: 2 }), // Notify if price drops below this
+  notes: text("notes"), // Student's personal notes
+  addedAt: timestamp("added_at").defaultNow()
+}, (table) => ({
+  uniqueStudentListing: unique().on(table.studentId, table.listingId) // Prevent duplicate wishlist entries
+}));
+
+// Marketplace communication between buyers and sellers
+export const marketplaceMessages = pgTable("marketplace_messages", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  transactionId: uuid("transaction_id").references(() => marketplaceTransactions.id),
+  listingId: uuid("listing_id").references(() => marketplaceListings.id), // For pre-purchase inquiries
+  senderId: uuid("sender_id").references(() => users.id).notNull(),
+  recipientId: uuid("recipient_id").references(() => users.id).notNull(),
+  
+  messageContent: text("message_content").notNull(),
+  messageType: varchar("message_type", { length: 30 }).default('inquiry').$type<'inquiry' | 'order_update' | 'delivery_info' | 'complaint' | 'compliment'>(),
+  
+  // Message status and moderation
+  readAt: timestamp("read_at"),
+  requiresResponse: boolean("requires_response").default(false),
+  flagged: boolean("flagged").default(false),
+  flaggedReason: text("flagged_reason"),
+  
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+// Marketplace Relations
+export const marketplaceSellersRelations = relations(marketplaceSellers, ({ one, many }) => ({
+  student: one(users, {
+    fields: [marketplaceSellers.studentId],
+    references: [users.id]
+  }),
+  classroom: one(classrooms, {
+    fields: [marketplaceSellers.classroomId],
+    references: [classrooms.id]
+  }),
+  approver: one(users, {
+    fields: [marketplaceSellers.approvedBy],
+    references: [users.id]
+  }),
+  listings: many(marketplaceListings),
+  transactions: many(marketplaceTransactions),
+  reviews: many(marketplaceReviews)
+}));
+
+export const marketplaceListingsRelations = relations(marketplaceListings, ({ one, many }) => ({
+  seller: one(marketplaceSellers, {
+    fields: [marketplaceListings.sellerId],
+    references: [marketplaceSellers.id]
+  }),
+  transactions: many(marketplaceTransactions),
+  wishlists: many(marketplaceWishlists),
+  messages: many(marketplaceMessages)
+}));
+
+export const marketplaceTransactionsRelations = relations(marketplaceTransactions, ({ one, many }) => ({
+  listing: one(marketplaceListings, {
+    fields: [marketplaceTransactions.listingId],
+    references: [marketplaceListings.id]
+  }),
+  buyer: one(users, {
+    fields: [marketplaceTransactions.buyerId],
+    references: [users.id]
+  }),
+  seller: one(marketplaceSellers, {
+    fields: [marketplaceTransactions.sellerId],
+    references: [marketplaceSellers.id]
+  }),
+  tokenTransaction: one(tokenTransactions, {
+    fields: [marketplaceTransactions.tokenTransactionId],
+    references: [tokenTransactions.id]
+  }),
+  reviews: many(marketplaceReviews),
+  messages: many(marketplaceMessages)
+}));
+
+export const marketplaceReviewsRelations = relations(marketplaceReviews, ({ one }) => ({
+  transaction: one(marketplaceTransactions, {
+    fields: [marketplaceReviews.transactionId],
+    references: [marketplaceTransactions.id]
+  }),
+  reviewer: one(users, {
+    fields: [marketplaceReviews.reviewerId],
+    references: [users.id]
+  }),
+  seller: one(marketplaceSellers, {
+    fields: [marketplaceReviews.sellerId],
+    references: [marketplaceSellers.id]
+  }),
+  moderator: one(users, {
+    fields: [marketplaceReviews.moderatedBy],
+    references: [users.id]
+  })
+}));
+
+export const marketplaceWishlistsRelations = relations(marketplaceWishlists, ({ one }) => ({
+  student: one(users, {
+    fields: [marketplaceWishlists.studentId],
+    references: [users.id]
+  }),
+  listing: one(marketplaceListings, {
+    fields: [marketplaceWishlists.listingId],
+    references: [marketplaceListings.id]
+  })
+}));
+
+export const marketplaceMessagesRelations = relations(marketplaceMessages, ({ one }) => ({
+  transaction: one(marketplaceTransactions, {
+    fields: [marketplaceMessages.transactionId],
+    references: [marketplaceTransactions.id]
+  }),
+  listing: one(marketplaceListings, {
+    fields: [marketplaceMessages.listingId],
+    references: [marketplaceListings.id]
+  }),
+  sender: one(users, {
+    fields: [marketplaceMessages.senderId],
+    references: [users.id]
+  }),
+  recipient: one(users, {
+    fields: [marketplaceMessages.recipientId],
+    references: [users.id]
+  })
+}));
+
+// Marketplace Insert Schemas
+export const insertMarketplaceSellerSchema = createInsertSchema(marketplaceSellers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  approvalDate: true
+});
+
+export const insertMarketplaceListingSchema = createInsertSchema(marketplaceListings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertMarketplaceTransactionSchema = createInsertSchema(marketplaceTransactions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertMarketplaceReviewSchema = createInsertSchema(marketplaceReviews).omit({
+  id: true,
+  createdAt: true
+});
+
+export const insertMarketplaceWishlistSchema = createInsertSchema(marketplaceWishlists).omit({
+  id: true,
+  addedAt: true
+});
+
+export const insertMarketplaceMessageSchema = createInsertSchema(marketplaceMessages).omit({
+  id: true,
+  createdAt: true
+});
+
+// Marketplace Types
+export type MarketplaceSeller = typeof marketplaceSellers.$inferSelect;
+export type InsertMarketplaceSeller = z.infer<typeof insertMarketplaceSellerSchema>;
+
+export type MarketplaceListing = typeof marketplaceListings.$inferSelect;
+export type InsertMarketplaceListing = z.infer<typeof insertMarketplaceListingSchema>;
+
+export type MarketplaceTransaction = typeof marketplaceTransactions.$inferSelect;
+export type InsertMarketplaceTransaction = z.infer<typeof insertMarketplaceTransactionSchema>;
+
+export type MarketplaceReview = typeof marketplaceReviews.$inferSelect;
+export type InsertMarketplaceReview = z.infer<typeof insertMarketplaceReviewSchema>;
+
+export type MarketplaceWishlist = typeof marketplaceWishlists.$inferSelect;
+export type InsertMarketplaceWishlist = z.infer<typeof insertMarketplaceWishlistSchema>;
+
+export type MarketplaceMessage = typeof marketplaceMessages.$inferSelect;
+export type InsertMarketplaceMessage = z.infer<typeof insertMarketplaceMessageSchema>;
