@@ -75,7 +75,7 @@ export default function StudentWallet({ studentId, classroomId }: StudentWalletP
   const transactions = walletData?.transactions || [];
 
   return (
-    <div className="max-w-md mx-auto bg-gradient-to-br from-blue-50 to-purple-50 min-h-screen pb-safe">
+    <div className="max-w-md mx-auto bg-gradient-to-br from-blue-50 to-purple-50 min-h-screen">
       {/* Header with Balance */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
