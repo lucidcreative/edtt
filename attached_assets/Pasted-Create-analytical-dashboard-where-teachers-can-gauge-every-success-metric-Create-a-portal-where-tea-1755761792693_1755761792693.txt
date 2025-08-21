@@ -1,0 +1,174 @@
+Create analytical dashboard where teachers can gauge every success metric 
+Create a portal where teachers can make post to update the classroom of any updates regarding updates to the class 
+Inside this portal teachers should have the ability to create job post almost like a request for jobs where students can fill out a scope of work and teachers have the ability to choose who won a job almost like a upwork system built in within the post so there needs to be a distinguent between post and request for proposal feature
+Inside the store and group fundraisers system when selecting a template the item should be auto added to the store and be editable and within each item of the store there needs to be an active and inactive button so a teacher can turn off and on items within the store
+Inside the student management portal within the teacher dashboard teachers need a way to bulk add student using a csv with each students name, username and a password students can change that also the teacher has access to recovering the password for a student and changing the password to a temp so students can change it after they gain access 
+I need another tab called earn where students can see all the assignments the teacher has for the class with the ability 
+Students get rewarded points for assignments after submission request approved by teacher
+Add inside the leaderboard there needs to be another set of metrics for Task management,Compliance, Professional Speech, Professional Dress, Time Management 
+Inside the trade page there needs to be a place for a facebook marketplace for items students want to sell from 
+
+
+
+Task management - 30
+Compliance - 25
+Professional Speech - 25
+Professional Dress - 10
+Time Management - 10
+
+Looking at your comprehensive PRD, I can see you've built a sophisticated educational platform concept. Let me break down the first development phase into a detailed prompt that will give your AI coder the clearest possible foundation to start building your mobile-first Classroom Token Economy Platform.
+The key to successful AI-assisted development is providing crystal-clear context, specific technical requirements, and a narrow scope that prevents the AI from getting overwhelmed or making assumptions. Since you're building chronologically and feature-by-feature, we'll start with the absolute foundation: the authentication system and basic user management.
+Here's your detailed first prompt:
+
+PROMPT FOR AI CODER - Phase 1A: Authentication & User Management Foundation
+You are building the first component of a Classroom Token Economy Platform - a mobile-first educational tool that gamifies classroom management through digital tokens. This is Phase 1A focusing ONLY on authentication and basic user management. Do not build any other features yet.
+CRITICAL DESIGN REQUIREMENT: MOBILE-FIRST RESPONSIVE DESIGN This application must be designed mobile-first with responsive breakpoints. Primary usage will be on smartphones and tablets in classroom environments. Use CSS Grid and Flexbox for layouts that adapt seamlessly from 320px mobile screens to 2560px desktop displays.
+TECHNICAL STACK REQUIREMENTS:
+Frontend: React.js with TypeScript for type safety
+Styling: Tailwind CSS for mobile-first responsive design
+Backend: Node.js with Express.js
+Database: PostgreSQL with connection pooling
+Authentication: JWT tokens with refresh token rotation
+Session Management: 8-hour default timeout (configurable)
+Security: bcrypt for password hashing (12+ rounds), PIN encryption
+USER ROLES & AUTHENTICATION FLOW: The system has three distinct user types with different registration processes:
+Teachers: Register with email addresses requiring verification
+Students: Join via classroom codes, use only nicknames and 4-digit PINs (no email required)
+Administrators: Manage multiple classrooms and compliance (future phase)
+SPECIFIC FEATURES TO BUILD (Phase 1A Only):
+Feature 1: Teacher Registration System Create a complete teacher registration flow that includes:
+Email validation for institutional domains (.edu, .k12, etc.)
+Email verification with secure tokens
+Password requirements (minimum 12 characters, mixed case, numbers, symbols)
+Account approval status (pending/approved/rejected)
+Clean mobile-first registration form with proper validation feedback
+Feature 2: Student Quick Join System Build a streamlined student onboarding that includes:
+Classroom join code entry (6-character alphanumeric codes)
+Nickname selection with real-time availability checking
+4-digit PIN creation with confirmation
+No email or personal information required
+Mobile-optimized interface for quick classroom entry
+Feature 3: Secure Authentication Infrastructure Implement the complete login system with:
+JWT access tokens (15-minute expiry) and refresh tokens (7-day expiry)
+Progressive login attempt delays (1 min, 5 min, 15 min, then lockout)
+Separate login flows for teachers (email/password) and students (nickname/PIN)
+Session persistence with automatic token refresh
+Secure logout that invalidates all tokens
+Feature 4: Basic User Management Create essential user management functionality:
+Password reset for teachers via email
+PIN reset capability for teachers to help students
+User profile viewing and basic editing
+Account status management (active/inactive)
+DATABASE SCHEMA REQUIREMENTS: Design and implement these specific tables:
+sql
+-- Users table (handles all user types)
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) UNIQUE, -- NULL for students
+    role VARCHAR(20) NOT NULL CHECK (role IN ('teacher', 'student', 'admin')),
+    password_hash VARCHAR(255), -- NULL for students
+    pin_hash VARCHAR(255), -- NULL for teachers
+    nickname VARCHAR(50), -- NULL for teachers
+    temp_password_flag BOOLEAN DEFAULT false,
+    email_verified BOOLEAN DEFAULT false,
+    account_approved BOOLEAN DEFAULT false,
+    login_attempts INTEGER DEFAULT 0,
+    lockout_until TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    last_login TIMESTAMP
+);
+
+-- Verification tokens for email confirmation
+CREATE TABLE verification_tokens (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    token VARCHAR(255) UNIQUE NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    used BOOLEAN DEFAULT false,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Refresh tokens for JWT management
+CREATE TABLE refresh_tokens (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    token_hash VARCHAR(255) NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+API ENDPOINTS TO IMPLEMENT: Build these specific REST endpoints with proper error handling and validation:
+POST /api/auth/register/teacher
+- Body: { email, password, confirmPassword }
+- Validation: Email format, password strength, institutional domain
+- Response: Success message, sends verification email
+
+POST /api/auth/verify-email
+- Body: { token }
+- Validates verification token, activates account
+- Response: Verification status
+
+POST /api/auth/login/teacher  
+- Body: { email, password }
+- Rate limiting: Progressive delays for failed attempts
+- Response: Access token, refresh token, user profile
+
+POST /api/auth/login/student
+- Body: { nickname, pin, classroomCode }
+- Validates against specific classroom enrollment
+- Response: Access token, refresh token, student profile
+
+POST /api/auth/refresh
+- Body: { refreshToken }
+- Issues new access token if refresh token valid
+- Response: New access token
+
+POST /api/auth/logout
+- Body: { refreshToken }
+- Invalidates refresh token
+- Response: Success confirmation
+
+POST /api/auth/reset-password-request
+- Body: { email }
+- Sends password reset email to teachers
+- Response: Success message (even if email not found)
+
+POST /api/auth/reset-password
+- Body: { token, newPassword }
+- Resets password using valid reset token
+- Response: Success confirmation
+MOBILE-FIRST UI REQUIREMENTS: Every component must be optimized for mobile interaction:
+Touch-friendly button sizes (minimum 44px touch targets)
+Form inputs with proper mobile keyboard types
+Loading states and clear error messaging
+Smooth transitions and micro-interactions
+Offline-first approach where possible
+Progressive Web App capabilities
+SECURITY REQUIREMENTS: Implement these security measures from the beginning:
+Input validation and sanitization on all endpoints
+Rate limiting on authentication endpoints
+HTTPS enforcement
+Secure HTTP headers (HSTS, CSP, X-Frame-Options)
+Password strength validation with clear feedback
+PIN strength validation (no sequential or repeated digits)
+TESTING REQUIREMENTS: Include comprehensive testing:
+Unit tests for all authentication logic
+Integration tests for complete login flows
+API endpoint testing with various scenarios
+Mobile responsiveness testing across different screen sizes
+Security testing for common vulnerabilities
+WHAT NOT TO BUILD YET: Do not implement these features in this phase:
+Classroom creation or management
+Token systems or wallets
+Assignment systems
+Store or marketplace functionality
+Analytics or reporting
+Any gamification elements
+SUCCESS CRITERIA: This phase is complete when:
+Teachers can register, verify email, and log in securely
+Students can join with classroom codes and create PINs
+All authentication flows work smoothly on mobile devices
+JWT token management handles refresh and expiry correctly
+Security measures protect against common attacks
+Code is well-documented and follows TypeScript best practices
+
