@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 const navigation = [
   { path: '/', name: 'Dashboard', icon: 'fas fa-home' },
   { path: '/students', name: 'Students', icon: 'fas fa-users' },
+  { path: '/announcements', name: 'Announcements', icon: 'fas fa-bullhorn' },
   { path: '/assignments', name: 'Assignments', icon: 'fas fa-tasks' },
   { path: '/store', name: 'Store', icon: 'fas fa-store' },
   { path: '/analytics', name: 'Analytics', icon: 'fas fa-chart-bar' },

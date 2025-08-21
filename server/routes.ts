@@ -95,7 +95,7 @@ async function ensureDemoData() {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Ensure demo data on startup
-  await ensureDemoData();
+  // await ensureDemoData(); // Temporarily disabled until schema migration is complete
   
   // Authentication routes
   app.post('/api/auth/register/teacher', async (req, res) => {
@@ -542,6 +542,243 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Get student challenges error:", error);
       res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Enhanced Classroom Management Endpoints (Phase 1B)
+  app.post('/api/classrooms/enhanced', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Only teachers can create classrooms' });
+      }
+
+      const { name, subject, gradeLevel, academicYear, description, autoApproveStudents } = req.body;
+      
+      if (!name) {
+        return res.status(400).json({ message: 'Classroom name is required' });
+      }
+
+      // Generate unique join code
+      let joinCode;
+      let existing;
+      do {
+        joinCode = storage.generateJoinCode();
+        existing = await storage.getClassroomByJoinCode(joinCode);
+      } while (existing);
+
+      const classroom = await storage.createClassroom({
+        name,
+        subject,
+        gradeLevel,
+        academicYear,
+        joinCode,
+        teacherId: req.user.id,
+        description,
+        autoApproveStudents: autoApproveStudents ?? true,
+        baseTokenRate: 1
+      });
+
+      res.status(201).json(classroom);
+    } catch (error) {
+      console.error('Error creating enhanced classroom:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  app.get('/api/classrooms/:id/roster', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Only teachers can view roster' });
+      }
+
+      const classroom = await storage.getClassroom(req.params.id);
+      if (!classroom || classroom.teacherId !== req.user.id) {
+        return res.status(404).json({ message: 'Classroom not found or access denied' });
+      }
+
+      const enrollments = await storage.getClassroomEnrollments(req.params.id);
+      res.json(enrollments);
+    } catch (error) {
+      console.error('Error fetching classroom roster:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Student Enrollment Management Endpoints (Phase 1B)
+  app.post('/api/classrooms/join', authenticate, async (req: any, res) => {
+    try {
+      const { joinCode } = req.body;
+      
+      if (!joinCode) {
+        return res.status(400).json({ message: 'Join code is required' });
+      }
+
+      const classroom = await storage.getClassroomByJoinCode(joinCode);
+      if (!classroom) {
+        return res.status(404).json({ message: 'Invalid join code' });
+      }
+
+      if (req.user.role !== 'student') {
+        return res.status(403).json({ message: 'Only students can join classrooms' });
+      }
+
+      // Check if already enrolled
+      const existingEnrollments = await storage.getStudentEnrollments(req.user.id);
+      const alreadyEnrolled = existingEnrollments.find(e => e.classroomId === classroom.id);
+      if (alreadyEnrolled) {
+        return res.status(400).json({ message: 'Already enrolled in this classroom' });
+      }
+
+      const enrollment = await storage.createEnrollment({
+        studentId: req.user.id,
+        classroomId: classroom.id,
+        enrollmentStatus: classroom.autoApproveStudents ? 'approved' : 'pending'
+      });
+
+      res.status(201).json({ 
+        enrollment,
+        classroom: {
+          id: classroom.id,
+          name: classroom.name,
+          subject: classroom.subject,
+          gradeLevel: classroom.gradeLevel
+        }
+      });
+    } catch (error) {
+      console.error('Error joining classroom:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  app.get('/api/students/:studentId/enrollments', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.id !== req.params.studentId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      const enrollments = await storage.getStudentEnrollments(req.params.studentId);
+      res.json(enrollments);
+    } catch (error) {
+      console.error('Error fetching student enrollments:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  app.put('/api/enrollments/:enrollmentId/approve', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Only teachers can approve enrollments' });
+      }
+
+      const enrollment = await storage.approveEnrollment(req.params.enrollmentId, req.user.id);
+      res.json(enrollment);
+    } catch (error) {
+      console.error('Error approving enrollment:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  app.put('/api/enrollments/:enrollmentId/deny', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Only teachers can deny enrollments' });
+      }
+
+      const enrollment = await storage.denyEnrollment(req.params.enrollmentId, req.user.id);
+      res.json(enrollment);
+    } catch (error) {
+      console.error('Error denying enrollment:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Announcement System Endpoints (Phase 1B)
+  app.post('/api/announcements', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Only teachers can create announcements' });
+      }
+
+      const { classroomId, title, content, priority, category, scheduledFor } = req.body;
+      
+      if (!classroomId || !title || !content) {
+        return res.status(400).json({ message: 'Classroom ID, title, and content are required' });
+      }
+
+      // Verify teacher owns the classroom
+      const classroom = await storage.getClassroom(classroomId);
+      if (!classroom || classroom.teacherId !== req.user.id) {
+        return res.status(404).json({ message: 'Classroom not found or access denied' });
+      }
+
+      const announcement = await storage.createAnnouncement({
+        classroomId,
+        authorId: req.user.id,
+        title,
+        content,
+        priority: priority || 'normal',
+        category: category || 'general',
+        scheduledFor: scheduledFor ? new Date(scheduledFor) : undefined,
+        published: true
+      });
+
+      res.status(201).json(announcement);
+    } catch (error) {
+      console.error('Error creating announcement:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  app.get('/api/announcements/classroom/:classroomId', authenticate, async (req: any, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 50;
+      const announcements = await storage.getAnnouncementsByClassroom(req.params.classroomId, limit);
+      
+      // If student, also mark announcements they haven't read and get read status
+      if (req.user.role === 'student') {
+        const unreadAnnouncements = await storage.getUnreadAnnouncements(req.params.classroomId, req.user.id);
+        const unreadIds = new Set(unreadAnnouncements.map(a => a.id));
+        
+        const announcementsWithReadStatus = announcements.map(announcement => ({
+          ...announcement,
+          isUnread: unreadIds.has(announcement.id)
+        }));
+        
+        res.json(announcementsWithReadStatus);
+      } else {
+        res.json(announcements);
+      }
+    } catch (error) {
+      console.error('Error fetching announcements:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  app.post('/api/announcements/:announcementId/read', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'student') {
+        return res.status(403).json({ message: 'Only students can mark announcements as read' });
+      }
+
+      const announcementRead = await storage.markAnnouncementAsRead(req.params.announcementId, req.user.id);
+      res.json(announcementRead);
+    } catch (error) {
+      console.error('Error marking announcement as read:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  app.get('/api/announcements/:announcementId/reads', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Only teachers can view read status' });
+      }
+
+      const reads = await storage.getAnnouncementReads(req.params.announcementId);
+      res.json(reads);
+    } catch (error) {
+      console.error('Error fetching announcement reads:', error);
+      res.status(500).json({ message: 'Internal server error' });
     }
   });
 

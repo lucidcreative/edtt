@@ -8,9 +8,17 @@ import Leaderboard from "@/components/dashboard/leaderboard";
 import Badges from "@/components/dashboard/badges";
 import Challenges from "@/components/dashboard/challenges";
 import IncomeCard from "@/components/dashboard/income-card";
+import CreateClassroomModal from "@/components/classroom/create-classroom-modal";
+import StudentDashboard from "@/components/student/student-dashboard";
+import { Button } from "@/components/ui/button";
 
 export default function Dashboard() {
   const { user } = useAuth();
+
+  // Show student dashboard for students
+  if (user?.role === 'student') {
+    return <StudentDashboard />;
+  }
 
   // Get user's classrooms
   const { data: classrooms } = useQuery({
@@ -35,16 +43,68 @@ export default function Dashboard() {
   if (!currentClassroom) {
     return (
       <div className="p-4 lg:p-6">
-        <div className="text-center py-12">
-          <i className="fas fa-chalkboard text-4xl text-gray-400 mb-4"></i>
-          <h3 className="text-lg font-medium text-gray-800 mb-2">No Classroom Found</h3>
-          <p className="text-gray-600">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="text-center py-12"
+        >
+          <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6">
+            <i className="fas fa-chalkboard text-3xl text-white"></i>
+          </div>
+          <h3 className="text-xl font-bold text-gray-800 mb-2">
             {user?.role === 'teacher' 
-              ? "Create your first classroom to get started."
-              : "Join a classroom to access your dashboard."
+              ? "Welcome to BizCoin!"
+              : "Join Your First Classroom"
+            }
+          </h3>
+          <p className="text-gray-600 mb-6 max-w-md mx-auto">
+            {user?.role === 'teacher' 
+              ? "Create your first classroom to start building an engaging token economy for your students."
+              : "Enter a classroom code to join and start earning tokens for your achievements."
             }
           </p>
-        </div>
+          
+          {user?.role === 'teacher' ? (
+            <CreateClassroomModal>
+              <Button 
+                size="lg"
+                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+                data-testid="button-create-first-classroom"
+              >
+                <i className="fas fa-plus mr-2"></i>
+                Create Your First Classroom
+              </Button>
+            </CreateClassroomModal>
+          ) : (
+            <Button 
+              size="lg"
+              className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-semibold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+              data-testid="button-join-classroom"
+              onClick={() => window.location.href = '/join'}
+            >
+              <i className="fas fa-sign-in-alt mr-2"></i>
+              Join a Classroom
+            </Button>
+          )}
+          
+          {user?.role === 'teacher' && (
+            <div className="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200 max-w-lg mx-auto">
+              <div className="flex items-start gap-3">
+                <i className="fas fa-info-circle text-blue-500 mt-1"></i>
+                <div className="text-left">
+                  <p className="font-medium text-blue-800 mb-1">Getting Started Tips</p>
+                  <ul className="text-sm text-blue-700 space-y-1">
+                    <li>• Set up your classroom with subject and grade level</li>
+                    <li>• Create assignments and store items</li>
+                    <li>• Share the join code with your students</li>
+                    <li>• Watch engagement soar with token rewards!</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+        </motion.div>
       </div>
     );
   }

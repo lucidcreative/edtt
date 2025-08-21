@@ -1,0 +1,360 @@
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { motion } from "framer-motion";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+
+interface Student {
+  id: string;
+  nickname: string;
+  firstName?: string;
+  lastName?: string;
+  tokens: number;
+  level: number;
+  totalEarnings: number;
+  profileImageUrl?: string;
+  isActive: boolean;
+  enrolledAt: string;
+}
+
+interface Enrollment {
+  id: string;
+  studentId: string;
+  classroomId: string;
+  enrollmentStatus: 'pending' | 'approved' | 'denied';
+  enrolledAt: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  student: Student;
+}
+
+interface RosterManagementProps {
+  classroomId: string;
+  classroomName: string;
+  joinCode: string;
+}
+
+export default function RosterManagement({ classroomId, classroomName, joinCode }: RosterManagementProps) {
+  const [selectedTab, setSelectedTab] = useState("approved");
+  const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Fetch classroom roster
+  const { data: enrollments, isLoading } = useQuery<Enrollment[]>({
+    queryKey: ["/api/classrooms", classroomId, "roster"],
+    enabled: !!classroomId && user?.role === 'teacher'
+  });
+
+  // Separate enrollments by status
+  const approvedStudents = (enrollments || []).filter((e: Enrollment) => e.enrollmentStatus === 'approved');
+  const pendingStudents = (enrollments || []).filter((e: Enrollment) => e.enrollmentStatus === 'pending');
+
+  // Approve enrollment mutation
+  const approveEnrollmentMutation = useMutation({
+    mutationFn: async (enrollmentId: string) => {
+      const response = await apiRequest('PUT', `/api/enrollments/${enrollmentId}/approve`);
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Student Approved",
+        description: "Student has been approved and can now access the classroom.",
+        variant: "default",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/classrooms", classroomId, "roster"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to approve student",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Deny enrollment mutation
+  const denyEnrollmentMutation = useMutation({
+    mutationFn: async (enrollmentId: string) => {
+      const response = await apiRequest('PUT', `/api/enrollments/${enrollmentId}/deny`);
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Student Denied",
+        description: "Student enrollment has been denied.",
+        variant: "default",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/classrooms", classroomId, "roster"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to deny student",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'approved':
+        return <Badge variant="default" className="bg-green-100 text-green-800">Approved</Badge>;
+      case 'pending':
+        return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">Pending</Badge>;
+      case 'denied':
+        return <Badge variant="destructive">Denied</Badge>;
+      default:
+        return <Badge variant="outline">Unknown</Badge>;
+    }
+  };
+
+  const StudentCard = ({ enrollment, showActions = false }: { enrollment: Enrollment; showActions?: boolean }) => (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      <Card className="hover:shadow-md transition-shadow duration-200">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
+                {enrollment.student.nickname?.charAt(0)?.toUpperCase() || 'S'}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-medium text-gray-800" data-testid={`student-name-${enrollment.student.id}`}>
+                    {enrollment.student.nickname}
+                  </h3>
+                  {getStatusBadge(enrollment.enrollmentStatus)}
+                </div>
+                <div className="flex items-center gap-4 mt-1 text-sm text-gray-600">
+                  <span className="flex items-center gap-1">
+                    <i className="fas fa-coins text-yellow-500"></i>
+                    {enrollment.student.tokens} tokens
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <i className="fas fa-level-up-alt text-blue-500"></i>
+                    Level {enrollment.student.level}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    Joined {formatDate(enrollment.enrolledAt)}
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            {showActions && enrollment.enrollmentStatus === 'pending' && (
+              <div className="flex space-x-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => denyEnrollmentMutation.mutate(enrollment.id)}
+                  disabled={denyEnrollmentMutation.isPending}
+                  data-testid={`button-deny-${enrollment.student.id}`}
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                >
+                  <i className="fas fa-times mr-1"></i>
+                  Deny
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => approveEnrollmentMutation.mutate(enrollment.id)}
+                  disabled={approveEnrollmentMutation.isPending}
+                  data-testid={`button-approve-${enrollment.student.id}`}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <i className="fas fa-check mr-1"></i>
+                  Approve
+                </Button>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+
+  if (user?.role !== 'teacher') {
+    return (
+      <div className="text-center py-8">
+        <p className="text-gray-600">Access denied. Only teachers can manage classroom rosters.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800">Classroom Roster</h2>
+          <p className="text-gray-600">{classroomName}</p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+            <p className="text-sm text-blue-800">
+              <strong>Join Code:</strong> <code className="bg-blue-100 px-2 py-1 rounded font-mono">{joinCode}</code>
+            </p>
+          </div>
+          <Dialog open={isAddStudentOpen} onOpenChange={setIsAddStudentOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700" data-testid="button-add-student">
+                <i className="fas fa-user-plus mr-2"></i>
+                Add Student
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add New Student</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <p className="text-sm text-gray-600">
+                  Share the join code <strong>{joinCode}</strong> with students to have them join your classroom.
+                </p>
+                <div>
+                  <Label htmlFor="join-code-copy">Classroom Join Code</Label>
+                  <div className="flex gap-2 mt-1">
+                    <Input
+                      id="join-code-copy"
+                      value={joinCode}
+                      readOnly
+                      className="font-mono bg-gray-50"
+                      data-testid="input-join-code"
+                    />
+                    <Button
+                      onClick={() => {
+                        navigator.clipboard.writeText(joinCode);
+                        toast({
+                          title: "Copied!",
+                          description: "Join code copied to clipboard",
+                          variant: "default",
+                        });
+                      }}
+                      variant="outline"
+                      data-testid="button-copy-join-code"
+                    >
+                      <i className="fas fa-copy"></i>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsTrigger value="approved" className="flex items-center gap-2" data-testid="tab-approved-students">
+            <i className="fas fa-check-circle text-green-500"></i>
+            Approved Students ({approvedStudents.length})
+          </TabsTrigger>
+          <TabsTrigger value="pending" className="flex items-center gap-2" data-testid="tab-pending-students">
+            <i className="fas fa-clock text-yellow-500"></i>
+            Pending Approval ({pendingStudents.length})
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="approved" className="space-y-4">
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[...Array(4)].map((_, i) => (
+                <Card key={i} className="animate-pulse">
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+                      <div className="space-y-2 flex-1">
+                        <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : approvedStudents.length > 0 ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {approvedStudents.map((enrollment: Enrollment) => (
+                <StudentCard key={enrollment.id} enrollment={enrollment} />
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="text-center py-12">
+                <i className="fas fa-users text-4xl text-gray-400 mb-4"></i>
+                <h3 className="text-lg font-medium text-gray-800 mb-2">No Students Yet</h3>
+                <p className="text-gray-600 mb-4">
+                  Share your classroom join code to get students enrolled.
+                </p>
+                <Button 
+                  onClick={() => setIsAddStudentOpen(true)}
+                  variant="outline"
+                  data-testid="button-share-join-code"
+                >
+                  <i className="fas fa-share mr-2"></i>
+                  Share Join Code
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="pending" className="space-y-4">
+          {pendingStudents.length > 0 ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {pendingStudents.map((enrollment: Enrollment) => (
+                <StudentCard key={enrollment.id} enrollment={enrollment} showActions={true} />
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="text-center py-12">
+                <i className="fas fa-hourglass-half text-4xl text-gray-400 mb-4"></i>
+                <h3 className="text-lg font-medium text-gray-800 mb-2">No Pending Approvals</h3>
+                <p className="text-gray-600">
+                  All student enrollment requests have been processed.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}

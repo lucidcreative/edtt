@@ -2,6 +2,9 @@ import {
   users,
   classrooms,
   studentClassrooms,
+  classroomEnrollments,
+  announcements,
+  announcementReads,
   assignments,
   submissions,
   storeItems,
@@ -14,6 +17,12 @@ import {
   type InsertUser,
   type Classroom,
   type InsertClassroom,
+  type ClassroomEnrollment,
+  type InsertClassroomEnrollment,
+  type Announcement,
+  type InsertAnnouncement,
+  type AnnouncementRead,
+  type InsertAnnouncementRead,
   type Assignment,
   type InsertAssignment,
   type Submission,
@@ -48,10 +57,20 @@ export interface IStorage {
   createClassroom(classroom: InsertClassroom): Promise<Classroom>;
   updateClassroom(id: string, updates: Partial<InsertClassroom>): Promise<Classroom>;
   
-  // Student-Classroom operations
+  // Student-Classroom operations (legacy)
   joinClassroom(studentId: string, classroomId: string): Promise<StudentClassroom>;
   getClassroomStudents(classroomId: string): Promise<(User & { joinedAt: Date })[]>;
   getStudentClassrooms(studentId: string): Promise<Classroom[]>;
+  
+  // Enhanced Classroom Enrollment operations
+  generateJoinCode(): string;
+  getClassroomByJoinCode(joinCode: string): Promise<Classroom | undefined>;
+  createEnrollment(enrollment: InsertClassroomEnrollment): Promise<ClassroomEnrollment>;
+  approveEnrollment(enrollmentId: string, approverId: string): Promise<ClassroomEnrollment>;
+  denyEnrollment(enrollmentId: string, approverId: string): Promise<ClassroomEnrollment>;
+  getClassroomEnrollments(classroomId: string): Promise<(ClassroomEnrollment & { student: User })[]>;
+  getStudentEnrollments(studentId: string): Promise<(ClassroomEnrollment & { classroom: Classroom })[]>;
+  getPendingEnrollments(classroomId: string): Promise<(ClassroomEnrollment & { student: User })[]>;
   
   // Assignment operations
   getAssignment(id: string): Promise<Assignment | undefined>;
@@ -104,6 +123,15 @@ export interface IStorage {
     completedAssignments: number;
     badges: number;
   }>;
+  
+  // Announcement operations
+  getAnnouncement(id: string): Promise<Announcement | undefined>;
+  getAnnouncementsByClassroom(classroomId: string, limit?: number): Promise<Announcement[]>;
+  createAnnouncement(announcement: InsertAnnouncement): Promise<Announcement>;
+  updateAnnouncement(id: string, updates: Partial<InsertAnnouncement>): Promise<Announcement>;
+  markAnnouncementAsRead(announcementId: string, studentId: string): Promise<AnnouncementRead>;
+  getUnreadAnnouncements(classroomId: string, studentId: string): Promise<Announcement[]>;
+  getAnnouncementReads(announcementId: string): Promise<(AnnouncementRead & { student: User })[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -164,7 +192,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getClassroomByCode(code: string): Promise<Classroom | undefined> {
-    const [classroom] = await db.select().from(classrooms).where(eq(classrooms.code, code));
+    const [classroom] = await db.select().from(classrooms).where(eq(classrooms.joinCode, code));
     return classroom;
   }
 
@@ -545,6 +573,206 @@ export class DatabaseStorage implements IStorage {
       completedAssignments: completedAssignments.count,
       badges: badgeCount.count
     };
+  }
+
+  // Enhanced Classroom Enrollment operations
+  generateJoinCode(): string {
+    // Generate 6-character alphanumeric code avoiding confusing characters
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // No 0, O, 1, I
+    let result = '';
+    for (let i = 0; i < 6; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  }
+
+  async getClassroomByJoinCode(joinCode: string): Promise<Classroom | undefined> {
+    const [classroom] = await db.select().from(classrooms).where(eq(classrooms.joinCode, joinCode));
+    return classroom;
+  }
+
+  async createEnrollment(enrollment: InsertClassroomEnrollment): Promise<ClassroomEnrollment> {
+    const [newEnrollment] = await db.insert(classroomEnrollments).values(enrollment).returning();
+    return newEnrollment;
+  }
+
+  async approveEnrollment(enrollmentId: string, approverId: string): Promise<ClassroomEnrollment> {
+    const [updated] = await db
+      .update(classroomEnrollments)
+      .set({ 
+        enrollmentStatus: 'approved',
+        approvedAt: new Date(),
+        approvedBy: approverId
+      })
+      .where(eq(classroomEnrollments.id, enrollmentId))
+      .returning();
+    return updated;
+  }
+
+  async denyEnrollment(enrollmentId: string, approverId: string): Promise<ClassroomEnrollment> {
+    const [updated] = await db
+      .update(classroomEnrollments)
+      .set({ 
+        enrollmentStatus: 'denied',
+        approvedAt: new Date(),
+        approvedBy: approverId
+      })
+      .where(eq(classroomEnrollments.id, enrollmentId))
+      .returning();
+    return updated;
+  }
+
+  async getClassroomEnrollments(classroomId: string): Promise<(ClassroomEnrollment & { student: User })[]> {
+    const result = await db
+      .select({
+        id: classroomEnrollments.id,
+        studentId: classroomEnrollments.studentId,
+        classroomId: classroomEnrollments.classroomId,
+        enrollmentStatus: classroomEnrollments.enrollmentStatus,
+        enrolledAt: classroomEnrollments.enrolledAt,
+        approvedAt: classroomEnrollments.approvedAt,
+        approvedBy: classroomEnrollments.approvedBy,
+        student: users
+      })
+      .from(classroomEnrollments)
+      .innerJoin(users, eq(classroomEnrollments.studentId, users.id))
+      .where(eq(classroomEnrollments.classroomId, classroomId))
+      .orderBy(desc(classroomEnrollments.enrolledAt));
+    return result;
+  }
+
+  async getStudentEnrollments(studentId: string): Promise<(ClassroomEnrollment & { classroom: Classroom })[]> {
+    const result = await db
+      .select({
+        id: classroomEnrollments.id,
+        studentId: classroomEnrollments.studentId,
+        classroomId: classroomEnrollments.classroomId,
+        enrollmentStatus: classroomEnrollments.enrollmentStatus,
+        enrolledAt: classroomEnrollments.enrolledAt,
+        approvedAt: classroomEnrollments.approvedAt,
+        approvedBy: classroomEnrollments.approvedBy,
+        classroom: classrooms
+      })
+      .from(classroomEnrollments)
+      .innerJoin(classrooms, eq(classroomEnrollments.classroomId, classrooms.id))
+      .where(eq(classroomEnrollments.studentId, studentId))
+      .orderBy(desc(classroomEnrollments.enrolledAt));
+    return result;
+  }
+
+  async getPendingEnrollments(classroomId: string): Promise<(ClassroomEnrollment & { student: User })[]> {
+    const result = await db
+      .select({
+        id: classroomEnrollments.id,
+        studentId: classroomEnrollments.studentId,
+        classroomId: classroomEnrollments.classroomId,
+        enrollmentStatus: classroomEnrollments.enrollmentStatus,
+        enrolledAt: classroomEnrollments.enrolledAt,
+        approvedAt: classroomEnrollments.approvedAt,
+        approvedBy: classroomEnrollments.approvedBy,
+        student: users
+      })
+      .from(classroomEnrollments)
+      .innerJoin(users, eq(classroomEnrollments.studentId, users.id))
+      .where(and(
+        eq(classroomEnrollments.classroomId, classroomId),
+        eq(classroomEnrollments.enrollmentStatus, 'pending')
+      ))
+      .orderBy(desc(classroomEnrollments.enrolledAt));
+    return result;
+  }
+
+  // Announcement operations
+  async getAnnouncement(id: string): Promise<Announcement | undefined> {
+    const [announcement] = await db.select().from(announcements).where(eq(announcements.id, id));
+    return announcement;
+  }
+
+  async getAnnouncementsByClassroom(classroomId: string, limit = 50): Promise<Announcement[]> {
+    return db
+      .select()
+      .from(announcements)
+      .where(and(
+        eq(announcements.classroomId, classroomId),
+        eq(announcements.published, true)
+      ))
+      .orderBy(desc(announcements.createdAt))
+      .limit(limit);
+  }
+
+  async createAnnouncement(announcement: InsertAnnouncement): Promise<Announcement> {
+    const [newAnnouncement] = await db.insert(announcements).values(announcement).returning();
+    return newAnnouncement;
+  }
+
+  async updateAnnouncement(id: string, updates: Partial<InsertAnnouncement>): Promise<Announcement> {
+    const validUpdates = { ...updates };
+    delete (validUpdates as any).updatedAt;
+    
+    const [updated] = await db
+      .update(announcements)
+      .set({ ...validUpdates, updatedAt: new Date() })
+      .where(eq(announcements.id, id))
+      .returning();
+    return updated;
+  }
+
+  async markAnnouncementAsRead(announcementId: string, studentId: string): Promise<AnnouncementRead> {
+    // Check if already read
+    const [existing] = await db
+      .select()
+      .from(announcementReads)
+      .where(and(
+        eq(announcementReads.announcementId, announcementId),
+        eq(announcementReads.studentId, studentId)
+      ));
+    
+    if (existing) {
+      return existing;
+    }
+
+    const [newRead] = await db
+      .insert(announcementReads)
+      .values({ announcementId, studentId })
+      .returning();
+    return newRead;
+  }
+
+  async getUnreadAnnouncements(classroomId: string, studentId: string): Promise<Announcement[]> {
+    const result = await db
+      .select({ announcement: announcements })
+      .from(announcements)
+      .leftJoin(
+        announcementReads,
+        and(
+          eq(announcements.id, announcementReads.announcementId),
+          eq(announcementReads.studentId, studentId)
+        )
+      )
+      .where(and(
+        eq(announcements.classroomId, classroomId),
+        eq(announcements.published, true),
+        sql`${announcementReads.id} IS NULL`
+      ))
+      .orderBy(desc(announcements.createdAt));
+    
+    return result.map(row => row.announcement);
+  }
+
+  async getAnnouncementReads(announcementId: string): Promise<(AnnouncementRead & { student: User })[]> {
+    const result = await db
+      .select({
+        id: announcementReads.id,
+        announcementId: announcementReads.announcementId,
+        studentId: announcementReads.studentId,
+        readAt: announcementReads.readAt,
+        student: users
+      })
+      .from(announcementReads)
+      .innerJoin(users, eq(announcementReads.studentId, users.id))
+      .where(eq(announcementReads.announcementId, announcementId))
+      .orderBy(desc(announcementReads.readAt));
+    return result;
   }
 }
 

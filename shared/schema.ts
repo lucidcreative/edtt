@@ -41,9 +41,14 @@ export const users = pgTable("users", {
 // Classrooms table
 export const classrooms = pgTable("classrooms", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: varchar("name", { length: 100 }).notNull(),
-  code: varchar("code", { length: 6 }).notNull().unique(),
   teacherId: uuid("teacher_id").references(() => users.id).notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  subject: varchar("subject", { length: 50 }),
+  gradeLevel: varchar("grade_level", { length: 20 }),
+  academicYear: varchar("academic_year", { length: 10 }),
+  joinCode: varchar("join_code", { length: 6 }).notNull().unique(),
+  autoApproveStudents: boolean("auto_approve_students").default(true),
+  baseTokenRate: integer("base_token_rate").default(1),
   description: text("description"),
   isActive: boolean("is_active").default(true),
   settings: jsonb("settings").default({}),
@@ -163,15 +168,52 @@ export const challengeProgress = pgTable("challenge_progress", {
   updatedAt: timestamp("updated_at").defaultNow()
 });
 
+// Student classroom enrollment tracking
+export const classroomEnrollments = pgTable("classroom_enrollments", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  studentId: uuid("student_id").references(() => users.id).notNull(),
+  classroomId: uuid("classroom_id").references(() => classrooms.id).notNull(),
+  enrollmentStatus: varchar("enrollment_status", { length: 20 }).notNull().default('approved').$type<'pending' | 'approved' | 'denied' | 'withdrawn'>(),
+  enrolledAt: timestamp("enrolled_at").defaultNow(),
+  approvedAt: timestamp("approved_at"),
+  approvedBy: uuid("approved_by").references(() => users.id)
+});
+
+// Announcements and communication
+export const announcements = pgTable("announcements", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  classroomId: uuid("classroom_id").references(() => classrooms.id).notNull(),
+  authorId: uuid("author_id").references(() => users.id).notNull(),
+  title: varchar("title", { length: 200 }).notNull(),
+  content: text("content").notNull(),
+  priority: varchar("priority", { length: 20 }).notNull().default('normal').$type<'low' | 'normal' | 'high' | 'urgent'>(),
+  category: varchar("category", { length: 50 }).default('general'),
+  scheduledFor: timestamp("scheduled_for"),
+  published: boolean("published").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+// Track which students have read announcements
+export const announcementReads = pgTable("announcement_reads", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  announcementId: uuid("announcement_id").references(() => announcements.id).notNull(),
+  studentId: uuid("student_id").references(() => users.id).notNull(),
+  readAt: timestamp("read_at").defaultNow()
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many, one }) => ({
   teacherClassrooms: many(classrooms),
   studentClassrooms: many(studentClassrooms),
+  classroomEnrollments: many(classroomEnrollments),
   assignments: many(assignments),
   submissions: many(submissions),
   purchases: many(purchases),
   studentBadges: many(studentBadges),
-  challengeProgress: many(challengeProgress)
+  challengeProgress: many(challengeProgress),
+  authoredAnnouncements: many(announcements),
+  announcementReads: many(announcementReads)
 }));
 
 export const classroomsRelations = relations(classrooms, ({ one, many }) => ({
@@ -180,10 +222,12 @@ export const classroomsRelations = relations(classrooms, ({ one, many }) => ({
     references: [users.id]
   }),
   studentClassrooms: many(studentClassrooms),
+  enrollments: many(classroomEnrollments),
   assignments: many(assignments),
   storeItems: many(storeItems),
   badges: many(badges),
-  challenges: many(challenges)
+  challenges: many(challenges),
+  announcements: many(announcements)
 }));
 
 export const studentClassroomsRelations = relations(studentClassrooms, ({ one }) => ({
@@ -194,6 +238,44 @@ export const studentClassroomsRelations = relations(studentClassrooms, ({ one })
   classroom: one(classrooms, {
     fields: [studentClassrooms.classroomId],
     references: [classrooms.id]
+  })
+}));
+
+export const classroomEnrollmentsRelations = relations(classroomEnrollments, ({ one }) => ({
+  student: one(users, {
+    fields: [classroomEnrollments.studentId],
+    references: [users.id]
+  }),
+  classroom: one(classrooms, {
+    fields: [classroomEnrollments.classroomId],
+    references: [classrooms.id]
+  }),
+  approver: one(users, {
+    fields: [classroomEnrollments.approvedBy],
+    references: [users.id]
+  })
+}));
+
+export const announcementsRelations = relations(announcements, ({ one, many }) => ({
+  classroom: one(classrooms, {
+    fields: [announcements.classroomId],
+    references: [classrooms.id]
+  }),
+  author: one(users, {
+    fields: [announcements.authorId],
+    references: [users.id]
+  }),
+  reads: many(announcementReads)
+}));
+
+export const announcementReadsRelations = relations(announcementReads, ({ one }) => ({
+  announcement: one(announcements, {
+    fields: [announcementReads.announcementId],
+    references: [announcements.id]
+  }),
+  student: one(users, {
+    fields: [announcementReads.studentId],
+    references: [users.id]
   })
 }));
 
@@ -266,6 +348,23 @@ export const insertChallengeSchema = createInsertSchema(challenges).omit({
   createdAt: true
 });
 
+export const insertClassroomEnrollmentSchema = createInsertSchema(classroomEnrollments).omit({
+  id: true,
+  enrolledAt: true,
+  approvedAt: true
+});
+
+export const insertAnnouncementSchema = createInsertSchema(announcements).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertAnnouncementReadSchema = createInsertSchema(announcementReads).omit({
+  id: true,
+  readAt: true
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -281,6 +380,12 @@ export type Badge = typeof badges.$inferSelect;
 export type InsertBadge = z.infer<typeof insertBadgeSchema>;
 export type Challenge = typeof challenges.$inferSelect;
 export type InsertChallenge = z.infer<typeof insertChallengeSchema>;
+export type ClassroomEnrollment = typeof classroomEnrollments.$inferSelect;
+export type InsertClassroomEnrollment = z.infer<typeof insertClassroomEnrollmentSchema>;
+export type Announcement = typeof announcements.$inferSelect;
+export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
+export type AnnouncementRead = typeof announcementReads.$inferSelect;
+export type InsertAnnouncementRead = z.infer<typeof insertAnnouncementReadSchema>;
 export type StudentClassroom = typeof studentClassrooms.$inferSelect;
 export type Purchase = typeof purchases.$inferSelect;
 export type StudentBadge = typeof studentBadges.$inferSelect;

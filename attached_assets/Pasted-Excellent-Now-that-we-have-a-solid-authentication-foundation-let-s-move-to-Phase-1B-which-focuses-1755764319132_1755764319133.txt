@@ -1,0 +1,155 @@
+Excellent! Now that we have a solid authentication foundation, let's move to Phase 1B, which focuses on the core classroom infrastructure. Think of this as building the "rooms" where all the future token economy activities will take place.
+This next phase is crucial because it establishes the fundamental relationship between teachers and students, creates the secure spaces where learning happens, and sets up the basic organizational structure that everything else will depend on. Let me walk you through exactly what your AI coder needs to build next.
+
+PROMPT FOR AI CODER - Phase 1B: Classroom Infrastructure & Student Enrollment
+You are continuing development of the Classroom Token Economy Platform. You have successfully completed Phase 1A (Authentication & User Management). Now you're building Phase 1B, which creates the classroom infrastructure that connects teachers with students. This phase establishes the fundamental organizational structure of the entire platform.
+CONTEXT FROM PREVIOUS PHASE:
+Your authentication system is working with teachers who can register and log in with email/password, and a student login system that requires classroom codes. Now you need to build the classroom creation and management system that makes those classroom codes meaningful and functional.
+CRITICAL MOBILE-FIRST REMINDER:
+Continue prioritizing mobile-responsive design. Teachers often use tablets for classroom management, and students primarily access the platform via smartphones during class time. Every interface must work seamlessly on touch devices with screen sizes from 320px to 2560px.
+PHASE 1B OBJECTIVES:
+Build the complete classroom ecosystem that allows teachers to create organized learning spaces, generate secure join codes, manage student enrollment, and establish the foundational settings that will control how tokens and assignments work in later phases.
+SPECIFIC FEATURES TO BUILD (Phase 1B Only):
+Feature 1: Classroom Creation & Configuration System
+Create a comprehensive classroom setup workflow that allows teachers to establish their learning environments with these specific capabilities:
+Teachers must be able to create new classrooms with essential configuration options including classroom name, subject area, grade level, and academic year. The system should provide intuitive form interfaces that guide teachers through setting up their basic classroom parameters.
+Each classroom needs configurable settings that will control future token economy behavior, such as base token earning rates for different activities, behavioral expectation categories, and grading integration preferences. While you won't implement the actual token functionality yet, create the database structure and settings interface that will support those features.
+The classroom creation process should generate unique, secure join codes using a specific algorithm that creates 6-character alphanumeric codes that are easy for students to type on mobile devices. These codes must be truly unique across the entire system and should avoid confusing character combinations like "0" and "O" or "1" and "l".
+Feature 2: Advanced Student Enrollment Management
+Expand the student join process beyond basic authentication to create a complete enrollment ecosystem.
+When students enter a classroom join code, they should see the classroom name and teacher information before finalizing their enrollment, creating a sense of place and belonging. The enrollment process should validate that their chosen nickname is unique within that specific classroom, not just system-wide.
+Build comprehensive roster management tools that allow teachers to view all enrolled students, see their enrollment dates, manage their active status, and handle nickname conflicts or changes. Teachers should be able to export their roster information and import student lists via CSV files for efficient bulk enrollment.
+Create a student approval system where teachers can choose between automatic enrollment and manual approval for new students. This gives teachers control over their classroom composition while maintaining the ease of use that students expect.
+Feature 3: Classroom Dashboard & Overview System
+Develop the central command center where teachers manage their classroom operations and students access their learning environment.
+The teacher dashboard should provide a comprehensive overview of classroom activity, including recent student enrollments, active student count, and quick access to essential classroom management tools. Create widget-based layouts that teachers can customize based on their priorities and teaching style.
+Students need their own classroom dashboard that shows their current classroom information, recent announcements, and creates anticipation for the token economy features coming in future phases. The interface should be engaging and informative while remaining clean and focused.
+Build navigation systems that allow users to seamlessly switch between multiple classrooms if they participate in more than one, maintaining context and preventing confusion about which classroom they're currently viewing.
+Feature 4: Communication Foundation & Announcement System
+Establish the basic communication infrastructure that will support more advanced features in later phases.
+Create a robust announcement system where teachers can post information to their entire class with rich text formatting, link embedding, and scheduling capabilities. Announcements should support different priority levels and categories to help organize communication effectively.
+Build notification systems that alert students to new announcements through both in-app notifications and browser push notifications when supported. Students should be able to mark announcements as read and access their announcement history.
+Include basic messaging infrastructure that will support the Request for Proposal system and marketplace communications in future phases, but focus only on the foundational messaging capabilities needed for teacher-to-class communication right now.
+DATABASE SCHEMA EXPANSION:
+Add these specific tables to your existing authentication database, creating proper relationships and constraints:
+sql-- Classrooms table with comprehensive settings
+CREATE TABLE classrooms (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    teacher_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,
+    subject VARCHAR(50),
+    grade_level VARCHAR(20),
+    academic_year VARCHAR(10),
+    join_code VARCHAR(6) UNIQUE NOT NULL,
+    auto_approve_students BOOLEAN DEFAULT true,
+    base_token_rate DECIMAL(10,2) DEFAULT 1.00, -- For future token system
+    settings JSONB DEFAULT '{}', -- Flexible configuration storage
+    active_status BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Student classroom enrollment tracking
+CREATE TABLE classroom_enrollments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    student_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    classroom_id UUID REFERENCES classrooms(id) ON DELETE CASCADE,
+    enrollment_status VARCHAR(20) DEFAULT 'pending' CHECK (enrollment_status IN ('pending', 'approved', 'denied', 'withdrawn')),
+    enrolled_at TIMESTAMP DEFAULT NOW(),
+    approved_at TIMESTAMP,
+    approved_by UUID REFERENCES users(id),
+    UNIQUE(student_id, classroom_id) -- Prevent duplicate enrollments
+);
+
+-- Announcements and communication
+CREATE TABLE announcements (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    classroom_id UUID REFERENCES classrooms(id) ON DELETE CASCADE,
+    author_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(200) NOT NULL,
+    content TEXT NOT NULL,
+    priority VARCHAR(20) DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
+    category VARCHAR(50) DEFAULT 'general',
+    scheduled_for TIMESTAMP,
+    published BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Track which students have read announcements
+CREATE TABLE announcement_reads (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    announcement_id UUID REFERENCES announcements(id) ON DELETE CASCADE,
+    student_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    read_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(announcement_id, student_id)
+);
+API ENDPOINTS TO IMPLEMENT:
+Build these RESTful endpoints with comprehensive error handling and mobile-optimized responses:
+-- Classroom Management Endpoints
+POST /api/classrooms
+- Body: { name, subject, gradeLevel, academicYear, settings }
+- Creates new classroom with unique join code
+- Response: Complete classroom object with join code
+
+GET /api/classrooms/teacher/:teacherId
+- Returns all classrooms for a specific teacher
+- Includes enrollment counts and recent activity
+
+PUT /api/classrooms/:classroomId
+- Body: Updated classroom information and settings
+- Allows teachers to modify classroom configuration
+- Response: Updated classroom object
+
+GET /api/classrooms/:classroomId/roster
+- Returns complete student roster with enrollment details
+- Includes student activity summaries and enrollment dates
+
+-- Student Enrollment Endpoints  
+POST /api/classrooms/join
+- Body: { joinCode, nickname, pin } (reuses student login logic)
+- Validates join code and creates enrollment record
+- Response: Enrollment status and classroom information
+
+GET /api/classrooms/student/:studentId
+- Returns all classrooms where student is enrolled
+- Includes enrollment status and classroom details
+
+PUT /api/enrollments/:enrollmentId/approve
+- Teacher approves pending student enrollment
+- Response: Updated enrollment status
+
+-- Communication Endpoints
+POST /api/announcements
+- Body: { classroomId, title, content, priority, category, scheduledFor }
+- Creates new announcement for classroom
+- Response: Complete announcement object
+
+GET /api/announcements/classroom/:classroomId
+- Returns paginated announcements for classroom
+- Includes read status for requesting student
+
+POST /api/announcements/:announcementId/read
+- Marks announcement as read by current student
+- Response: Updated read status
+MOBILE-FIRST UI COMPONENTS TO BUILD:
+Design and implement these specific interface components with mobile optimization as the primary concern:
+Create classroom creation forms that work elegantly on mobile screens, using progressive disclosure to avoid overwhelming users with too many options at once. Form validation should provide immediate, helpful feedback without interrupting the user's flow.
+Build responsive classroom cards that display essential information clearly on small screens while expanding to show more details on larger displays. Use touch-friendly interaction patterns like swipe gestures where appropriate.
+Design student enrollment flows that feel welcoming and simple, with clear visual feedback about the enrollment process and what students can expect next. The join code entry should be optimized for mobile keyboards with large, easy-to-tap input fields.
+Create announcement interfaces that prioritize readability on mobile devices, with proper typography scaling and touch-friendly interaction elements for marking items as read or accessing additional details.
+INTEGRATION WITH EXISTING AUTHENTICATION:
+Seamlessly connect this classroom infrastructure with your existing authentication system by modifying your student login process to handle classroom enrollment automatically when students log in with valid classroom codes.
+Update your user profile systems to include classroom affiliations and roles, ensuring that students see their classroom information and teachers see their teaching assignments prominently in their profiles.
+Enhance your JWT token payload to include classroom permissions and affiliations, setting up the authorization framework that future features will depend on for determining what actions users can perform in different classrooms.
+TESTING & VALIDATION REQUIREMENTS:
+Implement comprehensive testing that validates both the technical functionality and the user experience across different device types and classroom scenarios.
+Test classroom creation workflows with various configuration combinations, ensuring that all settings are properly saved and can be retrieved consistently. Validate that join codes are truly unique and that the generation algorithm produces codes that are easy for students to enter on mobile devices.
+Verify that the enrollment process works smoothly across different network conditions and device types, with proper error handling for common scenarios like duplicate nicknames or expired join codes.
+Test announcement creation and delivery systems to ensure that notifications work correctly across different browsers and devices, with proper fallback mechanisms when push notifications aren't supported.
+SUCCESS CRITERIA FOR PHASE 1B:
+This phase is complete when teachers can create and configure classrooms with intuitive mobile interfaces, generate secure join codes that students can easily use, manage student enrollment with approval workflows when desired, and post announcements that students receive and can mark as read.
+Students should be able to join classrooms smoothly using mobile devices, see their classroom information clearly, and access teacher communications through well-designed interfaces that work consistently across different screen sizes.
+The database should properly track all classroom relationships and enrollment statuses, with the flexible configuration structure needed to support the token economy features coming in the next phase.
+Your code should maintain the clean, documented, TypeScript standards established in Phase 1A while adding this new functionality in a way that integrates seamlessly with the existing authentication system.
+Build this classroom infrastructure with the understanding that it's creating the foundation for a complex token economy system, but focus exclusively on creating excellent classroom management and enrollment experiences that teachers and students will find intuitive and reliable.RetryClaude does not have the ability to run the code it generates yet.Claude can make mistakes. Please double-check responses.

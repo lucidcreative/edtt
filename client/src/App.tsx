@@ -11,6 +11,7 @@ import StudentManagement from "@/pages/student-management";
 import Store from "@/pages/store";
 import Assignments from "@/pages/assignments";
 import Analytics from "@/pages/analytics";
+import Announcements from "@/pages/announcements";
 import Sidebar from "@/components/sidebar";
 import Header from "@/components/header";
 
@@ -24,6 +25,7 @@ function AuthenticatedApp() {
           <Switch>
             <Route path="/" component={Dashboard} />
             <Route path="/students" component={StudentManagement} />
+            <Route path="/announcements" component={Announcements} />
             <Route path="/store" component={Store} />
             <Route path="/assignments" component={Assignments} />
             <Route path="/analytics" component={Analytics} />
