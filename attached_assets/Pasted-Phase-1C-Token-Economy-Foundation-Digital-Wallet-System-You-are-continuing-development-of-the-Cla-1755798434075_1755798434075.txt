@@ -1,0 +1,179 @@
+Phase 1C: Token Economy Foundation & Digital Wallet System
+You are continuing development of the Classroom Token Economy Platform. You have successfully completed Phase 1A (Authentication & User Management) and Phase 1B (Classroom Infrastructure). Now you're building Phase 1C, which creates the core token economy that transforms ordinary classroom activities into an engaging economic simulation.
+Understanding the Educational Context:
+The token system you're building serves a dual educational purpose. First, it motivates students by providing immediate, tangible rewards for positive behaviors and completed work. Second, it teaches real-world financial concepts like earning, saving, budgeting, and making purchasing decisions. Every transaction should feel meaningful and help students understand economic principles they'll use throughout their lives.
+Critical Mobile-First Consideration:
+Students will primarily interact with their token wallets on smartphones during class time, often in quick bursts between activities. The interfaces must be instantly readable, with large, clear numbers and smooth animations that make checking balances and viewing transactions feel rewarding rather than tedious.
+PHASE 1C OBJECTIVES:
+Build a comprehensive token economy system that allows teachers to award and manage tokens while providing students with engaging, educational wallet experiences that lay the groundwork for the marketplace and assignment systems coming in future phases.
+Feature 1: Student Digital Wallet System
+Create the core financial interface that students will interact with daily throughout their educational journey. This wallet needs to be more than just a number display - it should be an engaging, educational tool that helps students understand their economic progress and builds anticipation for future spending opportunities.
+The wallet interface should prominently display the current token balance with clear, readable typography that works well on small screens. Include visual elements that make checking the balance feel rewarding, such as subtle animations when the balance updates or congratulatory micro-interactions when students reach certain milestones.
+Design a comprehensive transaction history system that shows students exactly how they earned or spent each token. Every transaction should include detailed descriptions that help students understand the connection between their actions and their rewards. For example, instead of simply showing "Assignment - 10 tokens," the history should show "Excellent work on Math Quiz #3 - completed on time with 95% accuracy - 10 tokens earned."
+Build transaction categorization that helps students understand different ways they can earn tokens. Categories might include "Academic Achievement," "Professional Behavior," "Classroom Participation," and "Special Projects." This categorization will become crucial when you add analytics features that help students identify their strengths and areas for improvement.
+Include spending analytics that show students where their tokens are going, even though you haven't built the store system yet. This prepares the infrastructure for future phases while teaching students to think about their spending patterns and financial decisions.
+Feature 2: Teacher Token Management Interface
+Develop comprehensive tools that allow teachers to award tokens efficiently while maintaining the educational integrity of the system. Teachers need to be able to recognize student achievements quickly during busy classroom moments while also having access to detailed management capabilities during planning periods.
+Create quick-award interfaces that allow teachers to give tokens to individual students or groups with just a few taps on a mobile device. Design preset award amounts for common achievements like "Homework Completed" (5 tokens), "Excellent Participation" (10 tokens), or "Leadership Behavior" (15 tokens). Teachers should be able to customize these presets to match their classroom expectations and reward structures.
+Build batch award functionality that allows teachers to reward entire groups or classes for collective achievements. This might include end-of-week bonuses for classes that meet behavior goals or special rewards for collaborative project success.
+Design detailed token management tools that give teachers oversight of student earning patterns and wallet balances. Teachers should be able to see which students are actively earning tokens and which might need additional encouragement or support.
+Include token adjustment capabilities that allow teachers to make corrections when needed. Sometimes tokens are awarded incorrectly or students dispute transactions. The system should provide audit trails for all adjustments while maintaining student confidence in the fairness of the token economy.
+Feature 3: Transaction Processing & Security System
+Build the robust backend infrastructure that ensures every token transaction is secure, accurate, and properly recorded. This system needs to handle the high frequency of small transactions that occur in active classrooms while maintaining data integrity and providing real-time updates.
+Implement atomic transaction processing that ensures token awards and deductions always maintain accurate balances, even when multiple teachers are working with the same student simultaneously or when network connections are unstable.
+Create comprehensive audit logging that tracks every token movement with immutable timestamps, detailed descriptions, and clear attribution to the teacher who initiated each transaction. This audit system serves both educational and administrative purposes, helping resolve disputes and providing data for academic research.
+Design real-time balance synchronization that immediately updates student wallets across all devices when tokens are awarded or spent. Students should never see outdated balance information, and the system should handle brief network disconnections gracefully.
+Build transaction validation that prevents common errors like negative balances from manual deductions, duplicate awards, or system glitches that could undermine student trust in the token economy.
+Feature 4: Notification & Engagement System
+Create communication systems that keep students engaged with their token earning progress while providing teachers with the feedback they need to optimize their reward strategies.
+Design celebratory notifications that make earning tokens feel rewarding and encourage continued positive behavior. When students receive tokens, they should get immediate feedback that explains exactly why they earned the reward and congratulates them on their achievement.
+Build milestone recognition systems that celebrate when students reach certain token thresholds or earning streaks. These celebrations should feel genuine and meaningful, not like generic game mechanics.
+Create teacher notification systems that alert educators when students reach significant milestones, exhibit notable earning patterns, or might need additional encouragement based on their token activity.
+Include engagement analytics that help teachers understand which types of rewards are most motivating for different students, allowing them to personalize their recognition strategies over time.
+DATABASE SCHEMA EXPANSION:
+Add these carefully designed tables that will support not just the current token functionality but also the complex economic features coming in future phases:
+sql-- Student token wallets with comprehensive tracking
+CREATE TABLE student_wallets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    student_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    classroom_id UUID REFERENCES classrooms(id) ON DELETE CASCADE,
+    current_balance DECIMAL(12,2) DEFAULT 0.00 NOT NULL CHECK (current_balance >= 0),
+    total_earned DECIMAL(12,2) DEFAULT 0.00 NOT NULL,
+    total_spent DECIMAL(12,2) DEFAULT 0.00 NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(student_id, classroom_id) -- One wallet per student per classroom
+);
+
+-- Comprehensive token transaction logging
+CREATE TABLE token_transactions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    wallet_id UUID REFERENCES student_wallets(id) ON DELETE CASCADE,
+    amount DECIMAL(10,2) NOT NULL, -- Positive for earning, negative for spending
+    transaction_type VARCHAR(30) NOT NULL CHECK (transaction_type IN ('earned', 'spent', 'awarded', 'bonus', 'penalty', 'correction', 'refund')),
+    category VARCHAR(50) NOT NULL, -- 'academic_achievement', 'professional_behavior', etc.
+    description TEXT NOT NULL,
+    reference_type VARCHAR(30), -- 'assignment', 'store_purchase', 'manual_award', etc.
+    reference_id UUID, -- ID of related record (assignment, purchase, etc.)
+    created_by UUID REFERENCES users(id), -- Teacher who initiated transaction
+    metadata JSONB DEFAULT '{}', -- Flexible storage for additional context
+    balance_after DECIMAL(12,2) NOT NULL, -- Balance after this transaction
+    transaction_date TIMESTAMP DEFAULT NOW(),
+    academic_period VARCHAR(20), -- For reporting by semester, quarter, etc.
+    
+    -- Audit and integrity fields
+    audit_hash VARCHAR(255), -- For transaction integrity verification
+    parent_transaction_id UUID REFERENCES token_transactions(id), -- For corrections/refunds
+    is_correction BOOLEAN DEFAULT false,
+    correction_reason TEXT
+);
+
+-- Token earning categories for organization and analytics
+CREATE TABLE token_categories (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    classroom_id UUID REFERENCES classrooms(id) ON DELETE CASCADE,
+    name VARCHAR(50) NOT NULL,
+    description TEXT,
+    default_amount DECIMAL(10,2),
+    color_code VARCHAR(7), -- Hex color for UI display
+    icon_name VARCHAR(30), -- Icon identifier for UI
+    active_status BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(classroom_id, name) -- Unique category names per classroom
+);
+
+-- Quick award presets for efficient teacher workflows
+CREATE TABLE teacher_award_presets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    teacher_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    classroom_id UUID REFERENCES classrooms(id) ON DELETE CASCADE,
+    preset_name VARCHAR(50) NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    category_id UUID REFERENCES token_categories(id),
+    description_template TEXT,
+    usage_count INTEGER DEFAULT 0, -- Track popularity for optimization
+    created_at TIMESTAMP DEFAULT NOW(),
+    last_used TIMESTAMP
+);
+
+-- Student milestone tracking for engagement
+CREATE TABLE student_milestones (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    student_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    classroom_id UUID REFERENCES classrooms(id) ON DELETE CASCADE,
+    milestone_type VARCHAR(30) NOT NULL, -- 'balance_reached', 'earning_streak', 'category_mastery'
+    milestone_value INTEGER NOT NULL, -- The threshold reached (e.g., 100 tokens, 7 day streak)
+    achieved_at TIMESTAMP DEFAULT NOW(),
+    acknowledged BOOLEAN DEFAULT false, -- Whether student has seen the celebration
+    academic_period VARCHAR(20)
+);
+API ENDPOINTS TO IMPLEMENT:
+Design these endpoints with careful attention to mobile performance and real-time responsiveness:
+-- Student Wallet Management
+GET /api/wallets/student/:studentId/classroom/:classroomId
+- Returns complete wallet information including balance and recent transactions
+- Optimized for mobile with pagination and caching headers
+
+GET /api/transactions/student/:studentId/classroom/:classroomId
+- Paginated transaction history with filtering and search capabilities
+- Includes category breakdown and earning analytics
+
+-- Teacher Token Award System
+POST /api/tokens/award
+- Body: { studentIds[], amount, category, description, referenceType, referenceId }
+- Supports both individual and bulk awards
+- Returns updated student balances and transaction records
+
+POST /api/tokens/award/preset
+- Body: { presetId, studentIds[], customDescription }
+- Quick awards using predefined presets
+- Updates preset usage statistics
+
+GET /api/tokens/presets/teacher/:teacherId/classroom/:classroomId
+- Returns teacher's custom award presets
+- Includes usage statistics for optimization
+
+POST /api/tokens/adjust
+- Body: { studentId, amount, reason, correctionType }
+- Handles corrections, penalties, and administrative adjustments
+- Requires detailed reasoning and creates audit trail
+
+-- Analytics and Reporting
+GET /api/analytics/classroom/:classroomId/tokens
+- Overview of token activity including distribution patterns
+- Student earning summaries and category breakdowns
+
+GET /api/analytics/student/:studentId/earning-patterns
+- Individual student earning analytics
+- Category preferences and milestone progress
+
+-- Milestone and Engagement
+GET /api/milestones/student/:studentId/classroom/:classroomId
+- Returns achieved milestones and progress toward next goals
+- Powers celebration and motivation systems
+
+POST /api/milestones/:milestoneId/acknowledge
+- Marks milestone celebration as viewed by student
+- Tracks engagement with recognition system
+Mobile-First UI Components:
+Build these specific interface elements with exceptional mobile usability as the primary design constraint:
+Create wallet balance displays that use large, clear typography and subtle animations to make checking balances feel rewarding. The balance should be the most prominent element on the student dashboard, with smooth counting animations when values change.
+Design transaction history interfaces that work well with touch scrolling and provide clear categorization without cluttering small screens. Each transaction should display essential information at a glance while supporting tap-to-expand for additional details.
+Build teacher award interfaces that allow quick token distribution during active classroom moments. Design large, touch-friendly buttons for common award amounts with swipe gestures for accessing additional options without switching screens.
+Create milestone celebration interfaces that feel genuinely rewarding when students achieve significant token thresholds or earning streaks. These celebrations should be brief but memorable, reinforcing positive behavior without interrupting learning flow.
+Integration with Previous Phases:
+Seamlessly connect this token system with your existing classroom infrastructure by automatically creating student wallets when enrollment is approved in existing classrooms.
+Update your announcement system to support token-related notifications, allowing teachers to celebrate achievements publicly while maintaining individual privacy when appropriate.
+Enhance your student dashboard with prominent wallet information and recent earning activity, making token progress a central part of the student experience.
+Testing Strategy:
+Implement comprehensive testing that validates both the mathematical accuracy of token calculations and the emotional impact of the reward experience.
+Test transaction processing under various network conditions and concurrent usage scenarios to ensure that tokens are never lost or duplicated during system stress.
+Verify that the milestone detection and celebration systems work correctly across different earning patterns and timeframes, providing meaningful recognition without overwhelming students with excessive notifications.
+Validate that teacher award workflows are efficient enough for real classroom use, where teachers need to recognize positive behavior immediately without interrupting their instruction flow.
+Success Criteria for Phase 1C:
+This phase is complete when students can view their token balances and transaction history through engaging mobile interfaces that make financial progress feel rewarding and educational.
+Teachers should be able to award tokens efficiently during class time using mobile devices, with preset options that make recognition quick and consistent while maintaining the flexibility to customize rewards for unique achievements.
+The transaction processing system should handle concurrent awards and maintain accurate balances under all tested conditions, with comprehensive audit trails that support both educational assessment and dispute resolution.
+Students should receive immediate, meaningful feedback when they earn tokens, with milestone celebrations that reinforce positive behavior and build anticipation for future earning opportunities.
+Your token economy foundation should be robust enough to support the complex marketplace, assignment, and analytics features planned for future phases while providing immediate educational value through the fundamental experience of earning and managing digital currency.
+Build this economic infrastructure with careful attention to the psychological aspects of motivation and reward, remembering that every token transaction is an opportunity to reinforce positive behavior and teach valuable financial concepts that students will carry with them throughout their lives.

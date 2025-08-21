@@ -8,7 +8,10 @@ import {
   timestamp, 
   uuid,
   jsonb,
-  serial
+  serial,
+  decimal,
+  unique,
+  index
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -203,6 +206,84 @@ export const announcementReads = pgTable("announcement_reads", {
   readAt: timestamp("read_at").defaultNow()
 });
 
+// PHASE 1C: TOKEN ECONOMY FOUNDATION
+
+// Student token wallets with comprehensive tracking
+export const studentWallets = pgTable("student_wallets", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  studentId: uuid("student_id").references(() => users.id).notNull(),
+  classroomId: uuid("classroom_id").references(() => classrooms.id).notNull(),
+  currentBalance: decimal("current_balance", { precision: 12, scale: 2 }).default("0.00").notNull(),
+  totalEarned: decimal("total_earned", { precision: 12, scale: 2 }).default("0.00").notNull(),
+  totalSpent: decimal("total_spent", { precision: 12, scale: 2 }).default("0.00").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+}, (table) => ({
+  uniqueStudentClassroom: unique().on(table.studentId, table.classroomId)
+}));
+
+// Comprehensive token transaction logging
+export const tokenTransactions = pgTable("token_transactions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  walletId: uuid("wallet_id").references(() => studentWallets.id).notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  transactionType: varchar("transaction_type", { length: 30 }).notNull().$type<'earned' | 'spent' | 'awarded' | 'bonus' | 'penalty' | 'correction' | 'refund'>(),
+  category: varchar("category", { length: 50 }).notNull(),
+  description: text("description").notNull(),
+  referenceType: varchar("reference_type", { length: 30 }),
+  referenceId: uuid("reference_id"),
+  createdBy: uuid("created_by").references(() => users.id),
+  metadata: jsonb("metadata").default({}),
+  balanceAfter: decimal("balance_after", { precision: 12, scale: 2 }).notNull(),
+  transactionDate: timestamp("transaction_date").defaultNow(),
+  academicPeriod: varchar("academic_period", { length: 20 }),
+  auditHash: varchar("audit_hash", { length: 255 }),
+  parentTransactionId: uuid("parent_transaction_id").references(() => tokenTransactions.id),
+  isCorrection: boolean("is_correction").default(false),
+  correctionReason: text("correction_reason")
+});
+
+// Token earning categories for organization and analytics
+export const tokenCategories = pgTable("token_categories", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  classroomId: uuid("classroom_id").references(() => classrooms.id).notNull(),
+  name: varchar("name", { length: 50 }).notNull(),
+  description: text("description"),
+  defaultAmount: decimal("default_amount", { precision: 10, scale: 2 }),
+  colorCode: varchar("color_code", { length: 7 }),
+  iconName: varchar("icon_name", { length: 30 }),
+  activeStatus: boolean("active_status").default(true),
+  createdAt: timestamp("created_at").defaultNow()
+}, (table) => ({
+  uniqueCategoryName: unique().on(table.classroomId, table.name)
+}));
+
+// Quick award presets for efficient teacher workflows
+export const teacherAwardPresets = pgTable("teacher_award_presets", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  teacherId: uuid("teacher_id").references(() => users.id).notNull(),
+  classroomId: uuid("classroom_id").references(() => classrooms.id).notNull(),
+  presetName: varchar("preset_name", { length: 50 }).notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  categoryId: uuid("category_id").references(() => tokenCategories.id),
+  descriptionTemplate: text("description_template"),
+  usageCount: integer("usage_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  lastUsed: timestamp("last_used")
+});
+
+// Student milestone tracking for engagement
+export const studentMilestones = pgTable("student_milestones", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  studentId: uuid("student_id").references(() => users.id).notNull(),
+  classroomId: uuid("classroom_id").references(() => classrooms.id).notNull(),
+  milestoneType: varchar("milestone_type", { length: 30 }).notNull().$type<'balance_reached' | 'earning_streak' | 'category_mastery'>(),
+  milestoneValue: integer("milestone_value").notNull(),
+  achievedAt: timestamp("achieved_at").defaultNow(),
+  acknowledged: boolean("acknowledged").default(false),
+  academicPeriod: varchar("academic_period", { length: 20 })
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many, one }) => ({
   teacherClassrooms: many(classrooms),
@@ -383,6 +464,51 @@ export type Challenge = typeof challenges.$inferSelect;
 export type InsertChallenge = z.infer<typeof insertChallengeSchema>;
 export type ClassroomEnrollment = typeof classroomEnrollments.$inferSelect;
 export type InsertClassroomEnrollment = z.infer<typeof insertClassroomEnrollmentSchema>;
+
+// PHASE 1C TOKEN ECONOMY TYPES
+export type StudentWallet = typeof studentWallets.$inferSelect;
+export type InsertStudentWallet = typeof studentWallets.$inferInsert;
+
+export type TokenTransaction = typeof tokenTransactions.$inferSelect;
+export type InsertTokenTransaction = typeof tokenTransactions.$inferInsert;
+
+export type TokenCategory = typeof tokenCategories.$inferSelect;
+export type InsertTokenCategory = typeof tokenCategories.$inferInsert;
+
+export type TeacherAwardPreset = typeof teacherAwardPresets.$inferSelect;
+export type InsertTeacherAwardPreset = typeof teacherAwardPresets.$inferInsert;
+
+export type StudentMilestone = typeof studentMilestones.$inferSelect;
+export type InsertStudentMilestone = typeof studentMilestones.$inferInsert;
+
+// Phase 1C Insert Schemas
+export const insertStudentWalletSchema = createInsertSchema(studentWallets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertTokenTransactionSchema = createInsertSchema(tokenTransactions).omit({
+  id: true,
+  transactionDate: true
+});
+
+export const insertTokenCategorySchema = createInsertSchema(tokenCategories).omit({
+  id: true,
+  createdAt: true
+});
+
+export const insertTeacherAwardPresetSchema = createInsertSchema(teacherAwardPresets).omit({
+  id: true,
+  createdAt: true,
+  usageCount: true,
+  lastUsed: true
+});
+
+export const insertStudentMilestoneSchema = createInsertSchema(studentMilestones).omit({
+  id: true,
+  achievedAt: true
+});
 export type Announcement = typeof announcements.$inferSelect;
 export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
 export type AnnouncementRead = typeof announcementReads.$inferSelect;

@@ -783,6 +783,221 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // PHASE 1C: TOKEN ECONOMY API ENDPOINTS
+  
+  // Get student wallet data
+  app.get('/api/wallets/student/:studentId/classroom/:classroomId', authenticate, async (req: any, res) => {
+    try {
+      const { studentId, classroomId } = req.params;
+      
+      // Get or create wallet
+      let wallet = await storage.getStudentWallet(studentId, classroomId);
+      if (!wallet) {
+        wallet = await storage.createStudentWallet({
+          studentId,
+          classroomId,
+          currentBalance: "0.00",
+          totalEarned: "0.00",
+          totalSpent: "0.00"
+        });
+      }
+      
+      // Get recent transactions
+      const transactions = await storage.getStudentTransactions(studentId, classroomId, 20);
+      
+      res.json({
+        currentBalance: parseFloat(wallet.currentBalance),
+        totalEarned: parseFloat(wallet.totalEarned),
+        totalSpent: parseFloat(wallet.totalSpent),
+        transactions: transactions.map(t => ({
+          id: t.id,
+          amount: parseFloat(t.amount),
+          transactionType: t.transactionType,
+          category: t.category,
+          description: t.description,
+          transactionDate: t.transactionDate,
+          balanceAfter: parseFloat(t.balanceAfter)
+        }))
+      });
+    } catch (error) {
+      console.error('Error fetching wallet data:', error);
+      res.status(500).json({ error: 'Failed to fetch wallet data' });
+    }
+  });
+  
+  // Get student milestones
+  app.get('/api/milestones/student/:studentId/classroom/:classroomId', authenticate, async (req: any, res) => {
+    try {
+      const { studentId, classroomId } = req.params;
+      const milestones = await storage.getStudentMilestones(studentId, classroomId);
+      res.json(milestones);
+    } catch (error) {
+      console.error('Error fetching milestones:', error);
+      res.status(500).json({ error: 'Failed to fetch milestones' });
+    }
+  });
+  
+  // Award tokens to students
+  app.post('/api/tokens/award', authenticate, async (req: any, res) => {
+    try {
+      const { studentIds, amount, category, description, referenceType, referenceId, classroomId } = req.body;
+      const createdBy = req.user?.id;
+      
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ error: 'Only teachers can award tokens' });
+      }
+      
+      if (!studentIds || !Array.isArray(studentIds) || studentIds.length === 0) {
+        return res.status(400).json({ error: 'Student IDs are required' });
+      }
+      
+      if (!amount || amount <= 0) {
+        return res.status(400).json({ error: 'Valid amount is required' });
+      }
+      
+      if (!category || !description || !classroomId) {
+        return res.status(400).json({ error: 'Category, description, and classroom ID are required' });
+      }
+      
+      const result = await storage.awardTokens({
+        studentIds,
+        amount: parseFloat(amount.toString()),
+        category,
+        description,
+        referenceType,
+        referenceId,
+        createdBy,
+        classroomId
+      });
+      
+      res.json({
+        success: true,
+        message: `Awarded ${amount} tokens to ${studentIds.length} student(s)`,
+        transactions: result.transactions.length,
+        updatedWallets: result.updatedWallets.length
+      });
+    } catch (error) {
+      console.error('Error awarding tokens:', error);
+      res.status(500).json({ error: 'Failed to award tokens' });
+    }
+  });
+  
+  // Get token categories for a classroom
+  app.get('/api/tokens/categories/classroom/:classroomId', authenticate, async (req: any, res) => {
+    try {
+      const { classroomId } = req.params;
+      let categories = await storage.getTokenCategories(classroomId);
+      
+      // Create default categories if none exist
+      if (categories.length === 0) {
+        const defaultCategories = [
+          { name: 'Assignment Completion', description: 'Completing assignments on time', defaultAmount: "10", colorCode: '#10B981', iconName: 'BookOpen' },
+          { name: 'Participation', description: 'Active class participation', defaultAmount: "5", colorCode: '#3B82F6', iconName: 'MessageSquare' },
+          { name: 'Helping Others', description: 'Assisting classmates', defaultAmount: "8", colorCode: '#8B5CF6', iconName: 'Users' },
+          { name: 'Extra Credit', description: 'Going above and beyond', defaultAmount: "15", colorCode: '#F59E0B', iconName: 'Star' },
+          { name: 'Behavior', description: 'Positive classroom behavior', defaultAmount: "3", colorCode: '#EF4444', iconName: 'Heart' }
+        ];
+        
+        for (const cat of defaultCategories) {
+          await storage.createTokenCategory({
+            classroomId,
+            ...cat
+          });
+        }
+        
+        categories = await storage.getTokenCategories(classroomId);
+      }
+      
+      res.json(categories);
+    } catch (error) {
+      console.error('Error fetching token categories:', error);
+      res.status(500).json({ error: 'Failed to fetch token categories' });
+    }
+  });
+  
+  // Get teacher award presets
+  app.get('/api/tokens/presets/classroom/:classroomId', authenticate, async (req: any, res) => {
+    try {
+      const { classroomId } = req.params;
+      const teacherId = req.user?.id;
+      
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ error: 'Only teachers can access presets' });
+      }
+      
+      let presets = await storage.getTeacherPresets(teacherId, classroomId);
+      
+      // Create default presets if none exist
+      if (presets.length === 0) {
+        const defaultPresets = [
+          { presetName: 'Perfect Assignment', amount: "25", descriptionTemplate: 'Excellent work on assignment completion!', categoryId: null },
+          { presetName: 'Great Participation', amount: "10", descriptionTemplate: 'Outstanding class participation today!', categoryId: null },
+          { presetName: 'Helping Friend', amount: "15", descriptionTemplate: 'Thank you for helping a classmate!', categoryId: null },
+          { presetName: 'Quick Bonus', amount: "5", descriptionTemplate: 'Small bonus for good behavior!', categoryId: null }
+        ];
+        
+        for (const preset of defaultPresets) {
+          await storage.createAwardPreset({
+            teacherId,
+            classroomId,
+            ...preset
+          });
+        }
+        
+        presets = await storage.getTeacherPresets(teacherId, classroomId);
+      }
+      
+      res.json(presets);
+    } catch (error) {
+      console.error('Error fetching teacher presets:', error);
+      res.status(500).json({ error: 'Failed to fetch teacher presets' });
+    }
+  });
+  
+  // Award tokens using preset
+  app.post('/api/tokens/award/preset', authenticate, async (req: any, res) => {
+    try {
+      const { presetId, studentIds, customDescription } = req.body;
+      const teacherId = req.user?.id;
+      
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ error: 'Only teachers can award tokens' });
+      }
+      
+      // Get preset details
+      const presets = await storage.getTeacherPresets(teacherId, '');
+      const preset = presets.find(p => p.id === presetId);
+      
+      if (!preset) {
+        return res.status(404).json({ error: 'Preset not found' });
+      }
+      
+      // Award tokens using preset
+      const result = await storage.awardTokens({
+        studentIds,
+        amount: parseFloat(preset.amount),
+        category: 'Preset Award',
+        description: customDescription || preset.descriptionTemplate || 'Token award from preset',
+        referenceType: 'teacher_preset',
+        referenceId: presetId,
+        createdBy: teacherId,
+        classroomId: preset.classroomId
+      });
+      
+      // Update preset usage
+      await storage.updatePresetUsage(presetId);
+      
+      res.json({
+        success: true,
+        message: `Awarded ${preset.amount} tokens using preset: ${preset.presetName}`,
+        transactions: result.transactions.length
+      });
+    } catch (error) {
+      console.error('Error awarding tokens with preset:', error);
+      res.status(500).json({ error: 'Failed to award tokens with preset' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -13,6 +13,12 @@ import {
   studentBadges,
   challenges,
   challengeProgress,
+  // Phase 1C Token Economy Tables
+  studentWallets,
+  tokenTransactions,
+  tokenCategories,
+  teacherAwardPresets,
+  studentMilestones,
   type User,
   type InsertUser,
   type Classroom,
@@ -36,7 +42,18 @@ import {
   type StudentClassroom,
   type Purchase,
   type StudentBadge,
-  type ChallengeProgress
+  type ChallengeProgress,
+  // Phase 1C Token Economy Types
+  type StudentWallet,
+  type InsertStudentWallet,
+  type TokenTransaction,
+  type InsertTokenTransaction,
+  type TokenCategory,
+  type InsertTokenCategory,
+  type TeacherAwardPreset,
+  type InsertTeacherAwardPreset,
+  type StudentMilestone,
+  type InsertStudentMilestone
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, and, sql, count } from "drizzle-orm";
@@ -131,6 +148,44 @@ export interface IStorage {
   updateAnnouncement(id: string, updates: Partial<InsertAnnouncement>): Promise<Announcement>;
   markAnnouncementAsRead(announcementId: string, studentId: string): Promise<AnnouncementRead>;
   getUnreadAnnouncements(classroomId: string, studentId: string): Promise<Announcement[]>;
+
+  // PHASE 1C: TOKEN ECONOMY OPERATIONS
+  
+  // Student Wallet Management
+  getStudentWallet(studentId: string, classroomId: string): Promise<StudentWallet | undefined>;
+  createStudentWallet(wallet: InsertStudentWallet): Promise<StudentWallet>;
+  updateWalletBalance(walletId: string, newBalance: number, totalEarned: number, totalSpent: number): Promise<StudentWallet>;
+  
+  // Token Transaction Processing
+  createTokenTransaction(transaction: InsertTokenTransaction): Promise<TokenTransaction>;
+  getWalletTransactions(walletId: string, limit?: number, offset?: number): Promise<TokenTransaction[]>;
+  getStudentTransactions(studentId: string, classroomId: string, limit?: number): Promise<TokenTransaction[]>;
+  
+  // Atomic Token Award Operation
+  awardTokens(data: {
+    studentIds: string[];
+    amount: number;
+    category: string;
+    description: string;
+    referenceType?: string;
+    referenceId?: string;
+    createdBy: string;
+    classroomId: string;
+  }): Promise<{ transactions: TokenTransaction[]; updatedWallets: StudentWallet[] }>;
+  
+  // Token Categories
+  getTokenCategories(classroomId: string): Promise<TokenCategory[]>;
+  createTokenCategory(category: InsertTokenCategory): Promise<TokenCategory>;
+  
+  // Teacher Award Presets
+  getTeacherPresets(teacherId: string, classroomId: string): Promise<TeacherAwardPreset[]>;
+  createAwardPreset(preset: InsertTeacherAwardPreset): Promise<TeacherAwardPreset>;
+  updatePresetUsage(presetId: string): Promise<void>;
+  
+  // Student Milestones
+  createMilestone(milestone: InsertStudentMilestone): Promise<StudentMilestone>;
+  getStudentMilestones(studentId: string, classroomId: string): Promise<StudentMilestone[]>;
+  checkAndCreateMilestones(studentId: string, classroomId: string, newBalance: number): Promise<StudentMilestone[]>;
   getAnnouncementReads(announcementId: string): Promise<(AnnouncementRead & { student: User })[]>;
 }
 
@@ -778,6 +833,258 @@ export class DatabaseStorage implements IStorage {
       .where(eq(announcementReads.announcementId, announcementId))
       .orderBy(desc(announcementReads.readAt));
     return result;
+  }
+
+  // PHASE 1C: TOKEN ECONOMY IMPLEMENTATION
+
+  async getStudentWallet(studentId: string, classroomId: string): Promise<StudentWallet | undefined> {
+    const [wallet] = await db
+      .select()
+      .from(studentWallets)
+      .where(and(
+        eq(studentWallets.studentId, studentId),
+        eq(studentWallets.classroomId, classroomId)
+      ));
+    return wallet;
+  }
+
+  async createStudentWallet(wallet: InsertStudentWallet): Promise<StudentWallet> {
+    const [newWallet] = await db
+      .insert(studentWallets)
+      .values(wallet)
+      .returning();
+    return newWallet;
+  }
+
+  async updateWalletBalance(walletId: string, newBalance: number, totalEarned: number, totalSpent: number): Promise<StudentWallet> {
+    const [updatedWallet] = await db
+      .update(studentWallets)
+      .set({
+        currentBalance: newBalance.toString(),
+        totalEarned: totalEarned.toString(),
+        totalSpent: totalSpent.toString(),
+        updatedAt: new Date()
+      })
+      .where(eq(studentWallets.id, walletId))
+      .returning();
+    return updatedWallet;
+  }
+
+  async createTokenTransaction(transaction: InsertTokenTransaction): Promise<TokenTransaction> {
+    const [newTransaction] = await db
+      .insert(tokenTransactions)
+      .values(transaction)
+      .returning();
+    return newTransaction;
+  }
+
+  async getWalletTransactions(walletId: string, limit = 50, offset = 0): Promise<TokenTransaction[]> {
+    return await db
+      .select()
+      .from(tokenTransactions)
+      .where(eq(tokenTransactions.walletId, walletId))
+      .orderBy(desc(tokenTransactions.transactionDate))
+      .limit(limit)
+      .offset(offset);
+  }
+
+  async getStudentTransactions(studentId: string, classroomId: string, limit = 50): Promise<TokenTransaction[]> {
+    const result = await db
+      .select({
+        id: tokenTransactions.id,
+        walletId: tokenTransactions.walletId,
+        amount: tokenTransactions.amount,
+        transactionType: tokenTransactions.transactionType,
+        category: tokenTransactions.category,
+        description: tokenTransactions.description,
+        referenceType: tokenTransactions.referenceType,
+        referenceId: tokenTransactions.referenceId,
+        createdBy: tokenTransactions.createdBy,
+        metadata: tokenTransactions.metadata,
+        balanceAfter: tokenTransactions.balanceAfter,
+        transactionDate: tokenTransactions.transactionDate,
+        academicPeriod: tokenTransactions.academicPeriod,
+        auditHash: tokenTransactions.auditHash,
+        parentTransactionId: tokenTransactions.parentTransactionId,
+        isCorrection: tokenTransactions.isCorrection,
+        correctionReason: tokenTransactions.correctionReason
+      })
+      .from(tokenTransactions)
+      .innerJoin(studentWallets, eq(tokenTransactions.walletId, studentWallets.id))
+      .where(and(
+        eq(studentWallets.studentId, studentId),
+        eq(studentWallets.classroomId, classroomId)
+      ))
+      .orderBy(desc(tokenTransactions.transactionDate))
+      .limit(limit);
+    return result;
+  }
+
+  async awardTokens(data: {
+    studentIds: string[];
+    amount: number;
+    category: string;
+    description: string;
+    referenceType?: string;
+    referenceId?: string;
+    createdBy: string;
+    classroomId: string;
+  }): Promise<{ transactions: TokenTransaction[]; updatedWallets: StudentWallet[] }> {
+    const transactions: TokenTransaction[] = [];
+    const updatedWallets: StudentWallet[] = [];
+
+    // Process each student atomically
+    for (const studentId of data.studentIds) {
+      // Get or create wallet
+      let wallet = await this.getStudentWallet(studentId, data.classroomId);
+      if (!wallet) {
+        wallet = await this.createStudentWallet({
+          studentId,
+          classroomId: data.classroomId,
+          currentBalance: "0.00",
+          totalEarned: "0.00",
+          totalSpent: "0.00"
+        });
+      }
+
+      const currentBalance = parseFloat(wallet.currentBalance);
+      const newBalance = currentBalance + data.amount;
+      const newTotalEarned = parseFloat(wallet.totalEarned) + data.amount;
+
+      // Create transaction record
+      const transaction = await this.createTokenTransaction({
+        walletId: wallet.id,
+        amount: data.amount.toString(),
+        transactionType: 'awarded',
+        category: data.category,
+        description: data.description,
+        referenceType: data.referenceType,
+        referenceId: data.referenceId,
+        createdBy: data.createdBy,
+        balanceAfter: newBalance.toString(),
+        metadata: {}
+      });
+
+      // Update wallet balance
+      const updatedWallet = await this.updateWalletBalance(
+        wallet.id,
+        newBalance,
+        newTotalEarned,
+        parseFloat(wallet.totalSpent)
+      );
+
+      transactions.push(transaction);
+      updatedWallets.push(updatedWallet);
+
+      // Check for milestones
+      await this.checkAndCreateMilestones(studentId, data.classroomId, newBalance);
+    }
+
+    return { transactions, updatedWallets };
+  }
+
+  async getTokenCategories(classroomId: string): Promise<TokenCategory[]> {
+    return await db
+      .select()
+      .from(tokenCategories)
+      .where(and(
+        eq(tokenCategories.classroomId, classroomId),
+        eq(tokenCategories.activeStatus, true)
+      ))
+      .orderBy(asc(tokenCategories.name));
+  }
+
+  async createTokenCategory(category: InsertTokenCategory): Promise<TokenCategory> {
+    const [newCategory] = await db
+      .insert(tokenCategories)
+      .values(category)
+      .returning();
+    return newCategory;
+  }
+
+  async getTeacherPresets(teacherId: string, classroomId: string): Promise<TeacherAwardPreset[]> {
+    return await db
+      .select()
+      .from(teacherAwardPresets)
+      .where(and(
+        eq(teacherAwardPresets.teacherId, teacherId),
+        eq(teacherAwardPresets.classroomId, classroomId)
+      ))
+      .orderBy(desc(teacherAwardPresets.usageCount));
+  }
+
+  async createAwardPreset(preset: InsertTeacherAwardPreset): Promise<TeacherAwardPreset> {
+    const [newPreset] = await db
+      .insert(teacherAwardPresets)
+      .values(preset)
+      .returning();
+    return newPreset;
+  }
+
+  async updatePresetUsage(presetId: string): Promise<void> {
+    await db
+      .update(teacherAwardPresets)
+      .set({
+        usageCount: sql`${teacherAwardPresets.usageCount} + 1`,
+        lastUsed: new Date()
+      })
+      .where(eq(teacherAwardPresets.id, presetId));
+  }
+
+  async createMilestone(milestone: InsertStudentMilestone): Promise<StudentMilestone> {
+    const [newMilestone] = await db
+      .insert(studentMilestones)
+      .values(milestone)
+      .returning();
+    return newMilestone;
+  }
+
+  async getStudentMilestones(studentId: string, classroomId: string): Promise<StudentMilestone[]> {
+    return await db
+      .select()
+      .from(studentMilestones)
+      .where(and(
+        eq(studentMilestones.studentId, studentId),
+        eq(studentMilestones.classroomId, classroomId)
+      ))
+      .orderBy(desc(studentMilestones.achievedAt))
+      .limit(10);
+  }
+
+  async checkAndCreateMilestones(studentId: string, classroomId: string, newBalance: number): Promise<StudentMilestone[]> {
+    const milestones: StudentMilestone[] = [];
+    
+    // Check balance milestones (100, 500, 1000, 5000 tokens)
+    const balanceMilestones = [100, 500, 1000, 5000];
+    
+    for (const milestoneValue of balanceMilestones) {
+      if (newBalance >= milestoneValue) {
+        // Check if milestone already exists
+        const existing = await db
+          .select()
+          .from(studentMilestones)
+          .where(and(
+            eq(studentMilestones.studentId, studentId),
+            eq(studentMilestones.classroomId, classroomId),
+            eq(studentMilestones.milestoneType, 'balance_reached'),
+            eq(studentMilestones.milestoneValue, milestoneValue)
+          ))
+          .limit(1);
+
+        if (existing.length === 0) {
+          const milestone = await this.createMilestone({
+            studentId,
+            classroomId,
+            milestoneType: 'balance_reached',
+            milestoneValue,
+            acknowledged: false
+          });
+          milestones.push(milestone);
+        }
+      }
+    }
+
+    return milestones;
   }
 }
 
