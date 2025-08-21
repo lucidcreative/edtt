@@ -998,6 +998,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // PHASE 1D: DIGITAL STORE API ENDPOINTS
+  
+  // Get store item templates for teachers
+  app.get('/api/store/templates', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ error: 'Only teachers can access templates' });
+      }
+      
+      const templates = await storage.getStoreItemTemplates();
+      res.json(templates);
+    } catch (error) {
+      console.error('Error fetching store templates:', error);
+      res.status(500).json({ error: 'Failed to fetch templates' });
+    }
+  });
+  
+  // Get store items for a classroom
+  app.get('/api/store/items/classroom/:classroomId', authenticate, async (req: any, res) => {
+    try {
+      const { classroomId } = req.params;
+      const items = await storage.getStoreItems(classroomId);
+      res.json(items);
+    } catch (error) {
+      console.error('Error fetching store items:', error);
+      res.status(500).json({ error: 'Failed to fetch store items' });
+    }
+  });
+  
+  // Create store item from template
+  app.post('/api/store/items', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ error: 'Only teachers can create store items' });
+      }
+      
+      const { classroomId, title, description, basePrice, currentPrice, itemType, category, icon, inventoryType, totalQuantity, maxPerStudent, tags } = req.body;
+      
+      if (!classroomId || !title || !description || !basePrice || !itemType || !category) {
+        return res.status(400).json({ error: 'Missing required fields' });
+      }
+      
+      const newItem = await storage.createStoreItem({
+        classroomId,
+        title,
+        description,
+        basePrice: basePrice.toString(),
+        currentPrice: (currentPrice || basePrice).toString(),
+        itemType,
+        category,
+        inventoryType: inventoryType || 'unlimited',
+        totalQuantity,
+        availableQuantity: totalQuantity,
+        maxPerStudent: maxPerStudent || 1,
+        isRecurring: false,
+        featured: false,
+        activeStatus: true,
+        tags: tags || [],
+        metadata: { icon },
+        createdBy: req.user.id
+      });
+      
+      res.status(201).json(newItem);
+    } catch (error) {
+      console.error('Error creating store item:', error);
+      res.status(500).json({ error: 'Failed to create store item' });
+    }
+  });
+  
+  // Update store item
+  app.put('/api/store/items/:itemId', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ error: 'Only teachers can update store items' });
+      }
+      
+      const { itemId } = req.params;
+      const updates = req.body;
+      
+      const updatedItem = await storage.updateStoreItem(itemId, updates);
+      res.json(updatedItem);
+    } catch (error) {
+      console.error('Error updating store item:', error);
+      res.status(500).json({ error: 'Failed to update store item' });
+    }
+  });
+  
+  // Delete store item
+  app.delete('/api/store/items/:itemId', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ error: 'Only teachers can delete store items' });
+      }
+      
+      const { itemId } = req.params;
+      await storage.deleteStoreItem(itemId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting store item:', error);
+      res.status(500).json({ error: 'Failed to delete store item' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

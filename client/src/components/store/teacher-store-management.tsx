@@ -24,6 +24,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import TemplateSelector from "./template-selector";
 import { 
   Store, 
   Plus, 
@@ -51,25 +52,29 @@ interface StoreItem {
   id: string;
   title: string;
   description: string;
-  basePrice: number;
-  currentPrice: number;
+  basePrice: string;
+  currentPrice: string;
   itemType: 'physical' | 'digital' | 'privilege' | 'academic_benefit';
   category: string;
-  subcategory?: string;
   inventoryType: 'unlimited' | 'limited' | 'one_time';
   totalQuantity?: number;
   availableQuantity?: number;
   maxPerStudent: number;
-  isRecurring: boolean;
-  recurringInterval?: 'weekly' | 'biweekly' | 'monthly';
-  recurringAmount?: number;
-  imageUrl?: string;
-  colorTheme?: string;
   featured: boolean;
   activeStatus: boolean;
   tags: string[];
-  purchaseCount?: number;
-  revenue?: number;
+  metadata?: { icon?: string };
+}
+
+interface StoreTemplate {
+  id: string;
+  title: string;
+  description: string;
+  suggestedPrice: number;
+  category: string;
+  itemType: string;
+  icon: string;
+  tags: string[];
 }
 
 interface StoreAnalytics {
@@ -93,9 +98,9 @@ export default function TeacherStoreManagement({ classroomId }: TeacherStoreMana
     enabled: !!classroomId
   });
 
-  // Fetch store analytics
-  const { data: analytics } = useQuery<StoreAnalytics>({
-    queryKey: ["/api/store/analytics/classroom", classroomId],
+  // Fetch store templates
+  const { data: templates = [] } = useQuery<StoreTemplate[]>({
+    queryKey: ["/api/store/templates"],
     enabled: !!classroomId
   });
 
@@ -164,8 +169,6 @@ export default function TeacherStoreManagement({ classroomId }: TeacherStoreMana
 
   const featuredItems = storeItems.filter(item => item.featured);
   const activeItems = storeItems.filter(item => item.activeStatus);
-  const totalRevenue = analytics?.totalRevenue || 0;
-  const totalPurchases = analytics?.totalPurchases || 0;
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
@@ -212,8 +215,8 @@ export default function TeacherStoreManagement({ classroomId }: TeacherStoreMana
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Purchases</p>
-                <p className="text-2xl font-bold text-purple-600">{totalPurchases}</p>
+                <p className="text-sm font-medium text-gray-600">Templates Available</p>
+                <p className="text-2xl font-bold text-purple-600">{templates.length}</p>
               </div>
               <ShoppingCart className="w-8 h-8 text-purple-500" />
             </div>
@@ -224,8 +227,8 @@ export default function TeacherStoreManagement({ classroomId }: TeacherStoreMana
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Tokens Earned</p>
-                <p className="text-2xl font-bold text-orange-600">{totalRevenue.toLocaleString()}</p>
+                <p className="text-sm font-medium text-gray-600">Categories</p>
+                <p className="text-2xl font-bold text-orange-600">{new Set(templates.map(t => t.category)).size}</p>
               </div>
               <TrendingUp className="w-8 h-8 text-orange-500" />
             </div>
@@ -251,26 +254,28 @@ export default function TeacherStoreManagement({ classroomId }: TeacherStoreMana
         </TabsList>
 
         <TabsContent value="inventory" className="space-y-6">
-          {/* Create New Item Button */}
+          {/* Add Items from Templates */}
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold text-gray-900">Store Inventory</h2>
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>
                 <Button className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600">
                   <Plus className="w-4 h-4 mr-2" />
-                  Add New Item
+                  Add Item from Templates
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>Create New Store Item</DialogTitle>
+                  <DialogTitle>Add Store Item</DialogTitle>
                   <DialogDescription>
-                    Add a new reward item to your classroom store
+                    Choose from predefined templates or create a custom item
                   </DialogDescription>
                 </DialogHeader>
-                <StoreItemForm
+                <TemplateSelector
+                  templates={templates}
                   onSubmit={(data) => createItemMutation.mutate(data)}
                   isLoading={createItemMutation.isPending}
+                  classroomId={classroomId}
                 />
               </DialogContent>
             </Dialog>
@@ -321,7 +326,8 @@ export default function TeacherStoreManagement({ classroomId }: TeacherStoreMana
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
-                              <h3 className="font-semibold text-gray-900">{item.title}</h3>
+                              <span className="text-2xl">{item.metadata?.icon || '📦'}</span>
+                              <h3 className="font-semibold text-gray-900 flex-1">{item.title}</h3>
                               {item.featured && (
                                 <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
                               )}
@@ -368,7 +374,7 @@ export default function TeacherStoreManagement({ classroomId }: TeacherStoreMana
                           <div className="flex items-center justify-between">
                             <span className="text-sm text-gray-600">Price:</span>
                             <span className="font-bold text-green-600">
-                              {item.currentPrice} 🪙
+                              {parseFloat(item.currentPrice)} 🪙
                             </span>
                           </div>
                           
@@ -381,21 +387,19 @@ export default function TeacherStoreManagement({ classroomId }: TeacherStoreMana
                             </div>
                           )}
                           
-                          {item.isRecurring && (
+                          {item.inventoryType === 'limited' && (
                             <div className="flex items-center gap-1">
-                              <Clock className="w-4 h-4 text-blue-500" />
+                              <Package className="w-4 h-4 text-blue-500" />
                               <span className="text-sm text-blue-600">
-                                {item.recurringAmount} 🪙 / {item.recurringInterval}
+                                Limited Stock
                               </span>
                             </div>
                           )}
                           
-                          {(item.purchaseCount !== undefined) && (
-                            <div className="flex items-center justify-between text-sm">
-                              <span className="text-gray-600">Purchases:</span>
-                              <span className="font-medium">{item.purchaseCount}</span>
-                            </div>
-                          )}
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Type:</span>
+                            <span className="font-medium capitalize">{item.itemType.replace('_', ' ')}</span>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -433,11 +437,13 @@ export default function TeacherStoreManagement({ classroomId }: TeacherStoreMana
             </DialogDescription>
           </DialogHeader>
           {selectedItem && (
-            <StoreItemForm
-              initialData={selectedItem}
-              onSubmit={(data) => updateItemMutation.mutate({ itemId: selectedItem.id, updates: data })}
-              isLoading={updateItemMutation.isPending}
-            />
+            <div className="space-y-4">
+              <div className="text-center">
+                <Edit className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Edit Item</h3>
+                <p className="text-gray-600">Item editing functionality coming soon...</p>
+              </div>
+            </div>
           )}
         </DialogContent>
       </Dialog>
@@ -445,192 +451,3 @@ export default function TeacherStoreManagement({ classroomId }: TeacherStoreMana
   );
 }
 
-// Store Item Form Component
-interface StoreItemFormProps {
-  initialData?: Partial<StoreItem>;
-  onSubmit: (data: Partial<StoreItem>) => void;
-  isLoading: boolean;
-}
-
-function StoreItemForm({ initialData, onSubmit, isLoading }: StoreItemFormProps) {
-  const [formData, setFormData] = useState({
-    title: initialData?.title || '',
-    description: initialData?.description || '',
-    basePrice: initialData?.basePrice || 0,
-    currentPrice: initialData?.currentPrice || 0,
-    itemType: initialData?.itemType || 'physical',
-    category: initialData?.category || '',
-    inventoryType: initialData?.inventoryType || 'unlimited',
-    totalQuantity: initialData?.totalQuantity || undefined,
-    maxPerStudent: initialData?.maxPerStudent || 1,
-    isRecurring: initialData?.isRecurring || false,
-    recurringInterval: initialData?.recurringInterval || undefined,
-    recurringAmount: initialData?.recurringAmount || undefined,
-    featured: initialData?.featured || false,
-    activeStatus: initialData?.activeStatus !== false,
-    tags: initialData?.tags?.join(', ') || ''
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSubmit({
-      ...formData,
-      basePrice: Number(formData.basePrice),
-      currentPrice: Number(formData.currentPrice),
-      recurringAmount: formData.recurringAmount ? Number(formData.recurringAmount) : undefined,
-      tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean)
-    });
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Basic Information */}
-      <div className="grid grid-cols-1 gap-4">
-        <div>
-          <label className="text-sm font-medium text-gray-700 mb-2 block">
-            Item Title *
-          </label>
-          <Input
-            value={formData.title}
-            onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-            placeholder="Enter item title..."
-            required
-            data-testid="input-item-title"
-          />
-        </div>
-        
-        <div>
-          <label className="text-sm font-medium text-gray-700 mb-2 block">
-            Description *
-          </label>
-          <Textarea
-            value={formData.description}
-            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-            placeholder="Describe what students will receive..."
-            rows={3}
-            required
-            data-testid="textarea-item-description"
-          />
-        </div>
-      </div>
-
-      {/* Pricing */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="text-sm font-medium text-gray-700 mb-2 block">
-            Base Price (Tokens) *
-          </label>
-          <Input
-            type="number"
-            value={formData.basePrice}
-            onChange={(e) => setFormData(prev => ({ ...prev, basePrice: Number(e.target.value) }))}
-            min="0"
-            step="0.01"
-            required
-            data-testid="input-base-price"
-          />
-        </div>
-        
-        <div>
-          <label className="text-sm font-medium text-gray-700 mb-2 block">
-            Current Price (Tokens) *
-          </label>
-          <Input
-            type="number"
-            value={formData.currentPrice}
-            onChange={(e) => setFormData(prev => ({ ...prev, currentPrice: Number(e.target.value) }))}
-            min="0"
-            step="0.01"
-            required
-            data-testid="input-current-price"
-          />
-        </div>
-      </div>
-
-      {/* Classification */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="text-sm font-medium text-gray-700 mb-2 block">
-            Item Type *
-          </label>
-          <Select value={formData.itemType} onValueChange={(value: any) => setFormData(prev => ({ ...prev, itemType: value }))}>
-            <SelectTrigger data-testid="select-item-type">
-              <SelectValue placeholder="Select type..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="physical">Physical Item</SelectItem>
-              <SelectItem value="digital">Digital Item</SelectItem>
-              <SelectItem value="privilege">Classroom Privilege</SelectItem>
-              <SelectItem value="academic_benefit">Academic Benefit</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <div>
-          <label className="text-sm font-medium text-gray-700 mb-2 block">
-            Category *
-          </label>
-          <Input
-            value={formData.category}
-            onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-            placeholder="e.g., Rewards, Supplies, Fun"
-            required
-            data-testid="input-category"
-          />
-        </div>
-      </div>
-
-      {/* Inventory */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="text-sm font-medium text-gray-700 mb-2 block">
-            Inventory Type *
-          </label>
-          <Select value={formData.inventoryType} onValueChange={(value: any) => setFormData(prev => ({ ...prev, inventoryType: value }))}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select inventory type..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="unlimited">Unlimited</SelectItem>
-              <SelectItem value="limited">Limited Quantity</SelectItem>
-              <SelectItem value="one_time">One-Time Only</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        {formData.inventoryType === 'limited' && (
-          <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">
-              Total Quantity
-            </label>
-            <Input
-              type="number"
-              value={formData.totalQuantity || ''}
-              onChange={(e) => setFormData(prev => ({ ...prev, totalQuantity: Number(e.target.value) }))}
-              min="1"
-              placeholder="Enter quantity..."
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Submit */}
-      <div className="flex justify-end gap-3 pt-4">
-        <Button type="submit" disabled={isLoading} data-testid="button-save-item">
-          {isLoading ? (
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-              className="w-4 h-4 mr-2"
-            >
-              <Package className="w-4 h-4" />
-            </motion.div>
-          ) : (
-            <Package className="w-4 h-4 mr-2" />
-          )}
-          {initialData ? 'Update Item' : 'Create Item'}
-        </Button>
-      </div>
-    </form>
-  );
-}

@@ -1162,6 +1162,190 @@ export class DatabaseStorage implements IStorage {
 
     return milestones;
   }
+
+  // PHASE 1D: DIGITAL STORE IMPLEMENTATION
+  
+  async createStoreItem(item: InsertStoreItemAdvanced): Promise<StoreItemAdvanced> {
+    const [storeItem] = await db
+      .insert(storeItemsAdvanced)
+      .values(item)
+      .returning();
+    return storeItem;
+  }
+
+  async updateStoreItem(itemId: string, updates: Partial<InsertStoreItemAdvanced>): Promise<StoreItemAdvanced> {
+    const [storeItem] = await db
+      .update(storeItemsAdvanced)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(storeItemsAdvanced.id, itemId))
+      .returning();
+    return storeItem;
+  }
+
+  async deleteStoreItem(itemId: string): Promise<void> {
+    await db.delete(storeItemsAdvanced).where(eq(storeItemsAdvanced.id, itemId));
+  }
+
+  async getStoreItems(classroomId: string): Promise<StoreItemAdvanced[]> {
+    return await db
+      .select()
+      .from(storeItemsAdvanced)
+      .where(eq(storeItemsAdvanced.classroomId, classroomId))
+      .orderBy(storeItemsAdvanced.priorityOrder, storeItemsAdvanced.createdAt);
+  }
+
+  async getStoreItem(itemId: string): Promise<StoreItemAdvanced | undefined> {
+    const [item] = await db.select().from(storeItemsAdvanced).where(eq(storeItemsAdvanced.id, itemId));
+    return item;
+  }
+
+  async getStoreItemTemplates(): Promise<Array<{
+    id: string;
+    title: string;
+    description: string;
+    suggestedPrice: number;
+    category: string;
+    itemType: string;
+    icon: string;
+    tags: string[];
+  }>> {
+    return [
+      // Academic Benefits
+      {
+        id: 'template_homework_pass',
+        title: 'Homework Pass',
+        description: 'Skip one homework assignment with no penalty',
+        suggestedPrice: 50,
+        category: 'Academic Benefits',
+        itemType: 'academic_benefit',
+        icon: '📝',
+        tags: ['homework', 'academic', 'pass']
+      },
+      {
+        id: 'template_extra_credit',
+        title: 'Extra Credit Points',
+        description: 'Add 5 bonus points to your next test',
+        suggestedPrice: 75,
+        category: 'Academic Benefits',
+        itemType: 'academic_benefit',
+        icon: '📈',
+        tags: ['extra credit', 'test', 'bonus']
+      },
+      {
+        id: 'template_retake_quiz',
+        title: 'Quiz Retake',
+        description: 'Retake your lowest quiz score',
+        suggestedPrice: 60,
+        category: 'Academic Benefits',
+        itemType: 'academic_benefit',
+        icon: '🔄',
+        tags: ['quiz', 'retake', 'second chance']
+      },
+      // Classroom Privileges
+      {
+        id: 'template_line_leader',
+        title: 'Line Leader for a Day',
+        description: 'Be the line leader for the entire day',
+        suggestedPrice: 25,
+        category: 'Classroom Privileges',
+        itemType: 'privilege',
+        icon: '👑',
+        tags: ['leader', 'responsibility', 'special']
+      },
+      {
+        id: 'template_desk_choice',
+        title: 'Choose Your Seat',
+        description: 'Pick any available seat for one week',
+        suggestedPrice: 30,
+        category: 'Classroom Privileges',
+        itemType: 'privilege',
+        icon: '🪑',
+        tags: ['seating', 'choice', 'week']
+      },
+      {
+        id: 'template_teacher_helper',
+        title: 'Teacher Assistant',
+        description: 'Help the teacher with classroom tasks for one day',
+        suggestedPrice: 40,
+        category: 'Classroom Privileges',
+        itemType: 'privilege',
+        icon: '🤝',
+        tags: ['assistant', 'helper', 'responsibility']
+      },
+      {
+        id: 'template_computer_time',
+        title: 'Extra Computer Time',
+        description: '15 minutes of free computer time',
+        suggestedPrice: 20,
+        category: 'Classroom Privileges',
+        itemType: 'privilege',
+        icon: '💻',
+        tags: ['computer', 'free time', 'technology']
+      },
+      // Physical Rewards
+      {
+        id: 'template_pencil',
+        title: 'Special Pencil',
+        description: 'A fun pencil with eraser topper',
+        suggestedPrice: 15,
+        category: 'School Supplies',
+        itemType: 'physical',
+        icon: '✏️',
+        tags: ['pencil', 'supplies', 'fun']
+      },
+      {
+        id: 'template_stickers',
+        title: 'Sticker Pack',
+        description: 'A pack of 10 fun stickers',
+        suggestedPrice: 10,
+        category: 'Rewards',
+        itemType: 'physical',
+        icon: '⭐',
+        tags: ['stickers', 'decoration', 'fun']
+      },
+      {
+        id: 'template_bookmark',
+        title: 'Custom Bookmark',
+        description: 'A personalized bookmark for reading',
+        suggestedPrice: 12,
+        category: 'School Supplies',
+        itemType: 'physical',
+        icon: '🔖',
+        tags: ['bookmark', 'reading', 'personalized']
+      },
+      // Fun Activities
+      {
+        id: 'template_music_time',
+        title: 'Choose Class Music',
+        description: 'Pick the background music for 30 minutes',
+        suggestedPrice: 35,
+        category: 'Fun Activities',
+        itemType: 'privilege',
+        icon: '🎵',
+        tags: ['music', 'choice', 'fun']
+      },
+      {
+        id: 'template_show_tell',
+        title: 'Special Show & Tell',
+        description: 'Present something special to the class',
+        suggestedPrice: 45,
+        category: 'Fun Activities',
+        itemType: 'privilege',
+        icon: '🎤',
+        tags: ['presentation', 'sharing', 'spotlight']
+      },
+      {
+        id: 'template_game_time',
+        title: 'Educational Game Time',
+        description: '20 minutes of educational games',
+        suggestedPrice: 30,
+        category: 'Fun Activities',
+        itemType: 'privilege',
+        icon: '🎮',
+        tags: ['games', 'educational', 'fun']
+      }
+    ];
+  }
 }
 
 export const storage = new DatabaseStorage();
