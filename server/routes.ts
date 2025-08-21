@@ -1,0 +1,495 @@
+import type { Express } from "express";
+import { createServer, type Server } from "http";
+import { storage } from "./storage";
+import { insertUserSchema, insertClassroomSchema, insertAssignmentSchema, insertSubmissionSchema, insertStoreItemSchema } from "@shared/schema";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import { z } from "zod";
+
+const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
+const JWT_EXPIRES_IN = "8h";
+
+// Authentication middleware
+const authenticate = async (req: any, res: any, next: any) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const user = await storage.getUser(decoded.userId);
+    if (!user) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    req.user = user;
+    next();
+  } catch (error) {
+    return res.status(401).json({ message: "Invalid token" });
+  }
+};
+
+// Generate classroom code
+function generateClassroomCode(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  for (let i = 0; i < 6; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
+export async function registerRoutes(app: Express): Promise<Server> {
+  
+  // Authentication routes
+  app.post('/api/auth/register/teacher', async (req, res) => {
+    try {
+      const { email, password, firstName, lastName } = req.body;
+      
+      if (!email || !password) {
+        return res.status(400).json({ message: "Email and password are required" });
+      }
+
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ message: "User already exists" });
+      }
+
+      // Hash password
+      const passwordHash = await bcrypt.hash(password, 12);
+
+      // Create teacher
+      const user = await storage.createUser({
+        email,
+        passwordHash,
+        role: 'teacher',
+        firstName,
+        lastName,
+        emailVerified: true,
+        accountApproved: true
+      });
+
+      res.status(201).json({ message: "Teacher registered successfully", userId: user.id });
+    } catch (error) {
+      console.error("Teacher registration error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post('/api/auth/login/teacher', async (req, res) => {
+    try {
+      const { email, password } = req.body;
+
+      if (!email || !password) {
+        return res.status(400).json({ message: "Email and password are required" });
+      }
+
+      // Find teacher
+      const user = await storage.getUserByEmail(email);
+      if (!user || user.role !== 'teacher' || !user.passwordHash) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      // Verify password
+      const isValidPassword = await bcrypt.compare(password, user.passwordHash);
+      if (!isValidPassword) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      // Generate JWT
+      const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+
+      // Update last login
+      await storage.updateUser(user.id, { lastLogin: new Date() });
+
+      res.json({
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          profileImageUrl: user.profileImageUrl
+        }
+      });
+    } catch (error) {
+      console.error("Teacher login error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post('/api/auth/login/student', async (req, res) => {
+    try {
+      const { nickname, pin, classroomCode } = req.body;
+
+      if (!nickname || !pin || !classroomCode) {
+        return res.status(400).json({ message: "Nickname, PIN, and classroom code are required" });
+      }
+
+      // Find classroom
+      const classroom = await storage.getClassroomByCode(classroomCode);
+      if (!classroom) {
+        return res.status(401).json({ message: "Invalid classroom code" });
+      }
+
+      // Find student in this classroom
+      const user = await storage.getUserByNickname(nickname, classroom.id);
+      if (!user || user.role !== 'student' || !user.pinHash) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      // Verify PIN
+      const isValidPin = await bcrypt.compare(pin, user.pinHash);
+      if (!isValidPin) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      // Generate JWT
+      const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+
+      // Update last login
+      await storage.updateUser(user.id, { lastLogin: new Date() });
+
+      res.json({
+        token,
+        user: {
+          id: user.id,
+          nickname: user.nickname,
+          role: user.role,
+          tokens: user.tokens,
+          level: user.level,
+          profileImageUrl: user.profileImageUrl
+        },
+        classroom: {
+          id: classroom.id,
+          name: classroom.name,
+          code: classroom.code
+        }
+      });
+    } catch (error) {
+      console.error("Student login error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post('/api/auth/join-classroom', async (req, res) => {
+    try {
+      const { nickname, pin, classroomCode } = req.body;
+
+      if (!nickname || !pin || !classroomCode) {
+        return res.status(400).json({ message: "All fields are required" });
+      }
+
+      // Find classroom
+      const classroom = await storage.getClassroomByCode(classroomCode);
+      if (!classroom) {
+        return res.status(400).json({ message: "Invalid classroom code" });
+      }
+
+      // Check if nickname is already taken in this classroom
+      const existingStudent = await storage.getUserByNickname(nickname, classroom.id);
+      if (existingStudent) {
+        return res.status(400).json({ message: "Nickname already taken in this classroom" });
+      }
+
+      // Hash PIN
+      const pinHash = await bcrypt.hash(pin, 12);
+
+      // Create student
+      const user = await storage.createUser({
+        nickname,
+        pinHash,
+        role: 'student',
+        isActive: true
+      });
+
+      // Join classroom
+      await storage.joinClassroom(user.id, classroom.id);
+
+      // Generate JWT
+      const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+
+      res.status(201).json({
+        token,
+        user: {
+          id: user.id,
+          nickname: user.nickname,
+          role: user.role,
+          tokens: user.tokens,
+          level: user.level
+        },
+        classroom: {
+          id: classroom.id,
+          name: classroom.name,
+          code: classroom.code
+        }
+      });
+    } catch (error) {
+      console.error("Student join error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get('/api/auth/me', authenticate, async (req: any, res) => {
+    res.json({
+      user: {
+        id: req.user.id,
+        email: req.user.email,
+        nickname: req.user.nickname,
+        firstName: req.user.firstName,
+        lastName: req.user.lastName,
+        role: req.user.role,
+        tokens: req.user.tokens,
+        level: req.user.level,
+        profileImageUrl: req.user.profileImageUrl
+      }
+    });
+  });
+
+  // Classroom routes
+  app.post('/api/classrooms', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ message: "Only teachers can create classrooms" });
+      }
+
+      const { name, description } = req.body;
+      if (!name) {
+        return res.status(400).json({ message: "Classroom name is required" });
+      }
+
+      let code;
+      let attempts = 0;
+      do {
+        code = generateClassroomCode();
+        const existing = await storage.getClassroomByCode(code);
+        if (!existing) break;
+        attempts++;
+      } while (attempts < 10);
+
+      if (attempts >= 10) {
+        return res.status(500).json({ message: "Unable to generate unique classroom code" });
+      }
+
+      const classroom = await storage.createClassroom({
+        name,
+        description,
+        code,
+        teacherId: req.user.id
+      });
+
+      res.status(201).json(classroom);
+    } catch (error) {
+      console.error("Create classroom error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get('/api/classrooms', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role === 'teacher') {
+        const classrooms = await storage.getClassroomsByTeacher(req.user.id);
+        res.json(classrooms);
+      } else if (req.user.role === 'student') {
+        const classrooms = await storage.getStudentClassrooms(req.user.id);
+        res.json(classrooms);
+      } else {
+        res.status(403).json({ message: "Access denied" });
+      }
+    } catch (error) {
+      console.error("Get classrooms error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get('/api/classrooms/:id', authenticate, async (req: any, res) => {
+    try {
+      const classroom = await storage.getClassroom(req.params.id);
+      if (!classroom) {
+        return res.status(404).json({ message: "Classroom not found" });
+      }
+
+      // Check access
+      if (req.user.role === 'teacher' && classroom.teacherId !== req.user.id) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      res.json(classroom);
+    } catch (error) {
+      console.error("Get classroom error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get('/api/classrooms/:id/students', authenticate, async (req: any, res) => {
+    try {
+      const classroom = await storage.getClassroom(req.params.id);
+      if (!classroom) {
+        return res.status(404).json({ message: "Classroom not found" });
+      }
+
+      // Check access
+      if (req.user.role === 'teacher' && classroom.teacherId !== req.user.id) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const students = await storage.getClassroomStudents(req.params.id);
+      res.json(students);
+    } catch (error) {
+      console.error("Get classroom students error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get('/api/classrooms/:id/stats', authenticate, async (req: any, res) => {
+    try {
+      const classroom = await storage.getClassroom(req.params.id);
+      if (!classroom) {
+        return res.status(404).json({ message: "Classroom not found" });
+      }
+
+      // Check access
+      if (req.user.role === 'teacher' && classroom.teacherId !== req.user.id) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const stats = await storage.getClassroomStats(req.params.id);
+      res.json(stats);
+    } catch (error) {
+      console.error("Get classroom stats error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get('/api/classrooms/:id/leaderboard', authenticate, async (req: any, res) => {
+    try {
+      const classroom = await storage.getClassroom(req.params.id);
+      if (!classroom) {
+        return res.status(404).json({ message: "Classroom not found" });
+      }
+
+      const limit = parseInt(req.query.limit as string) || 10;
+      const leaderboard = await storage.getLeaderboard(req.params.id, limit);
+      res.json(leaderboard);
+    } catch (error) {
+      console.error("Get leaderboard error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Assignment routes
+  app.get('/api/classrooms/:id/assignments', authenticate, async (req: any, res) => {
+    try {
+      const assignments = await storage.getAssignmentsByClassroom(req.params.id);
+      res.json(assignments);
+    } catch (error) {
+      console.error("Get assignments error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post('/api/assignments', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ message: "Only teachers can create assignments" });
+      }
+
+      const assignment = await storage.createAssignment({
+        ...req.body,
+        teacherId: req.user.id
+      });
+
+      res.status(201).json(assignment);
+    } catch (error) {
+      console.error("Create assignment error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Store routes
+  app.get('/api/classrooms/:id/store', authenticate, async (req: any, res) => {
+    try {
+      const items = await storage.getStoreItemsByClassroom(req.params.id);
+      res.json(items);
+    } catch (error) {
+      console.error("Get store items error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post('/api/store-items', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ message: "Only teachers can create store items" });
+      }
+
+      const item = await storage.createStoreItem(req.body);
+      res.status(201).json(item);
+    } catch (error) {
+      console.error("Create store item error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.patch('/api/store-items/:id', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ message: "Only teachers can update store items" });
+      }
+
+      const item = await storage.updateStoreItem(req.params.id, req.body);
+      res.json(item);
+    } catch (error) {
+      console.error("Update store item error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Badge routes
+  app.get('/api/classrooms/:id/badges', authenticate, async (req: any, res) => {
+    try {
+      const badges = await storage.getBadgesByClassroom(req.params.id);
+      res.json(badges);
+    } catch (error) {
+      console.error("Get badges error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get('/api/students/:id/badges', authenticate, async (req: any, res) => {
+    try {
+      const badges = await storage.getStudentBadges(req.params.id);
+      res.json(badges);
+    } catch (error) {
+      console.error("Get student badges error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Challenge routes
+  app.get('/api/classrooms/:id/challenges', authenticate, async (req: any, res) => {
+    try {
+      const challenges = await storage.getChallengesByClassroom(req.params.id);
+      res.json(challenges);
+    } catch (error) {
+      console.error("Get challenges error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get('/api/students/:studentId/challenges/:classroomId', authenticate, async (req: any, res) => {
+    try {
+      const progress = await storage.getStudentChallengeProgress(req.params.studentId, req.params.classroomId);
+      res.json(progress);
+    } catch (error) {
+      console.error("Get student challenges error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  const httpServer = createServer(app);
+  return httpServer;
+}

@@ -1,0 +1,329 @@
+import { useState } from "react";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { setAuthToken } from "@/lib/authUtils";
+import { useLocation } from "wouter";
+import { motion } from "framer-motion";
+
+export default function AuthPage() {
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
+
+  const handleTeacherLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    const formData = new FormData(e.currentTarget as HTMLFormElement);
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+
+    try {
+      const response = await apiRequest('POST', '/api/auth/login/teacher', {
+        email,
+        password
+      });
+
+      const data = await response.json();
+      setAuthToken(data.token);
+      
+      toast({
+        title: "Welcome back!",
+        description: `Hello ${data.user.firstName}!`,
+      });
+
+      setLocation('/');
+    } catch (error) {
+      toast({
+        title: "Login failed",
+        description: error instanceof Error ? error.message : "Invalid credentials",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleStudentLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    const formData = new FormData(e.currentTarget as HTMLFormElement);
+    const nickname = formData.get('nickname') as string;
+    const pin = formData.get('pin') as string;
+    const classroomCode = formData.get('classroomCode') as string;
+
+    try {
+      const response = await apiRequest('POST', '/api/auth/login/student', {
+        nickname,
+        pin,
+        classroomCode
+      });
+
+      const data = await response.json();
+      setAuthToken(data.token);
+      
+      toast({
+        title: "Welcome back!",
+        description: `Hello ${data.user.nickname}!`,
+      });
+
+      setLocation('/');
+    } catch (error) {
+      toast({
+        title: "Login failed",
+        description: error instanceof Error ? error.message : "Invalid credentials",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleStudentJoin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsJoining(true);
+
+    const formData = new FormData(e.currentTarget as HTMLFormElement);
+    const nickname = formData.get('nickname') as string;
+    const pin = formData.get('pin') as string;
+    const classroomCode = formData.get('classroomCode') as string;
+
+    try {
+      const response = await apiRequest('POST', '/api/auth/join-classroom', {
+        nickname,
+        pin,
+        classroomCode
+      });
+
+      const data = await response.json();
+      setAuthToken(data.token);
+      
+      toast({
+        title: "Welcome to the classroom!",
+        description: `Hello ${data.user.nickname}! You've joined ${data.classroom.name}`,
+      });
+
+      setLocation('/');
+    } catch (error) {
+      toast({
+        title: "Join failed",
+        description: error instanceof Error ? error.message : "Unable to join classroom",
+        variant: "destructive",
+      });
+    } finally {
+      setIsJoining(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 p-4">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-md"
+      >
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center text-white font-bold text-2xl mx-auto mb-4">
+            BC
+          </div>
+          <h1 className="text-3xl font-bold text-gray-800">BizCoin</h1>
+          <p className="text-gray-600 mt-2">Classroom Token Economy Platform</p>
+        </div>
+
+        <Card className="shadow-2xl border-0">
+          <CardHeader className="pb-4">
+            <Tabs defaultValue="teacher" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-6">
+                <TabsTrigger value="teacher" data-testid="tab-teacher">
+                  <i className="fas fa-chalkboard-teacher mr-2"></i>
+                  Teacher
+                </TabsTrigger>
+                <TabsTrigger value="student" data-testid="tab-student">
+                  <i className="fas fa-user-graduate mr-2"></i>
+                  Student
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="teacher" className="space-y-6">
+                <div className="text-center">
+                  <h2 className="text-2xl font-bold text-gray-800">Teacher Login</h2>
+                </div>
+                
+                <form onSubmit={handleTeacherLogin} className="space-y-4">
+                  <div>
+                    <Label htmlFor="teacher-email">Email</Label>
+                    <Input
+                      id="teacher-email"
+                      name="email"
+                      type="email"
+                      placeholder="teacher@school.edu"
+                      required
+                      data-testid="input-teacher-email"
+                      className="mt-1"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="teacher-password">Password</Label>
+                    <Input
+                      id="teacher-password"
+                      name="password"
+                      type="password"
+                      placeholder="••••••••"
+                      required
+                      data-testid="input-teacher-password"
+                      className="mt-1"
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={isLoading}
+                    data-testid="button-teacher-login"
+                  >
+                    {isLoading ? "Signing in..." : "Sign In"}
+                  </Button>
+                </form>
+              </TabsContent>
+
+              <TabsContent value="student" className="space-y-6">
+                <Tabs defaultValue="login" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="login">Login</TabsTrigger>
+                    <TabsTrigger value="join">Join Class</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="login" className="space-y-4 mt-6">
+                    <div className="text-center">
+                      <h2 className="text-2xl font-bold text-gray-800">Student Login</h2>
+                    </div>
+                    
+                    <form onSubmit={handleStudentLogin} className="space-y-4">
+                      <div>
+                        <Label htmlFor="student-classroom-code">Classroom Code</Label>
+                        <Input
+                          id="student-classroom-code"
+                          name="classroomCode"
+                          placeholder="ABC123"
+                          maxLength={6}
+                          required
+                          data-testid="input-student-classroom-code"
+                          className="mt-1 text-center text-lg font-mono uppercase"
+                          onChange={(e) => e.target.value = e.target.value.toUpperCase()}
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="student-nickname">Nickname</Label>
+                        <Input
+                          id="student-nickname"
+                          name="nickname"
+                          placeholder="Your nickname"
+                          required
+                          data-testid="input-student-nickname"
+                          className="mt-1"
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="student-pin">PIN</Label>
+                        <Input
+                          id="student-pin"
+                          name="pin"
+                          type="password"
+                          placeholder="••••"
+                          maxLength={4}
+                          required
+                          data-testid="input-student-pin"
+                          className="mt-1 text-center text-lg"
+                        />
+                      </div>
+
+                      <Button
+                        type="submit"
+                        className="w-full bg-purple-600 hover:bg-purple-700"
+                        disabled={isLoading}
+                        data-testid="button-student-login"
+                      >
+                        {isLoading ? "Signing in..." : "Sign In"}
+                      </Button>
+                    </form>
+                  </TabsContent>
+
+                  <TabsContent value="join" className="space-y-4 mt-6">
+                    <div className="text-center">
+                      <h2 className="text-2xl font-bold text-gray-800">Join Classroom</h2>
+                      <p className="text-gray-600 text-sm mt-1">Create your account and join</p>
+                    </div>
+                    
+                    <form onSubmit={handleStudentJoin} className="space-y-4">
+                      <div>
+                        <Label htmlFor="join-classroom-code">Classroom Code</Label>
+                        <Input
+                          id="join-classroom-code"
+                          name="classroomCode"
+                          placeholder="ABC123"
+                          maxLength={6}
+                          required
+                          data-testid="input-join-classroom-code"
+                          className="mt-1 text-center text-lg font-mono uppercase"
+                          onChange={(e) => e.target.value = e.target.value.toUpperCase()}
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="join-nickname">Choose Nickname</Label>
+                        <Input
+                          id="join-nickname"
+                          name="nickname"
+                          placeholder="Your nickname"
+                          required
+                          data-testid="input-join-nickname"
+                          className="mt-1"
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="join-pin">Create PIN</Label>
+                        <Input
+                          id="join-pin"
+                          name="pin"
+                          type="password"
+                          placeholder="••••"
+                          maxLength={4}
+                          pattern="[0-9]{4}"
+                          required
+                          data-testid="input-join-pin"
+                          className="mt-1 text-center text-lg"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">4-digit PIN (numbers only)</p>
+                      </div>
+
+                      <Button
+                        type="submit"
+                        className="w-full bg-green-600 hover:bg-green-700"
+                        disabled={isJoining}
+                        data-testid="button-join-classroom"
+                      >
+                        {isJoining ? "Joining..." : "Join Classroom"}
+                      </Button>
+                    </form>
+                  </TabsContent>
+                </Tabs>
+              </TabsContent>
+            </Tabs>
+          </CardHeader>
+        </Card>
+      </motion.div>
+    </div>
+  );
+}
