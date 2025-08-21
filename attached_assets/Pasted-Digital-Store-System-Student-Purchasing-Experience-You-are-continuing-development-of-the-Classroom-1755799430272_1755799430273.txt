@@ -1,0 +1,212 @@
+Digital Store System & Student Purchasing Experience
+You are continuing development of the Classroom Token Economy Platform. You have successfully completed Phase 1A (Authentication & User Management), Phase 1B (Classroom Infrastructure), and Phase 1C (Token Economy Foundation). Now you're building Phase 1D, which creates the digital store system that transforms earned tokens into meaningful rewards and teaches essential consumer decision-making skills.
+Understanding the Educational Psychology Behind the Store:
+The digital store you're building serves as more than just a reward system - it's a sophisticated educational tool that teaches students about consumer choice, opportunity cost, budgeting, and delayed gratification. Every interaction with the store should reinforce these learning objectives while maintaining the engaging, game-like experience that motivates continued participation. Students should feel the weight of their purchasing decisions and understand that their token spending choices have real consequences for their future opportunities.
+The Store as Economic Simulation:
+Consider how real-world economics work when people make purchasing decisions. Consumers evaluate available options, compare prices against their available resources, consider their immediate needs versus long-term goals, and experience both satisfaction and occasional regret based on their choices. Your digital store should simulate these authentic economic experiences in age-appropriate ways that prepare students for real-world financial decision-making throughout their lives.
+Mobile-First Design Considerations:
+Students will browse your store primarily on smartphones during brief moments between classes, during lunch periods, or while waiting for activities to begin. The browsing experience must be optimized for quick decision-making with clear product information, prominent pricing, and smooth purchasing flows that work reliably even with unstable school internet connections. Every interface element should communicate value and scarcity in ways that feel authentic rather than manipulative.
+PHASE 1D OBJECTIVES:
+Build a comprehensive digital store ecosystem that allows teachers to create and manage meaningful reward options while providing students with engaging shopping experiences that reinforce positive economic behaviors and decision-making skills.
+Feature 1: Comprehensive Store Management System for Teachers
+Create sophisticated administrative tools that allow teachers to curate store inventories that align with their educational goals and classroom management strategies. Teachers need the flexibility to offer both immediate gratifications and longer-term rewards that encourage sustained positive behavior over weeks or months.
+Design an intuitive item creation interface that guides teachers through establishing comprehensive product catalogs. Each item should include detailed descriptions that help students understand exactly what they're purchasing, high-quality images when appropriate, and clear availability information that creates authentic scarcity without causing student frustration.
+Build flexible pricing systems that allow teachers to implement sophisticated economic concepts through their store management. Teachers should be able to set base prices, create temporary sales that teach students about market fluctuations, and establish bulk discounts that encourage collaborative purchasing decisions among student groups.
+Create inventory management tools that handle both unlimited digital items and limited physical rewards. When teachers offer limited quantities of popular items, the system should create appropriate urgency while ensuring that all students have fair opportunities to earn desirable rewards through sustained effort.
+Include comprehensive categorization systems that allow teachers to organize store items in ways that reinforce their pedagogical objectives. Categories might include Academic Benefits that directly support learning outcomes, Classroom Privileges that reward positive behavior, Physical Rewards that provide tangible satisfaction, and Digital Items that introduce students to subscription-based economic models.
+Feature 2: Engaging Student Shopping Experience
+Develop shopping interfaces that make browsing and purchasing feel rewarding while continuously reinforcing the connection between student effort and available opportunities. The shopping experience should build anticipation, encourage thoughtful decision-making, and provide satisfaction when students make purchases they've earned through sustained positive behavior.
+Create visually appealing product browsing that works elegantly on mobile screens with clear pricing information, availability status, and purchase buttons that feel substantial and rewarding to tap. Students should be able to quickly identify items they can afford, items they're working toward, and special opportunities that might be available for limited times.
+Build comprehensive product detail pages that provide students with all the information they need to make informed purchasing decisions. Include clear descriptions of what students will receive, when they can expect delivery or access, and any ongoing obligations for digital subscription items.
+Design shopping cart functionality that helps students understand the total cost of multiple items while providing opportunities to reconsider their choices before finalizing purchases. The cart experience should reinforce budgeting concepts by showing students how their purchases will affect their remaining token balance.
+Create wish list capabilities that allow students to save items they're interested in purchasing once they earn sufficient tokens. Wish lists serve important educational functions by encouraging goal-setting and delayed gratification while providing teachers with insights into student motivations and interests.
+Feature 3: Digital Subscription and Recurring Purchase System
+Implement sophisticated recurring transaction capabilities that teach students about ongoing financial obligations and subscription-based economic models they'll encounter throughout their adult lives. This system introduces complex economic concepts in controlled, educational environments where mistakes have manageable consequences.
+Build subscription management tools that clearly communicate ongoing costs and allow students to understand exactly how recurring purchases will affect their future token earning requirements. Students should receive advance notifications before each recurring charge with clear options to cancel subscriptions they can no longer afford or no longer value.
+Create flexible billing cycles that teachers can configure based on their classroom schedules and token economy pacing. Some subscriptions might charge weekly to align with typical token earning patterns, while others might use monthly cycles that encourage longer-term financial planning and budgeting skills.
+Design subscription value communications that help students understand the total cost of ownership for recurring purchases. Students should be able to easily calculate how many tokens they'll need to earn over time to maintain their chosen subscriptions, reinforcing mathematical skills alongside economic understanding.
+Include subscription analytics that provide both students and teachers with insights into spending patterns and financial decision-making trends. These analytics become valuable tools for individual student counseling and classroom discussions about consumer choice and financial responsibility.
+Feature 4: Purchase Transaction Processing and Receipt System
+Create comprehensive purchasing workflows that handle the complex transaction processing requirements while providing students with clear confirmation and record-keeping that reinforces the reality of their economic choices.
+Implement atomic purchase processing that ensures tokens are deducted accurately even when multiple students are making simultaneous purchases or when network connections are unstable. Students should never lose tokens to system glitches or experience duplicate charges that undermine their confidence in the economic simulation.
+Build detailed receipt generation that provides students with clear records of their purchases including item descriptions, prices paid, purchase timestamps, and remaining account balances. These receipts serve both practical record-keeping functions and educational purposes by reinforcing the permanence of economic decisions.
+Create purchase confirmation workflows that give students opportunities to review their decisions before finalizing transactions. Confirmation screens should clearly display what students are buying, how much they're spending, and how the purchase will affect their remaining balance, encouraging thoughtful decision-making rather than impulsive spending.
+Design purchase delivery systems that handle different types of rewards appropriately. Digital items should be delivered immediately with clear access instructions, while physical rewards should generate appropriate notifications for teachers and provide students with clear expectations about when and how they'll receive their purchases.
+DATABASE SCHEMA EXPANSION:
+Extend your existing database with these carefully designed tables that support both immediate store functionality and the advanced economic features planned for future phases:
+sql-- Comprehensive store item management
+CREATE TABLE store_items (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    classroom_id UUID REFERENCES classrooms(id) ON DELETE CASCADE,
+    title VARCHAR(150) NOT NULL,
+    description TEXT NOT NULL,
+    base_price DECIMAL(10,2) NOT NULL CHECK (base_price > 0),
+    current_price DECIMAL(10,2) NOT NULL CHECK (current_price > 0), -- Allows for sales/discounts
+    
+    -- Item classification and behavior
+    item_type VARCHAR(30) NOT NULL CHECK (item_type IN ('physical', 'digital', 'privilege', 'academic_benefit')),
+    category VARCHAR(50) NOT NULL,
+    subcategory VARCHAR(50),
+    
+    -- Inventory and availability management
+    inventory_type VARCHAR(20) NOT NULL CHECK (inventory_type IN ('unlimited', 'limited', 'one_time')),
+    total_quantity INTEGER, -- NULL for unlimited items
+    available_quantity INTEGER, -- Current available stock
+    max_per_student INTEGER DEFAULT 1, -- Purchase limits per student
+    
+    -- Digital subscription configuration
+    is_recurring BOOLEAN DEFAULT false,
+    recurring_interval VARCHAR(20) CHECK (recurring_interval IN ('weekly', 'biweekly', 'monthly') OR recurring_interval IS NULL),
+    recurring_amount DECIMAL(10,2), -- Amount charged per interval
+    trial_period_days INTEGER DEFAULT 0,
+    
+    -- Visual and organizational elements
+    image_url VARCHAR(500),
+    color_theme VARCHAR(7), -- Hex color for UI theming
+    priority_order INTEGER DEFAULT 0, -- For featured item ordering
+    
+    -- Availability scheduling
+    available_from TIMESTAMP,
+    available_until TIMESTAMP,
+    
+    -- Status and metadata
+    active_status BOOLEAN DEFAULT true,
+    featured BOOLEAN DEFAULT false,
+    tags TEXT[], -- Searchable keywords
+    metadata JSONB DEFAULT '{}', -- Flexible additional configuration
+    
+    created_by UUID REFERENCES users(id), -- Teacher who created the item
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Student purchase transaction records
+CREATE TABLE store_purchases (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    student_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    classroom_id UUID REFERENCES classrooms(id) ON DELETE CASCADE,
+    item_id UUID REFERENCES store_items(id) ON DELETE RESTRICT, -- Keep purchase history even if item deleted
+    
+    -- Purchase details
+    quantity INTEGER DEFAULT 1 CHECK (quantity > 0),
+    unit_price DECIMAL(10,2) NOT NULL, -- Price at time of purchase
+    total_amount DECIMAL(10,2) NOT NULL,
+    
+    -- Transaction processing
+    transaction_id UUID REFERENCES token_transactions(id), -- Link to token deduction
+    purchase_status VARCHAR(20) DEFAULT 'completed' CHECK (purchase_status IN ('pending', 'completed', 'delivered', 'refunded', 'cancelled')),
+    
+    -- Delivery and fulfillment
+    delivery_method VARCHAR(30), -- 'immediate', 'teacher_approval', 'physical_pickup'
+    delivered_at TIMESTAMP,
+    delivery_notes TEXT,
+    
+    -- Subscription management
+    is_subscription BOOLEAN DEFAULT false,
+    subscription_status VARCHAR(20) CHECK (subscription_status IN ('active', 'cancelled', 'expired') OR subscription_status IS NULL),
+    next_billing_date TIMESTAMP,
+    subscription_cancelled_at TIMESTAMP,
+    
+    purchase_date TIMESTAMP DEFAULT NOW(),
+    academic_period VARCHAR(20)
+);
+
+-- Student wishlists for goal-setting and planning
+CREATE TABLE student_wishlists (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    student_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    classroom_id UUID REFERENCES classrooms(id) ON DELETE CASCADE,
+    item_id UUID REFERENCES store_items(id) ON DELETE CASCADE,
+    priority_rank INTEGER DEFAULT 1, -- Student's priority ordering
+    target_purchase_date DATE, -- When student hopes to afford the item
+    notes TEXT, -- Student's personal notes about the item
+    added_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(student_id, classroom_id, item_id) -- Prevent duplicate wishlist entries
+);
+
+-- Store analytics for educational insights
+CREATE TABLE store_analytics_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    student_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    classroom_id UUID REFERENCES classrooms(id) ON DELETE CASCADE,
+    item_id UUID REFERENCES store_items(id) ON DELETE CASCADE,
+    event_type VARCHAR(30) NOT NULL, -- 'viewed', 'added_to_wishlist', 'purchased', 'subscription_renewed'
+    event_metadata JSONB DEFAULT '{}',
+    event_timestamp TIMESTAMP DEFAULT NOW()
+);
+API ENDPOINTS TO IMPLEMENT:
+Design these endpoints with careful attention to mobile performance and the complex state management required for economic transactions:
+-- Store Browsing and Discovery
+GET /api/store/classroom/:classroomId
+- Returns paginated store catalog with filtering and sorting options
+- Includes student-specific affordability indicators and wishlist status
+- Optimized for mobile browsing with image optimization
+
+GET /api/store/items/:itemId/details
+- Comprehensive item information including purchase history and reviews
+- Student-specific information like affordability timeline and purchase limits
+
+GET /api/store/categories/classroom/:classroomId
+- Returns organized category structure with item counts
+- Powers navigation and filtering interfaces
+
+-- Student Shopping Experience
+POST /api/store/wishlist/add
+- Body: { itemId, priorityRank, targetDate, notes }
+- Adds items to student wishlist with goal-setting information
+
+GET /api/store/wishlist/student/:studentId/classroom/:classroomId
+- Returns student's wishlist with affordability analysis
+- Includes progress toward earning sufficient tokens
+
+POST /api/store/purchase
+- Body: { itemId, quantity, confirmationToken }
+- Processes purchase with atomic token deduction
+- Returns detailed receipt and delivery information
+
+GET /api/store/purchases/student/:studentId/classroom/:classroomId
+- Purchase history with delivery status and subscription management
+- Supports purchase analytics and spending pattern analysis
+
+-- Teacher Store Management
+POST /api/store/items
+- Body: Complete item configuration including pricing and availability
+- Creates new store items with validation and image processing
+
+PUT /api/store/items/:itemId
+- Updates existing items with price change tracking
+- Handles inventory adjustments and availability modifications
+
+GET /api/store/analytics/classroom/:classroomId
+- Store performance metrics including popular items and student engagement
+- Purchase pattern analysis for educational insights
+
+-- Subscription Management
+GET /api/store/subscriptions/student/:studentId
+- Active subscription management with billing schedules
+- Cancellation options and cost projections
+
+POST /api/store/subscriptions/:subscriptionId/cancel
+- Subscription cancellation with confirmation workflow
+- Maintains access through current billing period
+Mobile-First UI Components:
+Build these specific interface elements with exceptional attention to mobile usability and the psychological aspects of consumer decision-making:
+Create store browsing interfaces that make discovering new items feel exciting while clearly communicating pricing and affordability information. Product cards should display essential information at a glance with smooth transitions to detailed views that provide comprehensive purchase decision support.
+Design shopping cart experiences that reinforce budgeting concepts through clear total calculations and remaining balance displays. The cart should feel substantial and important, helping students understand the weight of their purchasing decisions without creating anxiety about spending their hard-earned tokens.
+Build wishlist interfaces that encourage goal-setting and financial planning through visual progress indicators and affordability timelines. Students should be able to see exactly how much more they need to earn to afford desired items, reinforcing the connection between effort and reward.
+Create subscription management interfaces that clearly communicate ongoing costs and provide easy cancellation options. Students should understand exactly what they're committing to with subscription purchases while feeling confident they can manage their financial obligations responsibly.
+Integration with Previous Phases:
+Seamlessly connect the store system with your existing token economy by creating automatic transaction records for all purchases and ensuring that store spending properly updates student wallet balances and transaction histories.
+Enhance your classroom analytics with store-related metrics that help teachers understand student motivation patterns and adjust their reward strategies based on purchasing behavior and item popularity.
+Update your notification systems to support store-related communications including new item announcements, subscription billing reminders, and purchase confirmations that reinforce positive purchasing decisions.
+Testing Strategy:
+Implement comprehensive testing that validates both the technical accuracy of purchase processing and the educational effectiveness of the shopping experience across different student spending patterns and teacher store management approaches.
+Test purchase workflows under various network conditions and concurrent usage scenarios to ensure that transactions are processed accurately even when multiple students are making simultaneous purchases during popular shopping periods.
+Verify that subscription billing processes work correctly across different time periods and handle edge cases like students who can't afford recurring charges or items that become unavailable during active subscriptions.
+Success Criteria for Phase 1D:
+This phase is complete when students can browse store catalogs through engaging mobile interfaces that make shopping feel rewarding while clearly communicating pricing and availability information.
+Teachers should be able to create and manage store inventories efficiently with comprehensive tools for pricing, categorization, and availability management that support their educational objectives and classroom management strategies.
+The purchase processing system should handle all transaction types accurately with proper token deductions, receipt generation, and delivery management that maintains student confidence in the economic simulation.
+Students should be able to manage wishlists and subscriptions through intuitive interfaces that reinforce financial planning concepts and provide clear information about ongoing obligations and future earning requirements.
+Your store system should provide immediate educational value through authentic consumer decision-making experiences while establishing the commercial infrastructure needed for the advanced marketplace and peer-to-peer trading features planned for future phases.
+Build this digital commerce platform with careful attention to the balance between engagement and education, ensuring that every purchase decision reinforces positive economic behaviors and financial literacy concepts that students will apply throughout their lives.

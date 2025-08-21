@@ -19,6 +19,11 @@ import {
   tokenCategories,
   teacherAwardPresets,
   studentMilestones,
+  // Phase 1D Digital Store Tables
+  storeItemsAdvanced,
+  storePurchases,
+  studentWishlists,
+  storeAnalytics,
   type User,
   type InsertUser,
   type Classroom,
@@ -53,7 +58,16 @@ import {
   type TeacherAwardPreset,
   type InsertTeacherAwardPreset,
   type StudentMilestone,
-  type InsertStudentMilestone
+  type InsertStudentMilestone,
+  // Phase 1D Digital Store Types
+  type StoreItemAdvanced,
+  type InsertStoreItemAdvanced,
+  type StorePurchase,
+  type InsertStorePurchase,
+  type StudentWishlist,
+  type InsertStudentWishlist,
+  type StoreAnalytics,
+  type InsertStoreAnalytics
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, and, sql, count } from "drizzle-orm";
@@ -186,6 +200,68 @@ export interface IStorage {
   createMilestone(milestone: InsertStudentMilestone): Promise<StudentMilestone>;
   getStudentMilestones(studentId: string, classroomId: string): Promise<StudentMilestone[]>;
   checkAndCreateMilestones(studentId: string, classroomId: string, newBalance: number): Promise<StudentMilestone[]>;
+
+  // PHASE 1D: DIGITAL STORE OPERATIONS
+  
+  // Store Item Management (Teacher)
+  createStoreItem(item: InsertStoreItemAdvanced): Promise<StoreItemAdvanced>;
+  updateStoreItem(itemId: string, updates: Partial<InsertStoreItemAdvanced>): Promise<StoreItemAdvanced>;
+  deleteStoreItem(itemId: string): Promise<void>;
+  getStoreItems(classroomId: string, filters?: {
+    category?: string;
+    itemType?: string;
+    activeOnly?: boolean;
+    featured?: boolean;
+  }): Promise<StoreItemAdvanced[]>;
+  getStoreItem(itemId: string): Promise<StoreItemAdvanced | undefined>;
+  
+  // Store Inventory Management
+  updateItemInventory(itemId: string, quantityChange: number): Promise<StoreItemAdvanced>;
+  checkItemAvailability(itemId: string, requestedQuantity: number): Promise<boolean>;
+  
+  // Student Shopping Experience
+  getAvailableStoreItems(classroomId: string, studentId: string): Promise<StoreItemAdvanced[]>;
+  getItemsInPriceRange(classroomId: string, maxPrice: number): Promise<StoreItemAdvanced[]>;
+  
+  // Purchase Processing
+  createPurchase(purchase: InsertStorePurchase): Promise<StorePurchase>;
+  processPurchase(data: {
+    studentId: string;
+    classroomId: string;
+    itemId: string;
+    quantity: number;
+  }): Promise<{ purchase: StorePurchase; transaction: TokenTransaction; updatedWallet: StudentWallet }>;
+  
+  // Purchase History and Management
+  getStudentPurchases(studentId: string, classroomId: string, limit?: number): Promise<(StorePurchase & { item: StoreItemAdvanced })[]>;
+  getPurchaseById(purchaseId: string): Promise<(StorePurchase & { item: StoreItemAdvanced; student: User }) | undefined>;
+  updatePurchaseStatus(purchaseId: string, status: string, deliveryNotes?: string): Promise<StorePurchase>;
+  
+  // Wishlist Management
+  addToWishlist(wishlistItem: InsertStudentWishlist): Promise<StudentWishlist>;
+  removeFromWishlist(studentId: string, itemId: string): Promise<void>;
+  getStudentWishlist(studentId: string, classroomId: string): Promise<(StudentWishlist & { item: StoreItemAdvanced })[]>;
+  updateWishlistPriority(wishlistId: string, priority: number): Promise<StudentWishlist>;
+  
+  // Subscription Management
+  createSubscription(purchaseId: string, recurringData: {
+    interval: string;
+    amount: number;
+    nextBillingDate: Date;
+  }): Promise<StorePurchase>;
+  processRecurringBilling(subscriptionId: string): Promise<{ success: boolean; transaction?: TokenTransaction }>;
+  cancelSubscription(subscriptionId: string, reason?: string): Promise<StorePurchase>;
+  getActiveSubscriptions(studentId: string, classroomId: string): Promise<StorePurchase[]>;
+  
+  // Store Analytics
+  trackItemView(classroomId: string, itemId: string, studentId: string): Promise<void>;
+  recordItemInteraction(classroomId: string, itemId: string, action: 'view' | 'wishlist_add' | 'purchase'): Promise<void>;
+  getStoreAnalytics(classroomId: string, itemId?: string, dateRange?: { start: Date; end: Date }): Promise<StoreAnalytics[]>;
+  
+  // Teacher Store Insights
+  getPopularItems(classroomId: string, limit?: number): Promise<(StoreItemAdvanced & { purchaseCount: number; revenue: number })[]>;
+  getStoreRevenue(classroomId: string, period: 'week' | 'month' | 'semester'): Promise<{ totalRevenue: number; totalPurchases: number; topCategories: any[] }>;
+  getStudentSpendingInsights(classroomId: string): Promise<{ studentId: string; totalSpent: number; favoriteCategory: string }[]>;
   getAnnouncementReads(announcementId: string): Promise<(AnnouncementRead & { student: User })[]>;
 }
 

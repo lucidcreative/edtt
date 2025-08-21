@@ -284,6 +284,123 @@ export const studentMilestones = pgTable("student_milestones", {
   academicPeriod: varchar("academic_period", { length: 20 })
 });
 
+// PHASE 1D: DIGITAL STORE SYSTEM
+
+// Comprehensive store item management
+export const storeItemsAdvanced = pgTable("store_items_advanced", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  classroomId: uuid("classroom_id").references(() => classrooms.id).notNull(),
+  title: varchar("title", { length: 150 }).notNull(),
+  description: text("description").notNull(),
+  basePrice: decimal("base_price", { precision: 10, scale: 2 }).notNull(),
+  currentPrice: decimal("current_price", { precision: 10, scale: 2 }).notNull(),
+  
+  // Item classification and behavior
+  itemType: varchar("item_type", { length: 30 }).notNull().$type<'physical' | 'digital' | 'privilege' | 'academic_benefit'>(),
+  category: varchar("category", { length: 50 }).notNull(),
+  subcategory: varchar("subcategory", { length: 50 }),
+  
+  // Inventory and availability management
+  inventoryType: varchar("inventory_type", { length: 20 }).notNull().$type<'unlimited' | 'limited' | 'one_time'>(),
+  totalQuantity: integer("total_quantity"), // NULL for unlimited items
+  availableQuantity: integer("available_quantity"), // Current available stock
+  maxPerStudent: integer("max_per_student").default(1), // Purchase limits per student
+  
+  // Digital subscription configuration
+  isRecurring: boolean("is_recurring").default(false),
+  recurringInterval: varchar("recurring_interval", { length: 20 }).$type<'weekly' | 'biweekly' | 'monthly'>(),
+  recurringAmount: decimal("recurring_amount", { precision: 10, scale: 2 }), // Amount charged per interval
+  trialPeriodDays: integer("trial_period_days").default(0),
+  
+  // Visual and organizational elements
+  imageUrl: varchar("image_url", { length: 500 }),
+  colorTheme: varchar("color_theme", { length: 7 }), // Hex color for UI theming
+  priorityOrder: integer("priority_order").default(0), // For featured item ordering
+  
+  // Availability scheduling
+  availableFrom: timestamp("available_from"),
+  availableUntil: timestamp("available_until"),
+  
+  // Status and metadata
+  activeStatus: boolean("active_status").default(true),
+  featured: boolean("featured").default(false),
+  tags: text("tags").array().default([]), // Searchable keywords
+  metadata: jsonb("metadata").default({}), // Flexible additional configuration
+  
+  createdBy: uuid("created_by").references(() => users.id), // Teacher who created the item
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+// Student purchase transaction records
+export const storePurchases = pgTable("store_purchases", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  studentId: uuid("student_id").references(() => users.id).notNull(),
+  classroomId: uuid("classroom_id").references(() => classrooms.id).notNull(),
+  itemId: uuid("item_id").references(() => storeItemsAdvanced.id).notNull(),
+  
+  // Purchase details
+  quantity: integer("quantity").default(1).notNull(),
+  unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(), // Price at time of purchase
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  
+  // Transaction processing
+  transactionId: uuid("transaction_id").references(() => tokenTransactions.id), // Link to token deduction
+  purchaseStatus: varchar("purchase_status", { length: 20 }).default('completed').$type<'pending' | 'completed' | 'delivered' | 'refunded' | 'cancelled'>(),
+  
+  // Delivery and fulfillment
+  deliveryMethod: varchar("delivery_method", { length: 30 }).$type<'immediate' | 'teacher_approval' | 'physical_pickup'>(),
+  deliveredAt: timestamp("delivered_at"),
+  deliveryNotes: text("delivery_notes"),
+  
+  // Subscription management
+  isSubscription: boolean("is_subscription").default(false),
+  subscriptionStatus: varchar("subscription_status", { length: 20 }).$type<'active' | 'cancelled' | 'expired'>(),
+  nextBillingDate: timestamp("next_billing_date"),
+  subscriptionCancelledAt: timestamp("subscription_cancelled_at"),
+  
+  purchaseDate: timestamp("purchase_date").defaultNow(),
+  academicPeriod: varchar("academic_period", { length: 20 })
+});
+
+// Student wishlists for goal-setting and planning
+export const studentWishlists = pgTable("student_wishlists", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  studentId: uuid("student_id").references(() => users.id).notNull(),
+  classroomId: uuid("classroom_id").references(() => classrooms.id).notNull(),
+  itemId: uuid("item_id").references(() => storeItemsAdvanced.id).notNull(),
+  addedAt: timestamp("added_at").defaultNow(),
+  priority: integer("priority").default(1), // 1 = highest priority
+  notes: text("notes"), // Student's personal notes about the item
+  targetDate: timestamp("target_date"), // When student hopes to purchase
+  notificationsEnabled: boolean("notifications_enabled").default(true)
+}, (table) => ({
+  uniqueStudentItem: unique().on(table.studentId, table.itemId) // Prevent duplicate wishlist entries
+}));
+
+// Store analytics and insights
+export const storeAnalytics = pgTable("store_analytics", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  classroomId: uuid("classroom_id").references(() => classrooms.id).notNull(),
+  itemId: uuid("item_id").references(() => storeItemsAdvanced.id).notNull(),
+  
+  // Daily aggregated metrics
+  analyticsDate: timestamp("analytics_date").notNull(),
+  viewCount: integer("view_count").default(0),
+  wishlistAdds: integer("wishlist_adds").default(0),
+  purchaseCount: integer("purchase_count").default(0),
+  totalRevenue: decimal("total_revenue", { precision: 12, scale: 2 }).default("0.00"),
+  
+  // Student engagement metrics
+  uniqueViewers: integer("unique_viewers").default(0),
+  averageTimeViewed: integer("average_time_viewed").default(0), // In seconds
+  conversionRate: decimal("conversion_rate", { precision: 5, scale: 4 }).default("0.0000"), // Views to purchases
+  
+  createdAt: timestamp("created_at").defaultNow()
+}, (table) => ({
+  uniqueDateItem: unique().on(table.classroomId, table.itemId, table.analyticsDate)
+}));
+
 // Relations
 export const usersRelations = relations(users, ({ many, one }) => ({
   teacherClassrooms: many(classrooms),
@@ -509,6 +626,41 @@ export const insertStudentMilestoneSchema = createInsertSchema(studentMilestones
   id: true,
   achievedAt: true
 });
+
+// Phase 1D Store System Insert Schemas
+export const insertStoreItemAdvancedSchema = createInsertSchema(storeItemsAdvanced).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertStorePurchaseSchema = createInsertSchema(storePurchases).omit({
+  id: true,
+  purchaseDate: true
+});
+
+export const insertStudentWishlistSchema = createInsertSchema(studentWishlists).omit({
+  id: true,
+  addedAt: true
+});
+
+export const insertStoreAnalyticsSchema = createInsertSchema(storeAnalytics).omit({
+  id: true,
+  createdAt: true
+});
+
+// Phase 1D Store System Types
+export type StoreItemAdvanced = typeof storeItemsAdvanced.$inferSelect;
+export type InsertStoreItemAdvanced = z.infer<typeof insertStoreItemAdvancedSchema>;
+
+export type StorePurchase = typeof storePurchases.$inferSelect;
+export type InsertStorePurchase = z.infer<typeof insertStorePurchaseSchema>;
+
+export type StudentWishlist = typeof studentWishlists.$inferSelect;
+export type InsertStudentWishlist = z.infer<typeof insertStudentWishlistSchema>;
+
+export type StoreAnalytics = typeof storeAnalytics.$inferSelect;
+export type InsertStoreAnalytics = z.infer<typeof insertStoreAnalyticsSchema>;
 export type Announcement = typeof announcements.$inferSelect;
 export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
 export type AnnouncementRead = typeof announcementReads.$inferSelect;
