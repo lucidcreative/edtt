@@ -1,0 +1,236 @@
+ Phase 2A: Assignment Management System with Link-Based Submissions
+You are continuing development of the Classroom Token Economy Platform. You have successfully completed Phase 1A through 1D, establishing authentication, classroom infrastructure, token economy, and digital store systems. Now you're building Phase 2A, which creates the assignment management system that transforms academic work into token-earning opportunities while teaching professional submission and communication skills.
+Understanding the Educational Philosophy Behind Assignment Integration:
+The assignment system you're building serves a dual educational purpose that extends far beyond simple task completion. First, it provides the primary mechanism through which students earn tokens for academic achievement, creating direct connections between effort, quality, and reward. Second, and equally important, it teaches essential professional skills like meeting deadlines, following detailed instructions, communicating professionally, and taking responsibility for work quality. Every interaction with the assignment system should reinforce these professional behaviors while maintaining the engaging, economic simulation that motivates continued participation.
+Why Link-Based Submissions Are Educationally Superior:
+Your decision to use external link submissions rather than direct file uploads reflects sophisticated understanding of modern educational technology and professional workplace practices. In real professional environments, workers rarely submit work through single-purpose platforms. Instead, they use collaborative tools like Google Docs, share cloud storage links, submit work through specialized platforms, or present work through various media formats. By requiring students to submit links to their work, you're teaching them to navigate the same distributed digital workplace they'll encounter throughout their careers.
+This approach also reinforces important digital citizenship skills like managing file permissions, creating shareable links, and ensuring that their work is accessible to evaluators. Students must think beyond simply completing assignments to consider how their work will be reviewed and accessed by others, mirroring real professional communication requirements.
+Mobile-First Considerations for Assignment Workflows:
+Students will often submit assignments using smartphones, particularly for quick updates, last-minute submissions, or when sharing collaborative work completed on other platforms. The submission interface must be optimized for mobile link sharing, with large, easy-to-tap input fields and clear validation feedback that helps students ensure their links work correctly before submission.
+Teachers will frequently review and approve assignments using tablets during planning periods or between classes. The review interface must work smoothly on touch devices with clear approval workflows and efficient token award mechanisms that don't interrupt the natural flow of evaluating student work.
+PHASE 2A OBJECTIVES:
+Build a comprehensive assignment management ecosystem that allows teachers to create meaningful academic challenges while providing students with clear submission pathways and professional feedback mechanisms that prepare them for workplace communication standards.
+Feature 1: Comprehensive Assignment Creation and Configuration System
+Create sophisticated assignment management tools that allow teachers to establish clear expectations while building in the flexibility needed for different types of academic work and varying student skill levels.
+Design an intuitive assignment creation interface that guides teachers through establishing comprehensive project specifications. Each assignment should include detailed learning objectives that help students understand not just what they need to submit, but why the work matters for their educational development. Teachers should be able to provide clear submission requirements that specify exactly what types of links are acceptable, what permissions need to be set, and what format the shared content should follow.
+Build flexible deadline management that accommodates different teaching styles and classroom needs. Teachers should be able to set firm deadlines that teach time management skills, rolling deadlines that accommodate different student paces, or milestone-based deadlines that break complex projects into manageable components. The system should provide clear visual indicators that help students understand time remaining and prioritize their work accordingly.
+Create comprehensive token reward configuration that allows teachers to establish base token values while building in multipliers for exceptional work, early submission bonuses, and quality indicators. Teachers should be able to create rubric-based token distributions that reward different aspects of student work, such as content quality, professional presentation, timeliness, and adherence to instructions.
+Include assignment template systems that allow teachers to create reusable frameworks for common types of academic work. Templates should capture not just assignment structure, but also successful token reward patterns and submission requirements that have proven effective in previous implementations.
+Feature 2: Professional Student Submission Experience
+Develop submission workflows that teach students essential professional communication skills while making the process of sharing their work feel meaningful and rewarding rather than bureaucratic and tedious.
+Create link submission interfaces that guide students through the complete process of sharing their work professionally. The system should provide clear instructions for creating shareable links from popular platforms like Google Drive, Office 365, Dropbox, and educational platforms like Flipgrid or Padlet. Include validation mechanisms that test submitted links to ensure they work correctly and provide appropriate access permissions before students finalize their submissions.
+Build submission confirmation systems that provide students with detailed records of what they submitted, when they submitted it, and what they can expect next in the evaluation process. Confirmation screens should reinforce professional communication standards by showing students exactly what their teachers will see when reviewing their work, encouraging them to take responsibility for the quality and accessibility of their submissions.
+Design progress tracking interfaces that help students understand where their submissions stand in the review process. Students should be able to see which assignments are awaiting review, which have been evaluated, and what feedback or token awards they've received. This transparency teaches professional accountability while maintaining engagement with the evaluation process.
+Create resubmission workflows that handle the common scenario where initial submissions need clarification or corrections. Students should be able to update their links or provide additional information in response to teacher feedback, learning to respond professionally to constructive criticism and revision requests.
+Feature 3: Efficient Teacher Review and Evaluation System
+Build streamlined evaluation tools that allow teachers to review student work efficiently while maintaining the detailed feedback and token award processes that make the system educationally effective.
+Create assignment review dashboards that organize student submissions in ways that support efficient evaluation workflows. Teachers should be able to sort submissions by submission time, student performance history, or assignment complexity. Include quick access to student profiles and past work quality to provide context for current evaluations.
+Design link preview and access systems that allow teachers to quickly access student work without leaving the platform unnecessarily. When teachers click on submitted links, they should open in new tabs with clear return pathways to the evaluation interface. Include link validation indicators that show teachers which submissions have been tested and confirmed accessible.
+Build comprehensive token award interfaces that make recognizing excellent work feel rewarding for both teachers and students. Teachers should be able to award base tokens quickly while having access to bonus award options for exceptional quality, professional presentation, or other positive indicators. Include preset award amounts for common evaluation outcomes while maintaining flexibility for customized recognition.
+Create detailed feedback systems that encourage teachers to provide meaningful responses that help students improve their professional communication skills. Feedback interfaces should support both quick approval with standard comments and detailed responses that provide specific guidance for future assignments.
+Feature 4: Assignment Analytics and Professional Development Tracking
+Implement comprehensive tracking systems that help both teachers and students understand progress in professional skill development alongside academic achievement.
+Build assignment completion analytics that track patterns in student submission behavior, including timeliness, quality trends, and professional communication improvement over time. These analytics should provide insights that help teachers identify students who might need additional support or recognition for exceptional professional development.
+Create professional skills scoring systems that track student progress in key workplace competencies like meeting deadlines, following detailed instructions, communicating clearly, and responding professionally to feedback. These scores should integrate with the broader performance tracking system established in earlier phases while focusing specifically on assignment-related behaviors.
+Design progress visualization tools that help students understand their professional development trajectory through clear charts and milestone markers. Students should be able to see how their assignment submission skills are improving over time and understand how these skills connect to their overall token earning and professional preparation.
+Include comparative analytics that help teachers understand how their assignment structures and token award patterns affect student engagement and professional skill development, enabling continuous improvement in their pedagogical approaches.
+DATABASE SCHEMA EXPANSION:
+Extend your existing database with these carefully designed tables that support comprehensive assignment management while maintaining performance and scalability:
+sql-- Comprehensive assignment configuration and management
+CREATE TABLE assignments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    classroom_id UUID REFERENCES classrooms(id) ON DELETE CASCADE,
+    created_by UUID REFERENCES users(id), -- Teacher who created the assignment
+    
+    -- Assignment identification and organization
+    title VARCHAR(200) NOT NULL,
+    description TEXT NOT NULL,
+    learning_objectives TEXT[], -- Array of learning goals
+    category VARCHAR(50), -- 'homework', 'project', 'quiz', 'presentation'
+    subject_tags TEXT[], -- Searchable subject area tags
+    
+    -- Submission requirements and expectations
+    submission_instructions TEXT NOT NULL, -- Detailed instructions for link submission
+    accepted_link_types TEXT[], -- 'google_drive', 'dropbox', 'youtube', 'padlet', etc.
+    required_permissions TEXT, -- 'view', 'comment', 'edit' - what access teacher needs
+    submission_format_notes TEXT, -- Additional format requirements
+    
+    -- Timeline and deadline management
+    assigned_date TIMESTAMP DEFAULT NOW(),
+    due_date TIMESTAMP NOT NULL,
+    late_submission_allowed BOOLEAN DEFAULT true,
+    late_penalty_percentage DECIMAL(5,2) DEFAULT 0.00, -- Percentage reduction for late work
+    
+    -- Token economy integration
+    base_token_reward DECIMAL(10,2) NOT NULL CHECK (base_token_reward > 0),
+    early_submission_bonus DECIMAL(10,2) DEFAULT 0.00,
+    quality_bonus_max DECIMAL(10,2) DEFAULT 0.00, -- Maximum additional tokens for exceptional work
+    
+    -- Assignment status and availability
+    status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'closed', 'archived')),
+    visible_to_students BOOLEAN DEFAULT false,
+    max_submissions INTEGER DEFAULT 1, -- Allow resubmissions if > 1
+    
+    -- Professional skills tracking weights
+    deadline_weight DECIMAL(3,2) DEFAULT 0.25, -- Weight for timeliness in professional score
+    instruction_following_weight DECIMAL(3,2) DEFAULT 0.25, -- Weight for following directions
+    communication_weight DECIMAL(3,2) DEFAULT 0.25, -- Weight for professional communication
+    presentation_weight DECIMAL(3,2) DEFAULT 0.25, -- Weight for professional presentation
+    
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    academic_period VARCHAR(20)
+);
+
+-- Student assignment submissions with comprehensive tracking
+CREATE TABLE assignment_submissions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    assignment_id UUID REFERENCES assignments(id) ON DELETE CASCADE,
+    student_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    
+    -- Submission content and metadata
+    submission_link VARCHAR(1000) NOT NULL, -- The external link to student work
+    link_type VARCHAR(30), -- 'google_drive', 'dropbox', 'youtube', etc.
+    submission_notes TEXT, -- Student's additional comments or context
+    link_verified BOOLEAN DEFAULT false, -- Whether link has been tested for accessibility
+    
+    -- Submission timing and status tracking
+    submitted_at TIMESTAMP DEFAULT NOW(),
+    is_late BOOLEAN GENERATED ALWAYS AS (submitted_at > (SELECT due_date FROM assignments WHERE id = assignment_id)) STORED,
+    submission_number INTEGER DEFAULT 1, -- For tracking resubmissions
+    
+    -- Evaluation and feedback
+    evaluation_status VARCHAR(20) DEFAULT 'pending' CHECK (evaluation_status IN ('pending', 'in_review', 'completed', 'needs_revision')),
+    evaluated_at TIMESTAMP,
+    evaluated_by UUID REFERENCES users(id), -- Teacher who evaluated
+    
+    -- Token awards and scoring
+    tokens_awarded DECIMAL(10,2) DEFAULT 0.00,
+    token_transaction_id UUID REFERENCES token_transactions(id), -- Link to actual token award
+    
+    -- Professional skills assessment
+    deadline_score INTEGER CHECK (deadline_score >= 0 AND deadline_score <= 100),
+    instruction_following_score INTEGER CHECK (instruction_following_score >= 0 AND instruction_following_score <= 100),
+    communication_score INTEGER CHECK (communication_score >= 0 AND communication_score <= 100),
+    presentation_score INTEGER CHECK (presentation_score >= 0 AND presentation_score <= 100),
+    overall_professional_score DECIMAL(5,2) GENERATED ALWAYS AS (
+        (deadline_score * (SELECT deadline_weight FROM assignments WHERE id = assignment_id) +
+         instruction_following_score * (SELECT instruction_following_weight FROM assignments WHERE id = assignment_id) +
+         communication_score * (SELECT communication_weight FROM assignments WHERE id = assignment_id) +
+         presentation_score * (SELECT presentation_weight FROM assignments WHERE id = assignment_id))
+    ) STORED,
+    
+    -- Teacher feedback and communication
+    teacher_feedback TEXT,
+    feedback_provided_at TIMESTAMP,
+    revision_requested BOOLEAN DEFAULT false,
+    revision_notes TEXT,
+    
+    academic_period VARCHAR(20)
+);
+
+-- Assignment templates for teacher efficiency
+CREATE TABLE assignment_templates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    teacher_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    template_name VARCHAR(100) NOT NULL,
+    description TEXT,
+    
+    -- Template configuration (similar to assignments table)
+    default_title VARCHAR(200),
+    default_description TEXT,
+    default_instructions TEXT,
+    default_token_reward DECIMAL(10,2),
+    default_duration_hours INTEGER, -- Typical time from assignment to due date
+    
+    -- Usage tracking
+    usage_count INTEGER DEFAULT 0,
+    last_used TIMESTAMP,
+    
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Link validation and accessibility tracking
+CREATE TABLE submission_link_validation (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    submission_id UUID REFERENCES assignment_submissions(id) ON DELETE CASCADE,
+    validation_attempt_at TIMESTAMP DEFAULT NOW(),
+    is_accessible BOOLEAN NOT NULL,
+    response_status INTEGER, -- HTTP response code
+    error_message TEXT,
+    validation_method VARCHAR(30), -- 'automated', 'manual_teacher_check'
+    validated_by UUID REFERENCES users(id) -- If manually validated
+);
+API ENDPOINTS TO IMPLEMENT:
+Design these endpoints with careful attention to the workflow efficiency needs of both teachers creating assignments and students submitting their work:
+-- Assignment Management for Teachers
+POST /api/assignments
+- Body: Complete assignment configuration including timeline and token rewards
+- Creates new assignments with automatic link validation setup
+- Returns assignment object with sharing information for students
+
+GET /api/assignments/classroom/:classroomId
+- Returns paginated assignment list with submission statistics
+- Includes filtering by status, due date, and completion rates
+
+PUT /api/assignments/:assignmentId
+- Updates existing assignments with change tracking
+- Handles timeline modifications and student notification requirements
+
+GET /api/assignments/:assignmentId/submissions
+- Returns all student submissions with evaluation status
+- Includes professional skills scoring and token award information
+
+-- Student Assignment Experience  
+GET /api/assignments/student/:studentId/classroom/:classroomId
+- Returns student's assignment dashboard with due dates and submission status
+- Includes token earning potential and professional score tracking
+
+POST /api/assignments/:assignmentId/submit
+- Body: { submissionLink, linkType, submissionNotes }
+- Processes assignment submission with link validation
+- Returns confirmation and timeline for evaluation
+
+GET /api/assignments/:assignmentId/submission/student/:studentId
+- Returns detailed submission information and feedback
+- Includes professional skills breakdown and improvement suggestions
+
+-- Assignment Evaluation and Feedback
+POST /api/assignments/submissions/:submissionId/evaluate
+- Body: Professional scores, token award amount, feedback, revision requests
+- Processes complete evaluation with token transaction creation
+- Sends notification to student with results
+
+POST /api/assignments/submissions/:submissionId/validate-link
+- Tests submitted link for accessibility and appropriate permissions
+- Returns validation status and any error information
+
+-- Assignment Analytics and Reporting
+GET /api/analytics/assignments/classroom/:classroomId
+- Assignment completion rates, average scores, and engagement metrics
+- Professional skills development trends across all students
+
+GET /api/analytics/assignments/student/:studentId
+- Individual student assignment performance and professional skills progression
+- Token earning patterns and areas for improvement
+Mobile-First UI Components:
+Build these interface elements with exceptional attention to the mobile workflows that both teachers and students will use regularly:
+Create assignment browsing interfaces that clearly display essential information like due dates, token potential, and submission requirements without cluttering small screens. Students should be able to quickly identify which assignments need attention and understand exactly what's expected for successful completion.
+Design link submission forms that make sharing work feel professional and reliable. Include clear instructions for creating shareable links from popular platforms, with validation feedback that confirms links work correctly before students finalize their submissions.
+Build teacher evaluation interfaces that allow efficient review of multiple submissions with streamlined token award and feedback workflows. Teachers should be able to access student work, provide feedback, and award tokens without excessive screen switching or complex navigation patterns.
+Create progress tracking visualizations that help students understand their professional skill development through assignment work. These interfaces should clearly show improvement over time while identifying specific areas where students can focus their efforts for maximum token earning potential.
+Integration with Previous Phases:
+Seamlessly connect the assignment system with your existing token economy by creating automatic token transaction records when teachers approve and award tokens for completed work. Ensure that assignment-earned tokens properly update student wallet balances and appear in transaction histories with clear descriptions that reinforce the connection between academic effort and economic reward.
+Enhance your classroom analytics with assignment-specific metrics that help teachers understand student engagement patterns, professional skill development trends, and the effectiveness of different assignment structures and token reward strategies.
+Update your notification systems to support assignment-related communications including new assignment announcements, approaching due dates, submission confirmations, and evaluation results that maintain student engagement with their academic progress.
+Testing Strategy:
+Implement comprehensive testing that validates both the technical reliability of link submission processing and the educational effectiveness of the professional skills tracking across different types of assignments and student submission patterns.
+Test link validation systems with various external platforms and permission configurations to ensure that teachers can reliably access student work regardless of the submission platform students choose to use.
+Verify that token award calculations work correctly across different evaluation scenarios, including late submissions, bonus awards for exceptional work, and complex rubric-based evaluations that reward multiple aspects of professional behavior.
+Success Criteria for Phase 2A:
+This phase is complete when teachers can create comprehensive assignments with clear token rewards and professional skill expectations, while students can submit their work through external links in ways that feel professional and rewarding.
+The link submission system should handle various external platforms reliably, with validation mechanisms that ensure teachers can access student work without technical difficulties or permission barriers.
+Token integration should seamlessly connect assignment evaluation with the broader token economy, ensuring that academic achievement becomes a primary pathway for student token earning while reinforcing professional behaviors that prepare students for workplace success.
+Students should receive clear feedback on both academic performance and professional skill development, with progress tracking that helps them understand how assignment work contributes to their overall professional preparation and economic success within the classroom simulation.
+Build this assignment management system with careful attention to the balance between academic rigor and professional skill development, ensuring that every assignment becomes an opportunity for students to practice workplace behaviors while earning meaningful rewards for their educational achievements.

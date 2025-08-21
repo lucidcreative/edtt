@@ -67,10 +67,23 @@ import {
   type StudentWishlist,
   type InsertStudentWishlist,
   type StoreAnalytics,
-  type InsertStoreAnalytics
+  type InsertStoreAnalytics,
+  // Phase 2A Assignment Management Tables & Types
+  assignmentsAdvanced,
+  assignmentSubmissions,
+  assignmentFeedback,
+  assignmentTemplates,
+  type AssignmentAdvanced,
+  type InsertAssignmentAdvanced,
+  type AssignmentSubmission,
+  type InsertAssignmentSubmission,
+  type AssignmentFeedback,
+  type InsertAssignmentFeedback,
+  type AssignmentTemplate,
+  type InsertAssignmentTemplate
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, asc, and, sql, count } from "drizzle-orm";
+import { eq, desc, asc, and, or, sql, count } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -263,6 +276,24 @@ export interface IStorage {
   getStoreRevenue(classroomId: string, period: 'week' | 'month' | 'semester'): Promise<{ totalRevenue: number; totalPurchases: number; topCategories: any[] }>;
   getStudentSpendingInsights(classroomId: string): Promise<{ studentId: string; totalSpent: number; favoriteCategory: string }[]>;
   getAnnouncementReads(announcementId: string): Promise<(AnnouncementRead & { student: User })[]>;
+
+  // Phase 2A: Assignment Management Methods
+  createAssignment(assignment: InsertAssignmentAdvanced): Promise<AssignmentAdvanced>;
+  updateAssignment(assignmentId: string, updates: Partial<InsertAssignmentAdvanced>): Promise<AssignmentAdvanced>;
+  deleteAssignment(assignmentId: string): Promise<void>;
+  getAssignments(classroomId: string, filters?: { status?: string; category?: string; visibleToStudents?: boolean; }): Promise<AssignmentAdvanced[]>;
+  getAssignment(assignmentId: string): Promise<AssignmentAdvanced | undefined>;
+  getStudentAssignments(studentId: string, classroomId: string): Promise<(AssignmentAdvanced & { submission?: AssignmentSubmission })[]>;
+  createSubmission(submission: InsertAssignmentSubmission): Promise<AssignmentSubmission>;
+  updateSubmission(submissionId: string, updates: Partial<InsertAssignmentSubmission>): Promise<AssignmentSubmission>;
+  getSubmission(submissionId: string): Promise<AssignmentSubmission | undefined>;
+  getAssignmentSubmissions(assignmentId: string): Promise<(AssignmentSubmission & { student: Pick<User, 'id' | 'nickname' | 'firstName' | 'lastName'> })[]>;
+  getStudentSubmissions(studentId: string, classroomId: string): Promise<(AssignmentSubmission & { assignment: Pick<AssignmentAdvanced, 'id' | 'title' | 'dueDate'> })[]>;
+  createAssignmentFeedback(feedback: InsertAssignmentFeedback): Promise<AssignmentFeedback>;
+  getAssignmentFeedback(submissionId: string): Promise<AssignmentFeedback[]>;
+  getAssignmentTemplates(createdBy?: string): Promise<AssignmentTemplate[]>;
+  createAssignmentTemplate(template: InsertAssignmentTemplate): Promise<AssignmentTemplate>;
+  getAssignmentAnalytics(classroomId: string, assignmentId?: string): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1161,6 +1192,225 @@ export class DatabaseStorage implements IStorage {
     }
 
     return milestones;
+  }
+
+  // PHASE 2A: ASSIGNMENT MANAGEMENT IMPLEMENTATION
+  
+  async createAssignment(assignment: InsertAssignmentAdvanced): Promise<AssignmentAdvanced> {
+    const [newAssignment] = await db
+      .insert(assignmentsAdvanced)
+      .values(assignment)
+      .returning();
+    return newAssignment;
+  }
+
+  async updateAssignment(assignmentId: string, updates: Partial<InsertAssignmentAdvanced>): Promise<AssignmentAdvanced> {
+    const [assignment] = await db
+      .update(assignmentsAdvanced)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(assignmentsAdvanced.id, assignmentId))
+      .returning();
+    return assignment;
+  }
+
+  async deleteAssignment(assignmentId: string): Promise<void> {
+    await db.delete(assignmentsAdvanced).where(eq(assignmentsAdvanced.id, assignmentId));
+  }
+
+  async getAssignments(classroomId: string, filters?: {
+    status?: string;
+    category?: string;
+    visibleToStudents?: boolean;
+  }): Promise<AssignmentAdvanced[]> {
+    let query = db
+      .select()
+      .from(assignmentsAdvanced)
+      .where(eq(assignmentsAdvanced.classroomId, classroomId));
+    
+    if (filters?.status) {
+      query = query.where(eq(assignmentsAdvanced.status, filters.status));
+    }
+    if (filters?.category) {
+      query = query.where(eq(assignmentsAdvanced.category, filters.category));
+    }
+    if (filters?.visibleToStudents !== undefined) {
+      query = query.where(eq(assignmentsAdvanced.visibleToStudents, filters.visibleToStudents));
+    }
+    
+    return await query.orderBy(desc(assignmentsAdvanced.dueDate));
+  }
+
+  async getAssignment(assignmentId: string): Promise<AssignmentAdvanced | undefined> {
+    const [assignment] = await db
+      .select()
+      .from(assignmentsAdvanced)
+      .where(eq(assignmentsAdvanced.id, assignmentId));
+    return assignment;
+  }
+
+  async getStudentAssignments(studentId: string, classroomId: string): Promise<(AssignmentAdvanced & { submission?: AssignmentSubmission })[]> {
+    const result = await db
+      .select({
+        assignment: assignmentsAdvanced,
+        submission: assignmentSubmissions
+      })
+      .from(assignmentsAdvanced)
+      .leftJoin(
+        assignmentSubmissions,
+        and(
+          eq(assignmentSubmissions.assignmentId, assignmentsAdvanced.id),
+          eq(assignmentSubmissions.studentId, studentId)
+        )
+      )
+      .where(and(
+        eq(assignmentsAdvanced.classroomId, classroomId),
+        eq(assignmentsAdvanced.visibleToStudents, true),
+        eq(assignmentsAdvanced.status, 'published')
+      ))
+      .orderBy(desc(assignmentsAdvanced.dueDate));
+    
+    return result.map(row => ({
+      ...row.assignment,
+      submission: row.submission || undefined
+    }));
+  }
+
+  async createSubmission(submission: InsertAssignmentSubmission): Promise<AssignmentSubmission> {
+    const [newSubmission] = await db
+      .insert(assignmentSubmissions)
+      .values({
+        ...submission,
+        submissionNumber: 1 // For now, handle resubmissions later
+      })
+      .returning();
+    return newSubmission;
+  }
+
+  async updateSubmission(submissionId: string, updates: Partial<InsertAssignmentSubmission>): Promise<AssignmentSubmission> {
+    const [submission] = await db
+      .update(assignmentSubmissions)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(assignmentSubmissions.id, submissionId))
+      .returning();
+    return submission;
+  }
+
+  async getSubmission(submissionId: string): Promise<AssignmentSubmission | undefined> {
+    const [submission] = await db
+      .select()
+      .from(assignmentSubmissions)
+      .where(eq(assignmentSubmissions.id, submissionId));
+    return submission;
+  }
+
+  async getAssignmentSubmissions(assignmentId: string): Promise<(AssignmentSubmission & { student: Pick<User, 'id' | 'nickname' | 'firstName' | 'lastName'> })[]> {
+    const result = await db
+      .select({
+        submission: assignmentSubmissions,
+        student: {
+          id: users.id,
+          nickname: users.nickname,
+          firstName: users.firstName,
+          lastName: users.lastName
+        }
+      })
+      .from(assignmentSubmissions)
+      .innerJoin(users, eq(assignmentSubmissions.studentId, users.id))
+      .where(eq(assignmentSubmissions.assignmentId, assignmentId))
+      .orderBy(desc(assignmentSubmissions.submittedAt));
+    
+    return result.map(row => ({
+      ...row.submission,
+      student: row.student
+    }));
+  }
+
+  async getStudentSubmissions(studentId: string, classroomId: string): Promise<(AssignmentSubmission & { assignment: Pick<AssignmentAdvanced, 'id' | 'title' | 'dueDate'> })[]> {
+    const result = await db
+      .select({
+        submission: assignmentSubmissions,
+        assignment: {
+          id: assignmentsAdvanced.id,
+          title: assignmentsAdvanced.title,
+          dueDate: assignmentsAdvanced.dueDate
+        }
+      })
+      .from(assignmentSubmissions)
+      .innerJoin(assignmentsAdvanced, eq(assignmentSubmissions.assignmentId, assignmentsAdvanced.id))
+      .where(and(
+        eq(assignmentSubmissions.studentId, studentId),
+        eq(assignmentSubmissions.classroomId, classroomId)
+      ))
+      .orderBy(desc(assignmentSubmissions.submittedAt));
+    
+    return result.map(row => ({
+      ...row.submission,
+      assignment: row.assignment
+    }));
+  }
+
+  async createAssignmentFeedback(feedback: InsertAssignmentFeedback): Promise<AssignmentFeedback> {
+    const [newFeedback] = await db
+      .insert(assignmentFeedback)
+      .values(feedback)
+      .returning();
+    return newFeedback;
+  }
+
+  async getAssignmentFeedback(submissionId: string): Promise<AssignmentFeedback[]> {
+    return await db
+      .select()
+      .from(assignmentFeedback)
+      .where(eq(assignmentFeedback.submissionId, submissionId))
+      .orderBy(desc(assignmentFeedback.createdAt));
+  }
+
+  async getAssignmentTemplates(createdBy?: string): Promise<AssignmentTemplate[]> {
+    let query = db.select().from(assignmentTemplates);
+    
+    if (createdBy) {
+      query = query.where(or(
+        eq(assignmentTemplates.createdBy, createdBy),
+        eq(assignmentTemplates.isPublic, true)
+      ));
+    } else {
+      query = query.where(eq(assignmentTemplates.isPublic, true));
+    }
+    
+    return await query.orderBy(desc(assignmentTemplates.useCount), desc(assignmentTemplates.createdAt));
+  }
+
+  async createAssignmentTemplate(template: InsertAssignmentTemplate): Promise<AssignmentTemplate> {
+    const [newTemplate] = await db
+      .insert(assignmentTemplates)
+      .values(template)
+      .returning();
+    return newTemplate;
+  }
+
+  async getAssignmentAnalytics(classroomId: string, assignmentId?: string) {
+    const baseCondition = assignmentId 
+      ? and(eq(assignmentSubmissions.classroomId, classroomId), eq(assignmentSubmissions.assignmentId, assignmentId))
+      : eq(assignmentSubmissions.classroomId, classroomId);
+    
+    const submissions = await db
+      .select()
+      .from(assignmentSubmissions)
+      .where(baseCondition);
+    
+    const totalSubmissions = submissions.length;
+    const onTimeSubmissions = submissions.filter(s => !s.isLateSubmission).length;
+    const averageScore = submissions.reduce((acc, s) => acc + parseFloat(s.overallProfessionalScore || '0'), 0) / totalSubmissions || 0;
+    const tokensAwarded = submissions.reduce((acc, s) => acc + parseFloat(s.tokensAwarded || '0'), 0);
+    
+    return {
+      totalSubmissions,
+      onTimeSubmissions,
+      lateSubmissions: totalSubmissions - onTimeSubmissions,
+      onTimePercentage: totalSubmissions > 0 ? (onTimeSubmissions / totalSubmissions) * 100 : 0,
+      averageProfessionalScore: Math.round(averageScore * 100) / 100,
+      totalTokensAwarded: tokensAwarded
+    };
   }
 
   // PHASE 1D: DIGITAL STORE IMPLEMENTATION

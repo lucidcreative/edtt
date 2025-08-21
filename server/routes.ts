@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema, insertClassroomSchema, insertAssignmentSchema, insertSubmissionSchema, insertStoreItemSchema, users } from "@shared/schema";
+import { insertUserSchema, insertClassroomSchema, insertAssignmentSchema, insertSubmissionSchema, insertStoreItemSchema, users, insertAssignmentAdvancedSchema, insertAssignmentSubmissionSchema, insertAssignmentFeedbackSchema, insertAssignmentTemplateSchema } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcrypt";
@@ -67,6 +67,7 @@ async function ensureDemoData() {
         name: 'Demo Classroom',
         description: 'A classroom for testing BizCoin features',
         code: 'DEMO01',
+        joinCode: 'DEMO01',
         teacherId: demoTeacher.id
       });
     }
@@ -333,6 +334,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name,
         description,
         code,
+        joinCode: code,
         teacherId: req.user.id
       });
 
@@ -1098,6 +1100,312 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error deleting store item:', error);
       res.status(500).json({ error: 'Failed to delete store item' });
+    }
+  });
+
+  // PHASE 2A: ASSIGNMENT MANAGEMENT SYSTEM
+  
+  // Assignment Management for Teachers
+  app.post('/api/assignments', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Only teachers can create assignments' });
+      }
+      
+      const assignmentData = insertAssignmentAdvancedSchema.parse(req.body);
+      const assignment = await storage.createAssignment({
+        ...assignmentData,
+        createdBy: req.user.id,
+        classroomId: req.body.classroomId
+      });
+      res.json({ assignment });
+    } catch (error) {
+      console.error('Create assignment error:', error);
+      res.status(400).json({ message: 'Failed to create assignment' });
+    }
+  });
+
+  app.get('/api/assignments/:classroomId', authenticate, async (req: any, res) => {
+    try {
+      const { classroomId } = req.params;
+      const { status, category, visibleToStudents } = req.query;
+      
+      const filters = {
+        status: status as string | undefined,
+        category: category as string | undefined,
+        visibleToStudents: visibleToStudents === 'true' ? true : visibleToStudents === 'false' ? false : undefined
+      };
+      
+      const assignments = await storage.getAssignments(classroomId, filters);
+      res.json({ assignments });
+    } catch (error) {
+      console.error('Get assignments error:', error);
+      res.status(500).json({ message: 'Failed to fetch assignments' });
+    }
+  });
+
+  app.get('/api/assignments/details/:assignmentId', authenticate, async (req: any, res) => {
+    try {
+      const { assignmentId } = req.params;
+      const assignment = await storage.getAssignment(assignmentId);
+      
+      if (!assignment) {
+        return res.status(404).json({ message: 'Assignment not found' });
+      }
+      
+      res.json({ assignment });
+    } catch (error) {
+      console.error('Get assignment error:', error);
+      res.status(500).json({ message: 'Failed to fetch assignment' });
+    }
+  });
+
+  app.put('/api/assignments/:assignmentId', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Only teachers can update assignments' });
+      }
+      
+      const { assignmentId } = req.params;
+      const updates = insertAssignmentAdvancedSchema.partial().parse(req.body);
+      
+      const assignment = await storage.updateAssignment(assignmentId, updates);
+      res.json({ assignment });
+    } catch (error) {
+      console.error('Update assignment error:', error);
+      res.status(400).json({ message: 'Failed to update assignment' });
+    }
+  });
+
+  app.delete('/api/assignments/:assignmentId', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Only teachers can delete assignments' });
+      }
+      
+      const { assignmentId } = req.params;
+      await storage.deleteAssignment(assignmentId);
+      res.json({ message: 'Assignment deleted successfully' });
+    } catch (error) {
+      console.error('Delete assignment error:', error);
+      res.status(500).json({ message: 'Failed to delete assignment' });
+    }
+  });
+
+  // Student Assignment View
+  app.get('/api/student-assignments/:classroomId', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'student') {
+        return res.status(403).json({ message: 'Only students can view this endpoint' });
+      }
+      
+      const { classroomId } = req.params;
+      const studentId = req.user.id;
+      
+      const assignments = await storage.getStudentAssignments(studentId, classroomId);
+      res.json({ assignments });
+    } catch (error) {
+      console.error('Get student assignments error:', error);
+      res.status(500).json({ message: 'Failed to fetch assignments' });
+    }
+  });
+
+  // Assignment Submission System
+  app.post('/api/submissions', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'student') {
+        return res.status(403).json({ message: 'Only students can submit assignments' });
+      }
+      
+      const submissionData = insertAssignmentSubmissionSchema.parse(req.body);
+      
+      if (!submissionData.assignmentId) {
+        return res.status(400).json({ message: 'Assignment ID is required' });
+      }
+      
+      // Check if assignment exists and is available
+      const assignment = await storage.getAssignment(submissionData.assignmentId);
+      if (!assignment || !assignment.visibleToStudents || assignment.status !== 'published') {
+        return res.status(400).json({ message: 'Assignment not available for submission' });
+      }
+      
+      // Check deadline
+      const isLate = new Date() > new Date(assignment.dueDate);
+      if (isLate && !assignment.lateSubmissionAllowed) {
+        return res.status(400).json({ message: 'Assignment deadline has passed and late submissions are not allowed' });
+      }
+      
+      const submission = await storage.createSubmission({
+        ...submissionData,
+        studentId: req.user.id,
+        isLateSubmission: isLate
+      });
+      
+      res.json({ submission });
+    } catch (error) {
+      console.error('Create submission error:', error);
+      res.status(400).json({ message: 'Failed to submit assignment' });
+    }
+  });
+
+  app.get('/api/submissions/assignment/:assignmentId', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Only teachers can view assignment submissions' });
+      }
+      
+      const { assignmentId } = req.params;
+      const submissions = await storage.getAssignmentSubmissions(assignmentId);
+      res.json({ submissions });
+    } catch (error) {
+      console.error('Get assignment submissions error:', error);
+      res.status(500).json({ message: 'Failed to fetch submissions' });
+    }
+  });
+
+  app.get('/api/submissions/student/:classroomId', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'student') {
+        return res.status(403).json({ message: 'Only students can view their own submissions' });
+      }
+      
+      const { classroomId } = req.params;
+      const studentId = req.user.id;
+      
+      const submissions = await storage.getStudentSubmissions(studentId, classroomId);
+      res.json({ submissions });
+    } catch (error) {
+      console.error('Get student submissions error:', error);
+      res.status(500).json({ message: 'Failed to fetch submissions' });
+    }
+  });
+
+  app.put('/api/submissions/:submissionId/review', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Only teachers can review submissions' });
+      }
+      
+      const { submissionId } = req.params;
+      const { 
+        reviewStatus, 
+        tokensAwarded, 
+        teacherFeedback, 
+        deadlinessScore, 
+        instructionFollowingScore, 
+        communicationScore, 
+        presentationScore,
+        overallProfessionalScore 
+      } = req.body;
+      
+      const submission = await storage.updateSubmission(submissionId, {
+        reviewStatus,
+        tokensAwarded,
+        teacherFeedback,
+        deadlinessScore,
+        instructionFollowingScore,
+        communicationScore,
+        presentationScore,
+        overallProfessionalScore,
+        reviewedAt: new Date(),
+        reviewedBy: req.user.id
+      });
+      
+      // Award tokens to student if approved
+      if (reviewStatus === 'completed' && tokensAwarded && parseFloat(tokensAwarded) > 0 && submission.studentId && submission.classroomId) {
+        await storage.awardTokens({
+          studentIds: [submission.studentId],
+          amount: parseFloat(tokensAwarded),
+          category: 'Assignment Completion',
+          description: `Assignment submission reviewed: ${submission.id}`,
+          referenceType: 'assignment_submission',
+          referenceId: submissionId,
+          createdBy: req.user.id,
+          classroomId: submission.classroomId
+        });
+      }
+      
+      res.json({ submission });
+    } catch (error) {
+      console.error('Review submission error:', error);
+      res.status(500).json({ message: 'Failed to review submission' });
+    }
+  });
+
+  // Assignment Feedback System
+  app.post('/api/assignment-feedback', authenticate, async (req: any, res) => {
+    try {
+      const feedbackData = insertAssignmentFeedbackSchema.parse(req.body);
+      const feedback = await storage.createAssignmentFeedback({
+        ...feedbackData,
+        fromUserId: req.user.id
+      });
+      res.json({ feedback });
+    } catch (error) {
+      console.error('Create feedback error:', error);
+      res.status(400).json({ message: 'Failed to create feedback' });
+    }
+  });
+
+  app.get('/api/assignment-feedback/:submissionId', authenticate, async (req: any, res) => {
+    try {
+      const { submissionId } = req.params;
+      const feedback = await storage.getAssignmentFeedback(submissionId);
+      res.json({ feedback });
+    } catch (error) {
+      console.error('Get feedback error:', error);
+      res.status(500).json({ message: 'Failed to fetch feedback' });
+    }
+  });
+
+  // Assignment Templates
+  app.get('/api/assignment-templates', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Only teachers can access templates' });
+      }
+      
+      const templates = await storage.getAssignmentTemplates(req.user.id);
+      res.json({ templates });
+    } catch (error) {
+      console.error('Get templates error:', error);
+      res.status(500).json({ message: 'Failed to fetch templates' });
+    }
+  });
+
+  app.post('/api/assignment-templates', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Only teachers can create templates' });
+      }
+      
+      const templateData = insertAssignmentTemplateSchema.parse(req.body);
+      const template = await storage.createAssignmentTemplate({
+        ...templateData,
+        createdBy: req.user.id
+      });
+      res.json({ template });
+    } catch (error) {
+      console.error('Create template error:', error);
+      res.status(400).json({ message: 'Failed to create template' });
+    }
+  });
+
+  // Assignment Analytics
+  app.get('/api/assignment-analytics/:classroomId', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Only teachers can view analytics' });
+      }
+      
+      const { classroomId } = req.params;
+      const { assignmentId } = req.query;
+      
+      const analytics = await storage.getAssignmentAnalytics(classroomId, assignmentId as string);
+      res.json({ analytics });
+    } catch (error) {
+      console.error('Get assignment analytics error:', error);
+      res.status(500).json({ message: 'Failed to fetch analytics' });
     }
   });
 

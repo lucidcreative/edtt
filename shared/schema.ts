@@ -669,3 +669,184 @@ export type StudentClassroom = typeof studentClassrooms.$inferSelect;
 export type Purchase = typeof purchases.$inferSelect;
 export type StudentBadge = typeof studentBadges.$inferSelect;
 export type ChallengeProgress = typeof challengeProgress.$inferSelect;
+
+// Phase 2A Assignment Management Tables
+
+// Comprehensive assignment configuration and management
+export const assignmentsAdvanced = pgTable("assignments_advanced", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  classroomId: varchar("classroom_id").references(() => classrooms.id, { onDelete: "cascade" }),
+  createdBy: varchar("created_by").references(() => users.id),
+  
+  // Assignment identification and organization
+  title: varchar("title", { length: 200 }).notNull(),
+  description: text("description").notNull(),
+  learningObjectives: text("learning_objectives").array(),
+  category: varchar("category", { length: 50 }), // 'homework', 'project', 'quiz', 'presentation'
+  subjectTags: text("subject_tags").array(),
+  
+  // Submission requirements and expectations
+  submissionInstructions: text("submission_instructions").notNull(),
+  acceptedLinkTypes: text("accepted_link_types").array(), // 'google_drive', 'dropbox', 'youtube', 'padlet'
+  requiredPermissions: text("required_permissions"), // 'view', 'comment', 'edit'
+  submissionFormatNotes: text("submission_format_notes"),
+  
+  // Timeline and deadline management
+  assignedDate: timestamp("assigned_date").defaultNow(),
+  dueDate: timestamp("due_date").notNull(),
+  lateSubmissionAllowed: boolean("late_submission_allowed").default(true),
+  latePenaltyPercentage: varchar("late_penalty_percentage").default("0.00"),
+  
+  // Token economy integration
+  baseTokenReward: varchar("base_token_reward").notNull(),
+  earlySubmissionBonus: varchar("early_submission_bonus").default("0.00"),
+  qualityBonusMax: varchar("quality_bonus_max").default("0.00"),
+  
+  // Assignment status and availability
+  status: varchar("status", { length: 20 }).default("draft"), // 'draft', 'published', 'closed', 'archived'
+  visibleToStudents: boolean("visible_to_students").default(false),
+  maxSubmissions: integer("max_submissions").default(1),
+  
+  // Professional skills tracking weights
+  deadlineWeight: varchar("deadline_weight").default("0.25"),
+  instructionFollowingWeight: varchar("instruction_following_weight").default("0.25"),
+  communicationWeight: varchar("communication_weight").default("0.25"),
+  presentationWeight: varchar("presentation_weight").default("0.25"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  academicPeriod: varchar("academic_period", { length: 20 })
+});
+
+// Student assignment submissions with comprehensive tracking
+export const assignmentSubmissions = pgTable("assignment_submissions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  assignmentId: varchar("assignment_id").references(() => assignmentsAdvanced.id, { onDelete: "cascade" }),
+  studentId: varchar("student_id").references(() => users.id, { onDelete: "cascade" }),
+  classroomId: varchar("classroom_id").references(() => classrooms.id, { onDelete: "cascade" }),
+  
+  // Submission content and metadata
+  submissionUrl: text("submission_url").notNull(),
+  linkType: varchar("link_type", { length: 50 }), // 'google_drive', 'dropbox', 'youtube', etc.
+  linkTitle: varchar("link_title", { length: 200 }),
+  studentNotes: text("student_notes"),
+  
+  // Submission tracking and validation
+  submittedAt: timestamp("submitted_at").defaultNow(),
+  isLateSubmission: boolean("is_late_submission").default(false),
+  submissionNumber: integer("submission_number").default(1), // For resubmissions
+  linkValidated: boolean("link_validated").default(false),
+  validationCheckedAt: timestamp("validation_checked_at"),
+  
+  // Review and evaluation status
+  reviewStatus: varchar("review_status", { length: 20 }).default("pending"), // 'pending', 'reviewing', 'completed', 'needs_revision'
+  reviewedAt: timestamp("reviewed_at"),
+  reviewedBy: varchar("reviewed_by").references(() => users.id),
+  
+  // Token awards and scoring
+  tokensAwarded: varchar("tokens_awarded").default("0.00"),
+  baseTokensAwarded: varchar("base_tokens_awarded").default("0.00"),
+  bonusTokensAwarded: varchar("bonus_tokens_awarded").default("0.00"),
+  latePenaltyApplied: varchar("late_penalty_applied").default("0.00"),
+  
+  // Professional skills scoring
+  deadlinessScore: varchar("deadliness_score"), // 0-100 score for meeting deadlines
+  instructionFollowingScore: varchar("instruction_following_score"),
+  communicationScore: varchar("communication_score"),
+  presentationScore: varchar("presentation_score"),
+  overallProfessionalScore: varchar("overall_professional_score"),
+  
+  // Feedback and improvement tracking
+  teacherFeedback: text("teacher_feedback"),
+  improvementSuggestions: text("improvement_suggestions").array(),
+  studentReflection: text("student_reflection"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+// Assignment feedback and communication tracking
+export const assignmentFeedback = pgTable("assignment_feedback", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  submissionId: varchar("submission_id").references(() => assignmentSubmissions.id, { onDelete: "cascade" }),
+  fromUserId: varchar("from_user_id").references(() => users.id),
+  toUserId: varchar("to_user_id").references(() => users.id),
+  
+  feedbackType: varchar("feedback_type", { length: 30 }), // 'initial_review', 'revision_request', 'final_approval', 'student_question'
+  feedbackContent: text("feedback_content").notNull(),
+  isPublic: boolean("is_public").default(true), // Whether student can see this feedback
+  
+  // Professional communication tracking
+  communicationQuality: varchar("communication_quality", { length: 20 }), // 'professional', 'casual', 'needs_improvement'
+  responseRequested: boolean("response_requested").default(false),
+  responseReceived: boolean("response_received").default(false),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  readAt: timestamp("read_at")
+});
+
+// Assignment templates for teacher efficiency
+export const assignmentTemplates = pgTable("assignment_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  createdBy: varchar("created_by").references(() => users.id),
+  
+  templateName: varchar("template_name", { length: 200 }).notNull(),
+  description: text("description"),
+  category: varchar("category", { length: 50 }),
+  subjectArea: varchar("subject_area", { length: 50 }),
+  
+  // Template content
+  titleTemplate: varchar("title_template", { length: 200 }),
+  descriptionTemplate: text("description_template"),
+  learningObjectivesTemplate: text("learning_objectives_template").array(),
+  submissionInstructionsTemplate: text("submission_instructions_template"),
+  
+  // Default settings
+  defaultTokenReward: varchar("default_token_reward"),
+  defaultDurationDays: integer("default_duration_days"),
+  recommendedLinkTypes: text("recommended_link_types").array(),
+  
+  isPublic: boolean("is_public").default(false), // Whether other teachers can use this template
+  useCount: integer("use_count").default(0),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+// Phase 2A Assignment Management Insert Schemas
+export const insertAssignmentAdvancedSchema = createInsertSchema(assignmentsAdvanced).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertAssignmentSubmissionSchema = createInsertSchema(assignmentSubmissions).omit({
+  id: true,
+  submittedAt: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertAssignmentFeedbackSchema = createInsertSchema(assignmentFeedback).omit({
+  id: true,
+  createdAt: true
+});
+
+export const insertAssignmentTemplateSchema = createInsertSchema(assignmentTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+// Phase 2A Assignment Management Types
+export type AssignmentAdvanced = typeof assignmentsAdvanced.$inferSelect;
+export type InsertAssignmentAdvanced = z.infer<typeof insertAssignmentAdvancedSchema>;
+
+export type AssignmentSubmission = typeof assignmentSubmissions.$inferSelect;
+export type InsertAssignmentSubmission = z.infer<typeof insertAssignmentSubmissionSchema>;
+
+export type AssignmentFeedback = typeof assignmentFeedback.$inferSelect;
+export type InsertAssignmentFeedback = z.infer<typeof insertAssignmentFeedbackSchema>;
+
+export type AssignmentTemplate = typeof assignmentTemplates.$inferSelect;
+export type InsertAssignmentTemplate = z.infer<typeof insertAssignmentTemplateSchema>;
