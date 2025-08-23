@@ -1,15 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
+import { Link } from "wouter";
 
 interface ChallengesProps {
   classroomId: string;
 }
 
-const mockChallenges = [
-  { id: '1', name: 'Recycle', icon: 'fas fa-check', color: 'green', progress: 50, current: 5, target: 10 },
-  { id: '2', name: 'Read 3 Books', icon: 'fas fa-book', color: 'yellow', progress: 33, current: 1, target: 3 },
-];
 
 export default function Challenges({ classroomId }: ChallengesProps) {
   const { user } = useAuth();
@@ -19,17 +16,40 @@ export default function Challenges({ classroomId }: ChallengesProps) {
     enabled: !!classroomId
   });
 
-  const displayChallenges = challenges?.length > 0 ? challenges : mockChallenges;
+  // Only show real challenges data
+  if (!challenges || challenges.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-800">Challenges</h3>
+          <Link href="/analytics">
+            <a className="text-blue-600 text-sm hover:underline">Manage</a>
+          </Link>
+        </div>
+        <div className="text-center py-8">
+          <i className="fas fa-trophy text-4xl text-gray-300 mb-3"></i>
+          <p className="text-gray-500 text-sm">No challenges created yet</p>
+          <p className="text-gray-400 text-xs mt-1">
+            <Link href="/analytics">
+              <a className="text-blue-500 hover:underline">Create challenges</a>
+            </Link> to engage students
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-800">Challenges</h3>
-        <a href="#" className="text-blue-600 text-sm hover:underline">View all</a>
+        <Link href="/analytics">
+          <a className="text-blue-600 text-sm hover:underline">Manage</a>
+        </Link>
       </div>
       
       <div className="space-y-3">
-        {displayChallenges.slice(0, 2).map((challenge, index) => (
+        {challenges.slice(0, 2).map((challenge, index) => (
           <motion.div
             key={challenge.id}
             initial={{ opacity: 0, x: -20 }}

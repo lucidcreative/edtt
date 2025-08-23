@@ -1,17 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
+import { Link } from "wouter";
 
 interface BadgesProps {
   classroomId: string;
 }
 
-const mockBadges = [
-  { id: '1', name: 'Community Helper', icon: 'fas fa-hands-helping', color: 'green' },
-  { id: '2', name: 'Quiz Master', icon: 'fas fa-graduation-cap', color: 'blue' },
-  { id: '3', name: 'Leadership Pro', icon: 'fas fa-crown', color: 'purple' },
-  { id: '4', name: 'Reading Pro', icon: 'fas fa-heart', color: 'red' },
-];
 
 export default function Badges({ classroomId }: BadgesProps) {
   const { user } = useAuth();
@@ -21,17 +16,40 @@ export default function Badges({ classroomId }: BadgesProps) {
     enabled: !!classroomId
   });
 
-  const displayBadges = badges?.length > 0 ? badges : mockBadges;
+  // Only show real badges data
+  if (!badges || badges.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-800">Badges</h3>
+          <Link href="/analytics">
+            <a className="text-blue-600 text-sm hover:underline">Manage</a>
+          </Link>
+        </div>
+        <div className="text-center py-8">
+          <i className="fas fa-award text-4xl text-gray-300 mb-3"></i>
+          <p className="text-gray-500 text-sm">No badges created yet</p>
+          <p className="text-gray-400 text-xs mt-1">
+            <Link href="/analytics">
+              <a className="text-blue-500 hover:underline">Create badges</a>
+            </Link> to motivate students
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-800">Badges</h3>
-        <a href="#" className="text-blue-600 text-sm hover:underline">View all</a>
+        <Link href="/analytics">
+          <a className="text-blue-600 text-sm hover:underline">Manage</a>
+        </Link>
       </div>
       
       <div className="grid grid-cols-4 gap-3">
-        {displayBadges.slice(0, 4).map((badge, index) => (
+        {badges.slice(0, 4).map((badge, index) => (
           <motion.div
             key={badge.id}
             initial={{ opacity: 0, scale: 0.5 }}

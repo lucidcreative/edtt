@@ -14,22 +14,30 @@ interface LeaderboardProps {
 }
 
 export default function Leaderboard({ students = [] }: LeaderboardProps) {
-  const topStudents = students.slice(0, 3);
+  // Sort students by tokens (highest first) and take top 3
+  const topStudents = students
+    .sort((a, b) => b.tokens - a.tokens)
+    .slice(0, 3);
 
-  // Mock data if no students provided
-  const mockStudents = [
-    { id: '1', nickname: 'Jada Johnson', tokens: 2550, profileImageUrl: null },
-    { id: '2', nickname: 'Braden Lee', tokens: 2120, profileImageUrl: null },
-    { id: '3', nickname: 'Sarah Brown', tokens: 1900, profileImageUrl: null },
-  ];
-
-  const displayStudents = topStudents.length > 0 ? topStudents : mockStudents;
+  // Only show leaderboard if there are real students
+  if (topStudents.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">Leaderboard</h3>
+        <div className="text-center py-8">
+          <i className="fas fa-trophy text-4xl text-gray-300 mb-3"></i>
+          <p className="text-gray-500 text-sm">No students enrolled yet</p>
+          <p className="text-gray-400 text-xs mt-1">Leaderboard will appear once students join and earn tokens</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
       <h3 className="text-lg font-semibold text-gray-800 mb-4">Leaderboard</h3>
       <div className="space-y-3">
-        {displayStudents.map((student, index) => (
+        {topStudents.map((student, index) => (
           <motion.div
             key={student.id}
             initial={{ opacity: 0, x: -20 }}

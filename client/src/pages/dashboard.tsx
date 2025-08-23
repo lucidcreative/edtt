@@ -204,7 +204,7 @@ export default function Dashboard() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.4 }}
         >
-          <ProgressChart />
+          <ProgressChart classroomStats={stats} students={students} />
         </motion.div>
         
         <motion.div
@@ -212,7 +212,7 @@ export default function Dashboard() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.5 }}
         >
-          <Leaderboard students={leaderboard} />
+          <Leaderboard students={students} />
         </motion.div>
       </div>
 
