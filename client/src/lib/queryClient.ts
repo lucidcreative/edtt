@@ -13,22 +13,19 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const token = getAuthToken();
   const headers: Record<string, string> = {};
   
   if (data) {
     headers["Content-Type"] = "application/json";
   }
   
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
+  // No need to manually add Authorization header - httpOnly cookies are sent automatically
 
   const res = await fetch(url, {
     method,
     headers,
     body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
+    credentials: "include", // This ensures cookies are sent with the request
   });
 
   await throwIfResNotOk(res);
@@ -41,16 +38,13 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const token = getAuthToken();
     const headers: Record<string, string> = {};
     
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
+    // No need to manually add Authorization header - httpOnly cookies are sent automatically
 
     const res = await fetch(queryKey.join("/") as string, {
       headers,
-      credentials: "include",
+      credentials: "include", // This ensures cookies are sent with the request
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
