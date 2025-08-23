@@ -26,7 +26,11 @@ export default function Assignments() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+  const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
+  const [isEditing, setIsEditing] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [editForm, setEditForm] = useState({ title: '', description: '', category: '', tokenReward: 0, dueDate: '' });
 
   // Get user's classrooms
   const { data: classrooms } = useQuery({
@@ -65,6 +69,30 @@ export default function Assignments() {
     }
   });
 
+  // Update assignment mutation
+  const updateAssignmentMutation = useMutation({
+    mutationFn: async (data: { assignmentId: string; updates: any }) => {
+      const response = await apiRequest('PATCH', `/api/assignments/${data.assignmentId}`, data.updates);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/classrooms", currentClassroom?.id, "assignments"] });
+      setIsDetailDialogOpen(false);
+      setIsEditing(false);
+      toast({
+        title: "Assignment Updated",
+        description: "The assignment has been successfully updated.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update assignment",
+        variant: "destructive",
+      });
+    }
+  });
+
   const handleCreateAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget as HTMLFormElement);
@@ -79,6 +107,33 @@ export default function Assignments() {
     };
 
     createAssignmentMutation.mutate(assignmentData);
+  };
+
+  const handleAssignmentClick = (assignment: any) => {
+    setSelectedAssignment(assignment);
+    setEditForm({
+      title: assignment.title || '',
+      description: assignment.description || '',
+      category: assignment.category || '',
+      tokenReward: assignment.tokenReward || 0,
+      dueDate: assignment.dueDate ? new Date(assignment.dueDate).toISOString().split('T')[0] : ''
+    });
+    setIsEditing(false);
+    setIsDetailDialogOpen(true);
+  };
+
+  const handleUpdateAssignment = () => {
+    if (!selectedAssignment) return;
+    updateAssignmentMutation.mutate({
+      assignmentId: selectedAssignment.id,
+      updates: {
+        title: editForm.title,
+        description: editForm.description,
+        category: editForm.category,
+        tokenReward: editForm.tokenReward,
+        dueDate: editForm.dueDate ? new Date(editForm.dueDate) : null
+      }
+    });
   };
 
   const filteredAssignments = assignments?.filter((assignment: any) => 
@@ -275,8 +330,9 @@ export default function Assignments() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className={`rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 group overflow-hidden bg-gradient-to-r ${categoryGradient} text-white cursor-pointer`}
+                className={`rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 group overflow-hidden bg-gradient-to-r ${categoryGradient} text-white cursor-pointer hover:scale-105`}
                 data-testid={`assignment-card-${index}`}
+                onClick={() => handleAssignmentClick(assignment)}
               >
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-4">
@@ -326,10 +382,15 @@ export default function Assignments() {
                       </Badge>
                     )}
                     
-                    {user?.role === 'student' && (
-                      <Button size="sm" variant="secondary" data-testid={`button-submit-${index}`}>
+                    {user?.role === 'student' ? (
+                      <Button size="sm" variant="secondary" data-testid={`button-submit-${index}`} onClick={(e) => e.stopPropagation()}>
                         <i className="fas fa-paper-plane mr-2"></i>
                         Submit
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); handleAssignmentClick(assignment); }}>
+                        <i className="fas fa-eye mr-1"></i>
+                        View Details
                       </Button>
                     )}
                   </div>
@@ -339,6 +400,155 @@ export default function Assignments() {
           })}
         </div>
       )}
+      
+      {/* Assignment Detail/Edit Dialog */}
+      <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
+                <i className="fas fa-tasks text-white text-sm"></i>
+              </div>
+              {isEditing ? 'Edit Assignment' : 'Assignment Details'}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedAssignment && (
+            <div className="space-y-6">
+              {!isEditing ? (
+                // View Mode
+                <div className="space-y-4">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-800 mb-2">{selectedAssignment.title}</h2>
+                    <div className="flex items-center gap-4 mb-4">
+                      {categories.find(c => c.value === selectedAssignment.category) && (
+                        <Badge variant="outline" className="flex items-center gap-1">
+                          <i className={`${categories.find(c => c.value === selectedAssignment.category)?.icon}`}></i>
+                          {categories.find(c => c.value === selectedAssignment.category)?.label}
+                        </Badge>
+                      )}
+                      {selectedAssignment.tokenReward > 0 && (
+                        <Badge variant="default" className="bg-blue-600">
+                          {selectedAssignment.tokenReward} tokens
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {selectedAssignment.description && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-700 mb-2">Description</h3>
+                      <p className="text-gray-600 whitespace-pre-wrap">{selectedAssignment.description}</p>
+                    </div>
+                  )}
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-700 mb-1">Due Date</h3>
+                      <p className="text-gray-600">
+                        {selectedAssignment.dueDate 
+                          ? new Date(selectedAssignment.dueDate).toLocaleDateString()
+                          : 'No due date set'
+                        }
+                      </p>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-700 mb-1">Created</h3>
+                      <p className="text-gray-600">
+                        {new Date(selectedAssignment.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {user?.role === 'teacher' && (
+                    <div className="flex gap-2 pt-4">
+                      <Button onClick={() => setIsEditing(true)} className="flex-1">
+                        <i className="fas fa-edit mr-2"></i>
+                        Edit Assignment
+                      </Button>
+                      <Button variant="outline" onClick={() => setIsDetailDialogOpen(false)}>
+                        Close
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                // Edit Mode
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                    <Input
+                      value={editForm.title}
+                      onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                      placeholder="Assignment title"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <Textarea
+                      value={editForm.description}
+                      onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                      placeholder="Assignment description and instructions"
+                      rows={4}
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                      <Select value={editForm.category} onValueChange={(value) => setEditForm({ ...editForm, category: value })}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories.map((category) => (
+                            <SelectItem key={category.value} value={category.value}>
+                              <span className="flex items-center gap-2">
+                                <i className={category.icon}></i>
+                                {category.label}
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Token Reward</label>
+                      <Input
+                        type="number"
+                        value={editForm.tokenReward}
+                        onChange={(e) => setEditForm({ ...editForm, tokenReward: parseInt(e.target.value) || 0 })}
+                        placeholder="0"
+                        min="0"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Due Date (Optional)</label>
+                    <Input
+                      type="date"
+                      value={editForm.dueDate}
+                      onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value })}
+                    />
+                  </div>
+                  
+                  <div className="flex gap-2 pt-4">
+                    <Button onClick={handleUpdateAssignment} disabled={updateAssignmentMutation.isPending} className="flex-1">
+                      {updateAssignmentMutation.isPending ? 'Updating...' : 'Save Changes'}
+                    </Button>
+                    <Button variant="outline" onClick={() => setIsEditing(false)}>
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
