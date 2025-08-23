@@ -1,11 +1,25 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
+import { apiRequest } from "@/lib/queryClient";
+import TemplateSelector from "@/components/store/template-selector";
 
 export default function Store() {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [editForm, setEditForm] = useState({ name: '', description: '', cost: 0, category: '', icon: '📦' });
 
   // Get user's classrooms
   const { data: classrooms } = useQuery({
@@ -13,13 +27,102 @@ export default function Store() {
     enabled: !!user
   });
 
-  const currentClassroom = classrooms?.[0];
+  const currentClassroom = classrooms?.[0] || null;
 
   // Get store items
   const { data: items, isLoading } = useQuery({
     queryKey: ["/api/classrooms", currentClassroom?.id, "store"],
     enabled: !!currentClassroom
   });
+
+  // Get store templates
+  const { data: templates = [] } = useQuery({
+    queryKey: ["/api/store/templates"],
+    enabled: !!currentClassroom
+  }) as { data: any[] };
+
+  // Create store item mutation
+  const createItemMutation = useMutation({
+    mutationFn: async (itemData: any) => {
+      const response = await apiRequest("POST", "/api/store-items", { ...itemData, classroomId: currentClassroom?.id });
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Store Item Created!",
+        description: "Your new store item is now available to students",
+        variant: "default"
+      });
+      setIsAddDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/classrooms", currentClassroom?.id, "store"] });
+    },
+    onError: () => {
+      toast({
+        title: "Creation Failed",
+        description: "Failed to create store item. Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Update store item mutation
+  const updateItemMutation = useMutation({
+    mutationFn: async (data: { itemId: string; updates: any }) => {
+      const response = await apiRequest("PATCH", `/api/store-items/${data.itemId}`, data.updates);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Item Updated!",
+        description: "Store item has been successfully updated",
+        variant: "default"
+      });
+      setIsEditDialogOpen(false);
+      setSelectedItem(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/classrooms", currentClassroom?.id, "store"] });
+    },
+    onError: () => {
+      toast({
+        title: "Update Failed",
+        description: "Failed to update store item. Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  const handleCreateItem = (itemData: any) => {
+    createItemMutation.mutate(itemData);
+  };
+
+  const handleEditItem = (item: any) => {
+    setSelectedItem(item);
+    setEditForm({
+      name: item.name || '',
+      description: item.description || '',
+      cost: item.cost || 0,
+      category: item.category || '',
+      icon: item.metadata?.icon || '📦'
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateItem = () => {
+    if (!selectedItem) return;
+    updateItemMutation.mutate({
+      itemId: selectedItem.id,
+      updates: {
+        name: editForm.name,
+        description: editForm.description,
+        cost: editForm.cost,
+        category: editForm.category,
+        metadata: { icon: editForm.icon }
+      }
+    });
+  };
+
+  const getItemIcon = (item: any) => {
+    return item.metadata?.icon || '📦';
+  };
 
   if (!currentClassroom) {
     return (
@@ -55,61 +158,41 @@ export default function Store() {
     );
   }
 
-  // Mock data if no items
-  const mockItems = [
-    {
-      id: '1',
-      name: 'Pencil Set',
-      description: 'High-quality pencils for daily use',
-      cost: 50,
-      imageUrl: 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400&h=300&fit=crop',
-      isActive: true,
-      category: 'Supplies'
-    },
-    {
-      id: '2',
-      name: 'Extra Credit Pass',
-      description: 'Skip one assignment with full credit',
-      cost: 200,
-      imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=300&fit=crop',
-      isActive: false,
-      category: 'Rewards'
-    },
-    {
-      id: '3',
-      name: 'Homework Pass',
-      description: 'Skip one homework assignment',
-      cost: 150,
-      imageUrl: 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400&h=300&fit=crop',
-      isActive: true,
-      category: 'Rewards'
-    },
-    {
-      id: '4',
-      name: 'Cool Stickers',
-      description: 'Fun sticker pack for decorating',
-      cost: 25,
-      imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=300&fit=crop',
-      isActive: true,
-      category: 'Supplies'
-    }
-  ];
-
-  const displayItems = items?.length > 0 ? items : mockItems;
+  const displayItems = Array.isArray(items) ? items : [];
 
   return (
     <div className="p-4 lg:p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Store</h1>
-          <p className="text-gray-600">{currentClassroom.name} • {displayItems.length} items</p>
+          <p className="text-gray-600">{currentClassroom?.name} • {displayItems.length} items</p>
         </div>
         
         {user?.role === 'teacher' && (
-          <Button data-testid="button-add-item">
-            <i className="fas fa-plus mr-2"></i>
-            Add Item
-          </Button>
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button data-testid="button-add-item">
+                <i className="fas fa-plus mr-2"></i>
+                Add Item
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+                    <i className="fas fa-plus text-white text-sm"></i>
+                  </div>
+                  Add Store Item
+                </DialogTitle>
+              </DialogHeader>
+              <TemplateSelector
+                templates={templates}
+                onSubmit={handleCreateItem}
+                isLoading={createItemMutation.isPending}
+                classroomId={currentClassroom?.id || ''}
+              />
+            </DialogContent>
+          </Dialog>
         )}
       </div>
 
@@ -126,85 +209,186 @@ export default function Store() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {displayItems.map((item, index) => (
-            <motion.div
-              key={item.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 group"
-              data-testid={`store-item-${index}`}
-            >
-              <div className="relative">
-                <img
-                  src={item.imageUrl || 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400&h=300&fit=crop'}
-                  alt={item.name}
-                  className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                  data-testid={`item-image-${index}`}
-                />
-                {user?.role === 'teacher' && (
-                  <div className="absolute top-4 right-4">
-                    <Button
-                      size="sm"
-                      variant={item.isActive ? "default" : "secondary"}
-                      className="rounded-full p-2 shadow-lg"
-                      data-testid={`button-toggle-${index}`}
-                    >
-                      <i className={`fas fa-power-off ${item.isActive ? 'text-green-600' : 'text-red-600'}`}></i>
-                    </Button>
+          {displayItems.map((item: any, index: number) => {
+            const itemIcon = getItemIcon(item);
+            const isActive = item.isActive !== false;
+            return (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className={`rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 group overflow-hidden ${
+                  item.category === 'Rewards' 
+                    ? 'bg-gradient-to-r from-purple-500 to-pink-500'
+                    : item.category === 'Supplies'
+                    ? 'bg-gradient-to-r from-blue-500 to-cyan-500'
+                    : 'bg-gradient-to-r from-green-500 to-emerald-500'
+                } text-white`}
+                data-testid={`store-item-${index}`}
+              >
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <span className="text-4xl" data-testid={`item-icon-${index}`}>
+                        {itemIcon}
+                      </span>
+                      <h3 className="text-xl font-bold" data-testid={`item-name-${index}`}>
+                        {item.name}
+                      </h3>
+                    </div>
+                    
+                    {user?.role === 'teacher' && (
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant={isActive ? "secondary" : "outline"}
+                          className="rounded-full p-2"
+                          data-testid={`button-toggle-${index}`}
+                        >
+                          <i className={`fas fa-power-off ${isActive ? 'text-green-600' : 'text-red-600'}`}></i>
+                        </Button>
+                      </div>
+                    )}
                   </div>
-                )}
-                {!item.isActive && (
-                  <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                    <Badge variant="secondary" className="bg-red-100 text-red-800">
-                      Inactive
-                    </Badge>
-                  </div>
-                )}
-              </div>
-              
-              <div className="p-4">
-                <h3 className="font-semibold text-gray-800 mb-2" data-testid={`item-name-${index}`}>
-                  {item.name}
-                </h3>
-                <p className="text-gray-600 text-sm mb-3" data-testid={`item-description-${index}`}>
-                  {item.description}
-                </p>
-                
-                <div className="flex items-center justify-between">
-                  <span className="text-lg font-bold text-blue-600" data-testid={`item-cost-${index}`}>
-                    {item.cost} tokens
-                  </span>
                   
-                  {user?.role === 'teacher' ? (
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      data-testid={`button-edit-item-${index}`}
-                    >
-                      Edit
-                    </Button>
-                  ) : (
-                    <Button 
-                      size="sm"
-                      disabled={!item.isActive || (user?.tokens || 0) < item.cost}
-                      data-testid={`button-buy-item-${index}`}
-                    >
-                      {(user?.tokens || 0) >= item.cost ? 'Buy' : 'Not enough tokens'}
-                    </Button>
-                  )}
+                  <p className="text-white/90 text-sm mb-4" data-testid={`item-description-${index}`}>
+                    {item.description}
+                  </p>
+                  
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-2xl font-bold" data-testid={`item-cost-${index}`}>
+                      {item.cost} tokens
+                    </span>
+                    
+                    {!isActive && (
+                      <Badge variant="secondary" className="bg-red-100 text-red-800">
+                        Inactive
+                      </Badge>
+                    )}
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    {item.category && (
+                      <Badge variant="outline" className="text-white border-white/50" data-testid={`item-category-${index}`}>
+                        {item.category}
+                      </Badge>
+                    )}
+                    
+                    <div className="flex gap-2">
+                      {user?.role === 'teacher' ? (
+                        <Button 
+                          size="sm" 
+                          variant="secondary"
+                          onClick={() => handleEditItem(item)}
+                          data-testid={`button-edit-item-${index}`}
+                        >
+                          <i className="fas fa-edit mr-1"></i>
+                          Edit
+                        </Button>
+                      ) : (
+                        <Button 
+                          size="sm"
+                          variant="secondary"
+                          disabled={!isActive || (user?.tokens || 0) < item.cost}
+                          data-testid={`button-buy-item-${index}`}
+                        >
+                          {(user?.tokens || 0) >= item.cost ? 'Buy' : 'Not enough tokens'}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                
-                {item.category && (
-                  <Badge variant="outline" className="mt-2" data-testid={`item-category-${index}`}>
-                    {item.category}
-                  </Badge>
-                )}
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            );
+          })}
         </div>
       )}
+      
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                <i className="fas fa-edit text-white text-sm"></i>
+              </div>
+              Edit Store Item
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Item Name</label>
+              <Input
+                value={editForm.name}
+                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                placeholder="Enter item name"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <Textarea
+                value={editForm.description}
+                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                placeholder="Enter item description"
+                rows={3}
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Cost (tokens)</label>
+                <Input
+                  type="number"
+                  value={editForm.cost}
+                  onChange={(e) => setEditForm({ ...editForm, cost: parseInt(e.target.value) || 0 })}
+                  placeholder="0"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                <Select value={editForm.category} onValueChange={(value) => setEditForm({ ...editForm, category: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Supplies">Supplies</SelectItem>
+                    <SelectItem value="Rewards">Rewards</SelectItem>
+                    <SelectItem value="Privileges">Privileges</SelectItem>
+                    <SelectItem value="Academic">Academic</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Icon</label>
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">{editForm.icon}</span>
+                <Input
+                  value={editForm.icon}
+                  onChange={(e) => setEditForm({ ...editForm, icon: e.target.value })}
+                  placeholder="📦"
+                  className="w-20"
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Use any emoji as an icon</p>
+            </div>
+            
+            <div className="flex gap-2 pt-4">
+              <Button onClick={handleUpdateItem} disabled={updateItemMutation.isPending} className="flex-1">
+                {updateItemMutation.isPending ? 'Updating...' : 'Update Item'}
+              </Button>
+              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
