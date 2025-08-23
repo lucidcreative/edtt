@@ -1337,6 +1337,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Complete assignment and award tokens
+  app.post('/api/assignments/:assignmentId/complete', authenticate, async (req: any, res) => {
+    try {
+      const { assignmentId } = req.params;
+      const userId = req.user.id;
+      
+      if (req.user.role !== 'student') {
+        return res.status(403).json({ message: 'Only students can complete assignments' });
+      }
+      
+      // Get assignment details
+      const assignment = await storage.getAssignment(assignmentId);
+      if (!assignment) {
+        return res.status(404).json({ message: 'Assignment not found' });
+      }
+      
+      // Check if assignment is graded and ready for completion
+      if (assignment.status !== 'graded') {
+        return res.status(400).json({ message: 'Assignment must be graded before completion' });
+      }
+      
+      // Check if already completed
+      if (assignment.status === 'completed') {
+        return res.status(400).json({ message: 'Assignment already completed' });
+      }
+      
+      // Verify student enrollment in this classroom
+      const enrollments = await storage.getStudentEnrollments(userId);
+      const hasAccess = enrollments.some(e => 
+        e.classroomId === assignment.classroomId && 
+        e.enrollmentStatus === 'approved'
+      );
+      
+      if (!hasAccess) {
+        return res.status(403).json({ message: 'Access denied to this assignment' });
+      }
+      
+      // Mark assignment as completed
+      await storage.updateAssignment(assignmentId, { status: 'completed' });
+      
+      // Award tokens to the student
+      const result = await storage.awardTokens({
+        studentIds: [userId],
+        amount: assignment.tokenReward,
+        category: 'Assignment Completion',
+        description: `Completed assignment: ${assignment.title}`,
+        referenceType: 'assignment',
+        referenceId: assignmentId,
+        createdBy: userId, // Student completed it themselves
+        classroomId: assignment.classroomId
+      });
+      
+      // Get updated wallet balance
+      const wallet = await storage.getStudentWallet(userId, assignment.classroomId);
+      const newBalance = wallet ? parseFloat(wallet.currentBalance) : 0;
+      
+      res.json({
+        message: 'Assignment completed successfully',
+        tokensAwarded: assignment.tokenReward,
+        newBalance: newBalance,
+        transaction: result.transactions[0]
+      });
+    } catch (error) {
+      console.error('Error completing assignment:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
   app.get('/api/students/:studentId/announcements', authenticate, async (req: any, res) => {
     try {
       if (req.user.id !== req.params.studentId && req.user.role !== 'teacher') {

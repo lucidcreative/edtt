@@ -18,7 +18,7 @@ interface Assignment {
   category: string;
   tokenReward: number;
   dueDate?: string;
-  status: 'assigned' | 'submitted' | 'graded';
+  status: 'assigned' | 'submitted' | 'graded' | 'completed';
   submittedAt?: string;
   grade?: number;
   feedback?: string;
@@ -66,6 +66,26 @@ export default function StudentAssignments() {
     }
   });
 
+  // Complete assignment mutation (awards tokens)
+  const completeAssignmentMutation = useMutation({
+    mutationFn: async (assignmentId: string) => {
+      const response = await apiRequest('POST', `/api/assignments/${assignmentId}/complete`, {});
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({ 
+        title: "Assignment Completed! 🎉", 
+        description: `You earned ${data.tokensAwarded} tokens! Your balance is now ${data.newBalance} tokens.`,
+        duration: 5000
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/students", user?.id, "assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] }); // Refresh user tokens
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to complete assignment. Please try again.", variant: "destructive" });
+    }
+  });
+
   const handleSubmitAssignment = () => {
     if (!selectedAssignment || !submissionText.trim()) return;
     
@@ -86,26 +106,30 @@ export default function StudentAssignments() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'assigned':
-        return <Badge variant="destructive">Due</Badge>;
+        return <Badge variant="outline" className="bg-blue-100 text-blue-600 border-blue-200">📝 To Do</Badge>;
       case 'submitted':
-        return <Badge variant="secondary">Submitted</Badge>;
+        return <Badge variant="outline" className="bg-yellow-100 text-yellow-600 border-yellow-200">⏳ Under Review</Badge>;
       case 'graded':
-        return <Badge className="bg-green-100 text-green-800">Graded</Badge>;
+        return <Badge variant="outline" className="bg-purple-100 text-purple-600 border-purple-200">✅ Ready to Complete</Badge>;
+      case 'completed':
+        return <Badge variant="outline" className="bg-green-100 text-green-600 border-green-200">🎉 Completed</Badge>;
       default:
-        return <Badge variant="outline">Unknown</Badge>;
+        return <Badge variant="outline">❓ Unknown</Badge>;
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'assigned':
-        return "fas fa-clock text-red-500";
+        return "fas fa-tasks";
       case 'submitted':
-        return "fas fa-paper-plane text-blue-500";
+        return "fas fa-paper-plane";
       case 'graded':
-        return "fas fa-check-circle text-green-500";
+        return "fas fa-star";
+      case 'completed':
+        return "fas fa-check-circle";
       default:
-        return "fas fa-question-circle text-gray-500";
+        return "fas fa-question-circle";
     }
   };
 
@@ -188,54 +212,77 @@ export default function StudentAssignments() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
               >
-                <Card className="hover:shadow-lg transition-all duration-200 group">
-                  <CardHeader className="pb-3">
+                <Card className={`relative overflow-hidden hover:shadow-xl transition-all duration-300 group ${assignment.status === 'completed' ? 'border-green-500 bg-green-50' : ''}`}>
+                  <CardHeader className="pb-4">
                     <div className="flex items-start justify-between">
-                      <div className="space-y-2">
-                        <CardTitle className="text-lg font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">
-                          {assignment.title}
-                        </CardTitle>
-                        <div className="flex items-center gap-2">
-                          {getStatusBadge(assignment.status)}
-                          <Badge variant="outline" className={categoryInfo.color}>
-                            <i className={`${categoryInfo.icon} mr-1`}></i>
-                            {categoryInfo.label}
-                          </Badge>
+                      <div className="space-y-3 flex-1">
+                        <div className="flex items-start gap-3">
+                          <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-white shadow-lg ${assignment.status === 'completed' ? 'bg-gradient-to-r from-green-500 to-emerald-600' : 'bg-gradient-to-r from-blue-500 to-purple-600'} group-hover:scale-105 transition-transform duration-300`}>
+                            <i className={`${getStatusIcon(assignment.status)} text-xl`}></i>
+                          </div>
+                          <div className="flex-1">
+                            <CardTitle className="text-lg font-semibold text-gray-800 group-hover:text-blue-600 transition-colors leading-tight">
+                              {assignment.title}
+                            </CardTitle>
+                            <div className="flex items-center gap-2 mt-2">
+                              {getStatusBadge(assignment.status)}
+                              <Badge variant="outline" className={categoryInfo.color}>
+                                <i className={`${categoryInfo.icon} mr-1`}></i>
+                                {categoryInfo.label}
+                              </Badge>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                      <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white">
-                        <i className={getStatusIcon(assignment.status)}></i>
                       </div>
                     </div>
                   </CardHeader>
                   
                   <CardContent className="pt-0">
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       {assignment.description && (
-                        <p className="text-sm text-gray-600 line-clamp-2">{assignment.description}</p>
+                        <p className="text-sm text-gray-600 line-clamp-3 leading-relaxed">{assignment.description}</p>
                       )}
                       
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1 text-sm text-yellow-600">
-                          <i className="fas fa-coins"></i>
-                          <span className="font-medium">{assignment.tokenReward} tokens</span>
+                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                            <i className="fas fa-coins text-yellow-600 text-sm"></i>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-yellow-700">{assignment.tokenReward} tokens</p>
+                            <p className="text-xs text-gray-600">Reward for completion</p>
+                          </div>
                         </div>
                         {assignment.dueDate && (
-                          <div className="text-xs text-gray-500">
-                            Due: {new Date(assignment.dueDate).toLocaleDateString()}
+                          <div className="text-right">
+                            <p className="text-sm font-medium text-gray-700">
+                              {new Date(assignment.dueDate).toLocaleDateString()}
+                            </p>
+                            <p className="text-xs text-gray-500">Due date</p>
                           </div>
                         )}
                       </div>
 
                       {assignment.status === 'graded' && assignment.grade && (
-                        <div className="p-2 bg-green-50 rounded border border-green-200">
+                        <div className="p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
                           <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-green-800">Grade: {assignment.grade}%</span>
-                            <i className="fas fa-star text-yellow-500"></i>
+                            <div className="flex items-center gap-2">
+                              <i className="fas fa-star text-yellow-500"></i>
+                              <span className="font-semibold text-green-800">Grade: {assignment.grade}%</span>
+                            </div>
                           </div>
                           {assignment.feedback && (
-                            <p className="text-xs text-green-700 mt-1">{assignment.feedback}</p>
+                            <p className="text-sm text-green-700 mt-2 italic">"{assignment.feedback}"</p>
                           )}
+                        </div>
+                      )}
+
+                      {assignment.status === 'completed' && (
+                        <div className="p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                          <div className="flex items-center gap-2">
+                            <i className="fas fa-check-circle text-green-600"></i>
+                            <span className="font-semibold text-green-800">Completed & Tokens Earned!</span>
+                          </div>
                         </div>
                       )}
 
@@ -257,9 +304,28 @@ export default function StudentAssignments() {
                             <i className="fas fa-clock mr-2"></i>
                             Awaiting Grade
                           </Button>
+                        ) : assignment.status === 'graded' ? (
+                          <Button 
+                            className="flex-1 bg-green-600 hover:bg-green-700"
+                            onClick={() => completeAssignmentMutation.mutate(assignment.id)}
+                            disabled={completeAssignmentMutation.isPending}
+                            data-testid={`button-complete-${assignment.id}`}
+                          >
+                            {completeAssignmentMutation.isPending ? (
+                              <>
+                                <i className="fas fa-spinner fa-spin mr-2"></i>
+                                Marking Complete...
+                              </>
+                            ) : (
+                              <>
+                                <i className="fas fa-check mr-2"></i>
+                                Mark as Complete
+                              </>
+                            )}
+                          </Button>
                         ) : (
-                          <Button variant="outline" className="flex-1" disabled>
-                            <i className="fas fa-check mr-2"></i>
+                          <Button variant="outline" className="flex-1 bg-green-50 border-green-200 text-green-700" disabled>
+                            <i className="fas fa-check-circle mr-2"></i>
                             Completed
                           </Button>
                         )}
