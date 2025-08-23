@@ -5,23 +5,35 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { ClassroomProvider } from "@/contexts/ClassroomContext";
-import NotFound from "@/pages/not-found";
-import AuthPage from "@/pages/auth";
-import Dashboard from "@/pages/dashboard";
-import StudentManagement from "@/pages/student-management";
-import Store from "@/pages/store";
-import Assignments from "@/pages/assignments";
-import Analytics from "@/pages/analytics";
-import Announcements from "@/pages/announcements";
-import TimeTracking from "@/pages/time-tracking";
-import Earn from "@/pages/earn";
-import Badges from "@/pages/badges";
-import Challenges from "@/pages/challenges";
-import Progress from "@/pages/progress";
-import ChangePinPage from "@/pages/change-pin";
+import { Suspense, lazy } from "react";
 import Sidebar from "@/components/sidebar";
 import Header from "@/components/header";
 import MobileNav from "@/components/mobile-nav";
+
+// Lazy load all page components for route-based code splitting
+const NotFound = lazy(() => import("@/pages/not-found"));
+const AuthPage = lazy(() => import("@/pages/auth"));
+const Dashboard = lazy(() => import("@/pages/dashboard"));
+const StudentManagement = lazy(() => import("@/pages/student-management"));
+const Store = lazy(() => import("@/pages/store"));
+const Assignments = lazy(() => import("@/pages/assignments"));
+const Analytics = lazy(() => import("@/pages/analytics"));
+const Announcements = lazy(() => import("@/pages/announcements"));
+const TimeTracking = lazy(() => import("@/pages/time-tracking"));
+const Earn = lazy(() => import("@/pages/earn"));
+const Badges = lazy(() => import("@/pages/badges"));
+const Challenges = lazy(() => import("@/pages/challenges"));
+const Progress = lazy(() => import("@/pages/progress"));
+const ChangePinPage = lazy(() => import("@/pages/change-pin"));
+
+// Loading fallback component
+function PageLoadingFallback() {
+  return (
+    <div className="flex items-center justify-center h-64">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+    </div>
+  );
+}
 
 function AuthenticatedApp() {
   return (
@@ -31,21 +43,23 @@ function AuthenticatedApp() {
         <main className="flex-1 flex flex-col overflow-hidden">
           <Header />
           <div className="flex-1 overflow-auto pb-20 lg:pb-0">
-            <Switch>
-              <Route path="/" component={Dashboard} />
-              <Route path="/students" component={StudentManagement} />
-              <Route path="/announcements" component={Announcements} />
-              <Route path="/store" component={Store} />
-              <Route path="/assignments" component={Assignments} />
-              <Route path="/time-tracking" component={TimeTracking} />
-              <Route path="/earn" component={Earn} />
-              <Route path="/analytics" component={Analytics} />
-              <Route path="/badges" component={Badges} />
-              <Route path="/challenges" component={Challenges} />
-              <Route path="/progress" component={Progress} />
-              <Route path="/change-pin" component={ChangePinPage} />
-              <Route component={NotFound} />
-            </Switch>
+            <Suspense fallback={<PageLoadingFallback />}>
+              <Switch>
+                <Route path="/" component={Dashboard} />
+                <Route path="/students" component={StudentManagement} />
+                <Route path="/announcements" component={Announcements} />
+                <Route path="/store" component={Store} />
+                <Route path="/assignments" component={Assignments} />
+                <Route path="/time-tracking" component={TimeTracking} />
+                <Route path="/earn" component={Earn} />
+                <Route path="/analytics" component={Analytics} />
+                <Route path="/badges" component={Badges} />
+                <Route path="/challenges" component={Challenges} />
+                <Route path="/progress" component={Progress} />
+                <Route path="/change-pin" component={ChangePinPage} />
+                <Route component={NotFound} />
+              </Switch>
+            </Suspense>
           </div>
         </main>
         
@@ -68,13 +82,19 @@ function Router() {
   }
 
   return (
-    <Switch>
-      {!isAuthenticated ? (
-        <Route path="*" component={AuthPage} />
-      ) : (
-        <Route path="*" component={AuthenticatedApp} />
-      )}
-    </Switch>
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    }>
+      <Switch>
+        {!isAuthenticated ? (
+          <Route path="*" component={AuthPage} />
+        ) : (
+          <Route path="*" component={AuthenticatedApp} />
+        )}
+      </Switch>
+    </Suspense>
   );
 }
 

@@ -66,7 +66,13 @@ export const classrooms = pgTable("classrooms", {
   minClockInDuration: integer("min_clock_in_duration").default(15), // minutes
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
-});
+}, (table) => ({
+  // Indexes for foreign keys and frequent queries
+  teacherIdIdx: index("classrooms_teacher_id_idx").on(table.teacherId),
+  joinCodeIdx: index("classrooms_join_code_idx").on(table.joinCode),
+  createdAtIdx: index("classrooms_created_at_idx").on(table.createdAt),
+  isActiveIdx: index("classrooms_is_active_idx").on(table.isActive)
+}));
 
 // Student-Classroom relationships
 export const studentClassrooms = pgTable("student_classrooms", {
@@ -74,7 +80,13 @@ export const studentClassrooms = pgTable("student_classrooms", {
   studentId: uuid("student_id").references(() => users.id).notNull(),
   classroomId: uuid("classroom_id").references(() => classrooms.id).notNull(),
   joinedAt: timestamp("joined_at").defaultNow()
-});
+}, (table) => ({
+  // Indexes for foreign keys and frequent queries
+  studentIdIdx: index("student_classrooms_student_id_idx").on(table.studentId),
+  classroomIdIdx: index("student_classrooms_classroom_id_idx").on(table.classroomId),
+  // Unique constraint to prevent duplicate enrollments
+  studentClassroomUnique: unique("student_classroom_unique").on(table.studentId, table.classroomId)
+}));
 
 // Assignments table
 export const assignments = pgTable("assignments", {
@@ -90,7 +102,15 @@ export const assignments = pgTable("assignments", {
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
-});
+}, (table) => ({
+  // Indexes for foreign keys and frequent queries
+  classroomIdIdx: index("assignments_classroom_id_idx").on(table.classroomId),
+  teacherIdIdx: index("assignments_teacher_id_idx").on(table.teacherId),
+  dueDateIdx: index("assignments_due_date_idx").on(table.dueDate),
+  createdAtIdx: index("assignments_created_at_idx").on(table.createdAt),
+  isActiveIdx: index("assignments_is_active_idx").on(table.isActive),
+  categoryIdx: index("assignments_category_idx").on(table.category)
+}));
 
 // Assignment submissions
 export const submissions = pgTable("submissions", {
@@ -105,7 +125,16 @@ export const submissions = pgTable("submissions", {
   submittedAt: timestamp("submitted_at").defaultNow(),
   reviewedAt: timestamp("reviewed_at"),
   reviewedBy: uuid("reviewed_by").references(() => users.id)
-});
+}, (table) => ({
+  // Indexes for foreign keys and frequent queries
+  assignmentIdIdx: index("submissions_assignment_id_idx").on(table.assignmentId),
+  studentIdIdx: index("submissions_student_id_idx").on(table.studentId),
+  statusIdx: index("submissions_status_idx").on(table.status),
+  submittedAtIdx: index("submissions_submitted_at_idx").on(table.submittedAt),
+  reviewedByIdx: index("submissions_reviewed_by_idx").on(table.reviewedBy),
+  // Unique constraint to prevent duplicate submissions
+  assignmentStudentUnique: unique("assignment_student_submission_unique").on(table.assignmentId, table.studentId)
+}));
 
 // Store items
 export const storeItems = pgTable("store_items", {
@@ -120,7 +149,14 @@ export const storeItems = pgTable("store_items", {
   inventory: integer("inventory").default(-1), // -1 means unlimited
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
-});
+}, (table) => ({
+  // Indexes for foreign keys and frequent queries
+  classroomIdIdx: index("store_items_classroom_id_idx").on(table.classroomId),
+  categoryIdx: index("store_items_category_idx").on(table.category),
+  costIdx: index("store_items_cost_idx").on(table.cost),
+  isActiveIdx: index("store_items_is_active_idx").on(table.isActive),
+  createdAtIdx: index("store_items_created_at_idx").on(table.createdAt)
+}));
 
 // Store purchases
 export const purchases = pgTable("purchases", {
@@ -131,7 +167,13 @@ export const purchases = pgTable("purchases", {
   status: varchar("status", { length: 20 }).notNull().$type<'pending' | 'fulfilled' | 'cancelled'>().default('pending'),
   purchasedAt: timestamp("purchased_at").defaultNow(),
   fulfilledAt: timestamp("fulfilled_at")
-});
+}, (table) => ({
+  // Indexes for foreign keys and frequent queries
+  studentIdIdx: index("purchases_student_id_idx").on(table.studentId),
+  storeItemIdIdx: index("purchases_store_item_id_idx").on(table.storeItemId),
+  statusIdx: index("purchases_status_idx").on(table.status),
+  purchasedAtIdx: index("purchases_purchased_at_idx").on(table.purchasedAt)
+}));
 
 // Time tracking entries
 export const timeEntries = pgTable("time_entries", {
@@ -148,7 +190,14 @@ export const timeEntries = pgTable("time_entries", {
   approvedBy: uuid("approved_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
-});
+}, (table) => ({
+  // Indexes for foreign keys and frequent queries
+  studentIdIdx: index("time_entries_student_id_idx").on(table.studentId),
+  classroomIdIdx: index("time_entries_classroom_id_idx").on(table.classroomId),
+  statusIdx: index("time_entries_status_idx").on(table.status),
+  clockInTimeIdx: index("time_entries_clock_in_time_idx").on(table.clockInTime),
+  createdAtIdx: index("time_entries_created_at_idx").on(table.createdAt)
+}));
 
 // Badges/Achievements
 export const badges = pgTable("badges", {
@@ -224,7 +273,15 @@ export const announcements = pgTable("announcements", {
   published: boolean("published").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
-});
+}, (table) => ({
+  // Indexes for foreign keys and frequent queries
+  classroomIdIdx: index("announcements_classroom_id_idx").on(table.classroomId),
+  authorIdIdx: index("announcements_author_id_idx").on(table.authorId),
+  publishedIdx: index("announcements_published_idx").on(table.published),
+  priorityIdx: index("announcements_priority_idx").on(table.priority),
+  createdAtIdx: index("announcements_created_at_idx").on(table.createdAt),
+  categoryIdx: index("announcements_category_idx").on(table.category)
+}));
 
 // Track which students have read announcements
 export const announcementReads = pgTable("announcement_reads", {
@@ -232,7 +289,14 @@ export const announcementReads = pgTable("announcement_reads", {
   announcementId: uuid("announcement_id").references(() => announcements.id).notNull(),
   studentId: uuid("student_id").references(() => users.id).notNull(),
   readAt: timestamp("read_at").defaultNow()
-});
+}, (table) => ({
+  // Indexes for foreign keys and frequent queries
+  announcementIdIdx: index("announcement_reads_announcement_id_idx").on(table.announcementId),
+  studentIdIdx: index("announcement_reads_student_id_idx").on(table.studentId),
+  readAtIdx: index("announcement_reads_read_at_idx").on(table.readAt),
+  // Unique constraint to prevent duplicate read records
+  announcementStudentUnique: unique("announcement_student_read_unique").on(table.announcementId, table.studentId)
+}));
 
 // PHASE 1C: TOKEN ECONOMY FOUNDATION
 
