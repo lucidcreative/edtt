@@ -7,11 +7,18 @@ interface MetricCardProps {
   icon: string;
   gradient: string;
   progress?: number;
+  onClick?: () => void;
 }
 
-export default function MetricCard({ title, value, subtitle, icon, gradient, progress }: MetricCardProps) {
+export default function MetricCard({ title, value, subtitle, icon, gradient, progress, onClick }: MetricCardProps) {
   return (
-    <div className={`bg-gradient-to-r ${gradient} rounded-2xl p-6 text-white hover:shadow-lg transition-all duration-300`}>
+    <div 
+      className={`bg-gradient-to-r ${gradient} rounded-2xl p-6 text-white hover:shadow-lg transition-all duration-300 ${
+        onClick ? 'cursor-pointer hover:scale-105 active:scale-95' : ''
+      }`}
+      onClick={onClick}
+      data-testid={`metric-card-${title.toLowerCase().replace(' ', '-')}`}
+    >
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold">{title}</h3>
         <i className={`${icon} text-2xl opacity-80`}></i>

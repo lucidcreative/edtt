@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { Plus } from "lucide-react";
 import MetricCard from "@/components/dashboard/metric-card";
@@ -16,6 +17,7 @@ import { Button } from "@/components/ui/button";
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
   const [selectedClassroom, setSelectedClassroom] = useState<any>(null);
 
   // Show student dashboard for students
@@ -159,6 +161,7 @@ export default function Dashboard() {
             icon="fas fa-check-circle"
             gradient="from-blue-500 to-blue-600"
             progress={completionPercentage}
+            onClick={() => setLocation('/assignments')}
           />
         </motion.div>
 
@@ -173,6 +176,7 @@ export default function Dashboard() {
             subtitle={stats ? `${stats.pendingSubmissions || 0} pending review` : "No assignments yet"}
             icon="fas fa-tasks"
             gradient="from-purple-500 to-purple-600"
+            onClick={() => setLocation('/assignments')}
           />
         </motion.div>
 
@@ -187,6 +191,7 @@ export default function Dashboard() {
             subtitle={studentCount > 0 ? `${studentCount} enrolled` : "Share join code to get students"}
             icon="fas fa-users"
             gradient="from-green-500 to-emerald-500"
+            onClick={() => setLocation('/students')}
           />
         </motion.div>
 
