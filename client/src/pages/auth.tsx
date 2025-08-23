@@ -204,13 +204,13 @@ export default function AuthPage() {
       
       toast({
         title: "Welcome to the classroom!",
-        description: `Hello ${data.user.nickname}! You've joined ${data.classroom.name}`,
+        description: `Hello ${data.user.nickname}! You've successfully joined ${data.classroom.name}.`,
       });
 
       setLocation('/');
     } catch (error) {
       toast({
-        title: "Join failed",
+        title: "Failed to join classroom",
         description: error instanceof Error ? error.message : "Unable to join classroom",
         variant: "destructive",
       });
@@ -220,35 +220,38 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+        transition={{ duration: 0.6 }}
         className="w-full max-w-md"
       >
+        {/* Header */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center text-white font-bold text-2xl mx-auto mb-4">
-            BC
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl mb-4">
+            <i className="fas fa-coins text-white text-2xl"></i>
           </div>
-          <h1 className="text-3xl font-bold text-gray-800">BizCoin</h1>
-          <p className="text-gray-600 mt-2">Classroom Token Economy Platform</p>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">BizCoin</h1>
+          <p className="text-gray-600">Classroom Token Economy Platform</p>
         </div>
 
+        {/* Main Auth Card */}
         <Card className="shadow-2xl border-0">
           <CardHeader className="pb-4">
             <Tabs defaultValue="teacher" className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="teacher" data-testid="tab-teacher">
+                <TabsTrigger value="teacher" data-testid="tab-teacher" className="text-sm">
                   <i className="fas fa-chalkboard-teacher mr-2"></i>
                   Teacher
                 </TabsTrigger>
-                <TabsTrigger value="student" data-testid="tab-student">
+                <TabsTrigger value="student" data-testid="tab-student" className="text-sm">
                   <i className="fas fa-user-graduate mr-2"></i>
                   Student
                 </TabsTrigger>
               </TabsList>
 
+              {/* Teacher Tab */}
               <TabsContent value="teacher" className="space-y-6">
                 {!showTeacherSignup ? (
                   <>
@@ -257,31 +260,31 @@ export default function AuthPage() {
                     </div>
                     
                     <form onSubmit={handleTeacherLogin} className="space-y-4">
-                  <div>
-                    <Label htmlFor="teacher-email">Email</Label>
-                    <Input
-                      id="teacher-email"
-                      name="email"
-                      type="email"
-                      placeholder="teacher@school.edu"
-                      required
-                      data-testid="input-teacher-email"
-                      className="mt-1"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="teacher-password">Password</Label>
-                    <Input
-                      id="teacher-password"
-                      name="password"
-                      type="password"
-                      placeholder="••••••••"
-                      required
-                      data-testid="input-teacher-password"
-                      className="mt-1"
-                    />
-                  </div>
+                      <div>
+                        <Label htmlFor="teacher-email">Email</Label>
+                        <Input
+                          id="teacher-email"
+                          name="email"
+                          type="email"
+                          placeholder="teacher@school.edu"
+                          required
+                          data-testid="input-teacher-email"
+                          className="mt-1"
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="teacher-password">Password</Label>
+                        <Input
+                          id="teacher-password"
+                          name="password"
+                          type="password"
+                          placeholder="••••••••"
+                          required
+                          data-testid="input-teacher-password"
+                          className="mt-1"
+                        />
+                      </div>
 
                       <Button
                         type="submit"
@@ -409,16 +412,17 @@ export default function AuthPage() {
                 )}
               </TabsContent>
 
+              {/* Student Tab - Simplified Design */}
               <TabsContent value="student" className="space-y-6">
-                <Tabs defaultValue="login" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="login">Login</TabsTrigger>
-                    <TabsTrigger value="join">Join Class</TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="login" className="space-y-4 mt-6">
-                    <div className="text-center">
-                      <h2 className="text-2xl font-bold text-gray-800">Student Login</h2>
+                <div className="space-y-6">
+                  {/* Student Login Section */}
+                  <div className="bg-purple-50 rounded-lg p-6 border border-purple-100">
+                    <div className="text-center mb-4">
+                      <h2 className="text-xl font-bold text-gray-800 flex items-center justify-center gap-2">
+                        <i className="fas fa-sign-in-alt text-purple-600"></i>
+                        Returning Student
+                      </h2>
+                      <p className="text-sm text-gray-600">Already have an account? Sign in here</p>
                     </div>
                     
                     <form onSubmit={handleStudentLogin} className="space-y-4">
@@ -456,6 +460,7 @@ export default function AuthPage() {
                           type="password"
                           placeholder="••••"
                           maxLength={4}
+                          pattern="[0-9]*"
                           required
                           data-testid="input-student-pin"
                           className="mt-1 text-center text-lg"
@@ -471,34 +476,26 @@ export default function AuthPage() {
                         {isLoading ? "Signing in..." : "Sign In"}
                       </Button>
                     </form>
-                    
-                    <div className="mt-4">
-                      <div className="relative">
-                        <div className="absolute inset-0 flex items-center">
-                          <span className="w-full border-t" />
-                        </div>
-                        <div className="relative flex justify-center text-xs uppercase">
-                          <span className="bg-white px-2 text-muted-foreground">Or</span>
-                        </div>
-                      </div>
-                      
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full mt-3 bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
-                        onClick={() => handleDemoLogin('student')}
-                        disabled={isLoading}
-                        data-testid="button-demo-student"
-                      >
-                        🚀 Try Demo as Student
-                      </Button>
-                    </div>
-                  </TabsContent>
+                  </div>
 
-                  <TabsContent value="join" className="space-y-4 mt-6">
-                    <div className="text-center">
-                      <h2 className="text-2xl font-bold text-gray-800">Join Classroom</h2>
-                      <p className="text-gray-600 text-sm mt-1">Create your account and join</p>
+                  {/* Divider */}
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-white px-2 text-muted-foreground">New Student?</span>
+                    </div>
+                  </div>
+
+                  {/* Student Join Section */}
+                  <div className="bg-green-50 rounded-lg p-6 border border-green-100">
+                    <div className="text-center mb-4">
+                      <h2 className="text-xl font-bold text-gray-800 flex items-center justify-center gap-2">
+                        <i className="fas fa-user-plus text-green-600"></i>
+                        Join Classroom
+                      </h2>
+                      <p className="text-sm text-gray-600">First time? Create your account and join</p>
                     </div>
                     
                     <form onSubmit={handleStudentJoin} className="space-y-4">
@@ -529,7 +526,7 @@ export default function AuthPage() {
                       </div>
                       
                       <div>
-                        <Label htmlFor="join-pin">Create PIN</Label>
+                        <Label htmlFor="join-pin">Create 4-Digit PIN</Label>
                         <Input
                           id="join-pin"
                           name="pin"
@@ -541,7 +538,7 @@ export default function AuthPage() {
                           data-testid="input-join-pin"
                           className="mt-1 text-center text-lg"
                         />
-                        <p className="text-xs text-gray-500 mt-1">4-digit PIN (numbers only)</p>
+                        <p className="text-xs text-gray-500 mt-1">Numbers only (e.g., 1234)</p>
                       </div>
 
                       <Button
@@ -553,8 +550,22 @@ export default function AuthPage() {
                         {isJoining ? "Joining..." : "Join Classroom"}
                       </Button>
                     </form>
-                  </TabsContent>
-                </Tabs>
+                  </div>
+
+                  {/* Demo Button */}
+                  <div className="text-center">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
+                      onClick={() => handleDemoLogin('student')}
+                      disabled={isLoading}
+                      data-testid="button-demo-student"
+                    >
+                      🚀 Try Demo as Student
+                    </Button>
+                  </div>
+                </div>
               </TabsContent>
             </Tabs>
           </CardHeader>
