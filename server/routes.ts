@@ -1592,8 +1592,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Access denied' });
       }
       
-      // TODO: Check for active time tracking session
-      res.json(null);
+      const activeSession = await storage.getActiveTimeSession(req.params.studentId);
+      res.json(activeSession);
     } catch (error) {
       console.error("Get student active session error:", error);
       res.status(500).json({ message: "Internal server error" });
@@ -1612,11 +1612,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const clockInTime = new Date();
       
+      // Get user's current classroom (simplified approach)
+      const userEnrollments = await storage.getStudentEnrollments(req.user.id);
+      const currentClassroom = userEnrollments[0]; // Use first classroom for now
+      
+      if (!currentClassroom) {
+        return res.status(400).json({ message: "You must be enrolled in a classroom to track time." });
+      }
+
       // Create a time entry in the database
       const timeEntry = await storage.createTimeEntry({
         studentId: req.user.id,
-        classroomId: req.body.classroomId || 'default', // You may want to get this from user context
+        classroomId: currentClassroom.classroomId,
         clockInTime: clockInTime,
+        ipAddress: req.ip || req.connection.remoteAddress || '127.0.0.1',
         status: 'active'
       });
       
@@ -1630,6 +1639,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Internal server error" });
     }
   });
+
 
   app.post('/api/time-tracking/clock-out', authenticate, async (req: any, res) => {
     try {
