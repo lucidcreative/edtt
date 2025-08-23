@@ -1,6 +1,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
+import MobileMenu from "@/components/mobile-menu";
 
 const pageInfo = {
   '/': {
@@ -34,15 +35,20 @@ export default function Header() {
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 p-4 lg:p-6">
       <div className="flex items-center justify-between">
+        {/* Mobile Menu Button */}
+        <div className="lg:hidden">
+          <MobileMenu />
+        </div>
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
+          className="flex-1 lg:flex-none text-center lg:text-left"
         >
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-800" data-testid="text-page-title">
+          <h1 className="text-xl lg:text-3xl font-bold text-gray-800" data-testid="text-page-title">
             {currentPage.title}
           </h1>
-          <p className="text-gray-600 mt-1" data-testid="text-page-subtitle">
+          <p className="text-sm lg:text-base text-gray-600 mt-1 hidden lg:block" data-testid="text-page-subtitle">
             {currentPage.subtitle}
           </p>
         </motion.div>

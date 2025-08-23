@@ -19,6 +19,7 @@ import Challenges from "@/pages/challenges";
 import Progress from "@/pages/progress";
 import Sidebar from "@/components/sidebar";
 import Header from "@/components/header";
+import MobileNav from "@/components/mobile-nav";
 
 function AuthenticatedApp() {
   return (
@@ -27,7 +28,7 @@ function AuthenticatedApp() {
         <Sidebar />
         <main className="flex-1 flex flex-col overflow-hidden">
           <Header />
-          <div className="flex-1 overflow-auto">
+          <div className="flex-1 overflow-auto pb-20 lg:pb-0">
             <Switch>
               <Route path="/" component={Dashboard} />
               <Route path="/students" component={StudentManagement} />
@@ -43,6 +44,9 @@ function AuthenticatedApp() {
             </Switch>
           </div>
         </main>
+        
+        {/* Mobile Bottom Navigation */}
+        <MobileNav />
       </div>
     </ClassroomProvider>
   );

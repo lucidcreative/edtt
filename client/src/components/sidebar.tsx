@@ -37,7 +37,7 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-16 lg:w-64 bg-white shadow-lg transition-all duration-300 flex flex-col">
+    <aside className="hidden lg:flex w-64 bg-white shadow-lg transition-all duration-300 flex-col">
       {/* Logo */}
       <div className="p-4 border-b border-gray-200">
         <div className="flex items-center space-x-3">
@@ -70,7 +70,7 @@ export default function Sidebar() {
               data-testid={`nav-${item.path.slice(1) || 'dashboard'}`}
             >
               <i className={`${item.icon} text-lg`}></i>
-              <span className="hidden lg:inline font-medium">{item.name}</span>
+              <span className="font-medium">{item.name}</span>
             </button>
           </motion.div>
         ))}
@@ -85,7 +85,7 @@ export default function Sidebar() {
             className="w-8 h-8 rounded-full object-cover"
             data-testid="img-profile-avatar"
           />
-          <div className="hidden lg:block flex-1 min-w-0">
+          <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-800 truncate" data-testid="text-user-name">
               {user?.role === 'teacher' 
                 ? `${user?.firstName} ${user?.lastName}`.trim() || user?.email
@@ -102,21 +102,11 @@ export default function Sidebar() {
           onClick={handleLogout}
           variant="outline"
           size="sm"
-          className="w-full hidden lg:flex"
+          className="w-full"
           data-testid="button-logout"
         >
           <i className="fas fa-sign-out-alt mr-2"></i>
           Logout
-        </Button>
-        
-        <Button
-          onClick={handleLogout}
-          variant="outline"
-          size="sm"
-          className="w-full lg:hidden"
-          data-testid="button-logout-mobile"
-        >
-          <i className="fas fa-sign-out-alt"></i>
         </Button>
       </div>
     </aside>

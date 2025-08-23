@@ -179,26 +179,29 @@ export default function StudentBadges() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {Object.entries(progress).slice(0, 3).map(([badgeId, progressData]: [string, any], index) => (
-                  <div key={badgeId} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm ${progressData.color || 'bg-blue-500'}`}>
-                          <i className={progressData.icon || 'fas fa-star'}></i>
+                {Object.entries(progress).slice(0, 3).map(([badgeId, progressData], index) => {
+                  const data = progressData as any;
+                  return (
+                    <div key={badgeId} className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm ${data.color || 'bg-blue-500'}`}>
+                            <i className={data.icon || 'fas fa-star'}></i>
+                          </div>
+                          <span className="font-medium text-gray-800">{data.name}</span>
                         </div>
-                        <span className="font-medium text-gray-800">{progressData.name}</span>
+                        <span className="text-sm text-gray-600">
+                          {data.current}/{data.required}
+                        </span>
                       </div>
-                      <span className="text-sm text-gray-600">
-                        {progressData.current}/{progressData.required}
-                      </span>
+                      <Progress 
+                        value={(data.current / data.required) * 100} 
+                        className="h-2"
+                      />
+                      <p className="text-xs text-gray-500">{data.description}</p>
                     </div>
-                    <Progress 
-                      value={(progressData.current / progressData.required) * 100} 
-                      className="h-2"
-                    />
-                    <p className="text-xs text-gray-500">{progressData.description}</p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
