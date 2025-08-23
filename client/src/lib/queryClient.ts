@@ -19,13 +19,16 @@ export async function apiRequest(
     headers["Content-Type"] = "application/json";
   }
   
-  // No need to manually add Authorization header - httpOnly cookies are sent automatically
+  // Add Authorization header with JWT token
+  const token = getAuthToken();
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
 
   const res = await fetch(url, {
     method,
     headers,
     body: data ? JSON.stringify(data) : undefined,
-    credentials: "include", // This ensures cookies are sent with the request
   });
 
   await throwIfResNotOk(res);
@@ -40,11 +43,14 @@ export const getQueryFn: <T>(options: {
   async ({ queryKey }) => {
     const headers: Record<string, string> = {};
     
-    // No need to manually add Authorization header - httpOnly cookies are sent automatically
+    // Add Authorization header with JWT token
+    const token = getAuthToken();
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
 
     const res = await fetch(queryKey.join("/") as string, {
       headers,
-      credentials: "include", // This ensures cookies are sent with the request
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {

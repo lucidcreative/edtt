@@ -73,10 +73,15 @@ export default function AuthPage() {
       
       if (data.token) {
         // Store token
-        localStorage.setItem('auth_token', data.token);
+        setAuthToken(data.token);
         
         // Update auth queries to refetch user data
         await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+        
+        toast({
+          title: "Welcome back!",
+          description: `Hello ${data.user.name || data.user.username}!`,
+        });
         
         // Check if PIN change is required
         if (data.requiresPinChange) {
@@ -87,13 +92,6 @@ export default function AuthPage() {
       } else {
         throw new Error('Invalid response from server');
       }
-      
-      toast({
-        title: "Welcome back!",
-        description: `Hello ${data.user.name || data.user.username}!`,
-      });
-
-      setLocation('/');
     } catch (error) {
       toast({
         title: "Login failed",
