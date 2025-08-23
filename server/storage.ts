@@ -2545,6 +2545,9 @@ export class DatabaseStorage implements IStorage {
       tokensEarned: timeEntries.tokensEarned,
       status: timeEntries.status,
       createdAt: timeEntries.createdAt,
+      // Add fields expected by frontend
+      date: timeEntries.clockInTime, // Use clockInTime as date
+      duration: timeEntries.totalMinutes, // Map totalMinutes to duration
       student: {
         id: users.id,
         nickname: users.nickname,
@@ -2555,7 +2558,7 @@ export class DatabaseStorage implements IStorage {
     .from(timeEntries)
     .leftJoin(users, eq(timeEntries.studentId, users.id))
     .where(and(...conditions))
-    .orderBy(desc(timeEntries.createdAt));
+    .orderBy(desc(timeEntries.clockInTime));
 
     return entries;
   }
@@ -2620,7 +2623,8 @@ export class DatabaseStorage implements IStorage {
         .set({
           clockOutTime: new Date(),
           totalMinutes: duration,
-          tokensEarned: tokensEarned
+          tokensEarned: tokensEarned,
+          status: 'completed' // Mark as completed
         })
         .where(eq(timeEntries.id, sessionId));
     } catch (error) {

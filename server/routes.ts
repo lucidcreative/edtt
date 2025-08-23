@@ -1578,8 +1578,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Access denied' });
       }
       
-      // TODO: Implement time entry retrieval
-      res.json([]);
+      // Get user's current classroom (simplified approach)
+      const userEnrollments = await storage.getStudentEnrollments(req.params.studentId);
+      const currentClassroom = userEnrollments[0]; // Use first classroom for now
+      
+      if (!currentClassroom) {
+        return res.json([]);
+      }
+      
+      // Fetch time entries for this student in their classroom
+      const timeEntries = await storage.getTimeEntries(currentClassroom.classroomId, req.params.studentId);
+      res.json(timeEntries);
     } catch (error) {
       console.error("Get student time entries error:", error);
       res.status(500).json({ message: "Internal server error" });
@@ -1662,7 +1671,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update user's token balance
       await storage.updateUserTokens(req.user.id, tokensEarned);
       
-      // End the session
+      // End the session by updating the time entry with clock out details
       await storage.endTimeSession(activeSession.id, durationMinutes, tokensEarned);
       
       res.json({ 
