@@ -59,16 +59,15 @@ export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       queryFn: getQueryFn({ on401: "throw" }),
-      // Smart caching strategy for better performance
-      staleTime: 1000 * 60 * 5, // 5 minutes - data becomes stale after 5 min
+      // NO GLOBAL STALE TIME - use per-query configurations
       gcTime: 1000 * 60 * 30, // 30 minutes - data stays in cache for 30 min
-      refetchOnWindowFocus: true, // Refetch when user returns to app
+      refetchOnWindowFocus: false, // Disable global refetch, enable per-query as needed
       refetchOnMount: true, // Refetch when component mounts with stale data
       refetchOnReconnect: true, // Refetch when network reconnects
       retry: 3, // Retry failed requests 3 times with exponential backoff
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-      // Background refetching for better UX
-      refetchInterval: false, // Don't auto-refetch by default (set per query as needed)
+      // Background refetching disabled globally, enabled per-query
+      refetchInterval: false,
       // Network optimizations
       networkMode: 'online', // Only fetch when online
     },
@@ -80,33 +79,67 @@ export const queryClient = new QueryClient({
   },
 });
 
-// Custom query configurations for different data types
+// Per-query cache strategies - optimized for each data type
 export const queryConfigs = {
-  // Real-time data (user tokens, active time entries)
+  // Real-time data (user tokens, active sessions, clock in/out status)
   realTime: {
-    staleTime: 1000 * 30, // 30 seconds
-    refetchInterval: 30000, // Refetch every 30 seconds
-  },
-  // Frequently changing data (assignments, announcements)
-  dynamic: {
-    staleTime: 1000 * 60 * 2, // 2 minutes
+    staleTime: 0, // Always stale - refetch immediately
+    refetchInterval: 10000, // Refetch every 10 seconds
     refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    gcTime: 1000 * 60 * 5, // Short cache time for real-time data
   },
-  // Moderately stable data (classroom info, store items)
-  stable: {
-    staleTime: 1000 * 60 * 10, // 10 minutes
-    gcTime: 1000 * 60 * 60, // 1 hour
+  
+  // Frequently changing data (assignments, submissions, announcements)
+  dynamic: {
+    staleTime: 1000 * 30, // 30 seconds
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    gcTime: 1000 * 60 * 15, // 15 minutes cache
   },
-  // Static data (user profile, classroom settings)
-  static: {
-    staleTime: 1000 * 60 * 30, // 30 minutes
-    gcTime: 1000 * 60 * 60 * 2, // 2 hours
+  
+  // User balances and token data
+  balances: {
+    staleTime: 1000 * 15, // 15 seconds
+    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchOnWindowFocus: true,
+    gcTime: 1000 * 60 * 10,
+  },
+  
+  // Store items and marketplace data
+  store: {
+    staleTime: 1000 * 60 * 5, // 5 minutes
     refetchOnWindowFocus: false,
+    gcTime: 1000 * 60 * 30, // 30 minutes cache
   },
+  
+  // User profiles and settings
+  profile: {
+    staleTime: 1000 * 60 * 15, // 15 minutes
+    refetchOnWindowFocus: false,
+    gcTime: 1000 * 60 * 60, // 1 hour cache
+  },
+  
+  // Classroom and administrative data
+  classroom: {
+    staleTime: 1000 * 60 * 10, // 10 minutes
+    refetchOnWindowFocus: false,
+    gcTime: 1000 * 60 * 45, // 45 minutes cache
+  },
+  
   // Lists with pagination
   list: {
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    keepPreviousData: true, // Keep old data while fetching new
+    staleTime: 1000 * 60 * 3, // 3 minutes
+    refetchOnWindowFocus: false,
+    gcTime: 1000 * 60 * 20,
+  },
+  
+  // Static reference data (categories, templates)
+  static: {
+    staleTime: 1000 * 60 * 60, // 1 hour
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    gcTime: 1000 * 60 * 60 * 4, // 4 hours cache
   },
 };
 

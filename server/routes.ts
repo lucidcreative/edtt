@@ -9,37 +9,28 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
 
+// Import RBAC middleware
+import { authenticate } from "./middleware/auth";
+import { 
+  requireRole, 
+  requireAnyRole, 
+  requireClassroomOwnership, 
+  requireClassroomAccess,
+  requireAssignmentOwnership,
+  requireAssignmentAccess,
+  requireSubmissionAccess,
+  requireTokenAuthority
+} from "./middleware/rbac";
+
 // Extend Express Request type to include user property
 interface AuthenticatedRequest extends Request {
   user: User;
 }
 
-// SECURITY: Proper JWT secret management for classroom data protection
 const JWT_SECRET = process.env.JWT_SECRET || 
   (process.env.NODE_ENV === 'development' ? 'dev-jwt-secret-bizcoin-2024-secure' : 
    (() => { throw new Error('JWT_SECRET environment variable is required for security'); })());
 const JWT_EXPIRES_IN = "8h";
-
-// Authentication middleware
-const authenticate = async (req: AuthenticatedRequest, res: Response, next: any) => {
-  try {
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    if (!token) {
-      return res.status(401).json({ message: "Authentication required" });
-    }
-
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
-    const user = await storage.getUser(decoded.userId);
-    if (!user) {
-      return res.status(401).json({ message: "User not found" });
-    }
-
-    req.user = user;
-    next();
-  } catch (error) {
-    return res.status(401).json({ message: "Invalid token" });
-  }
-};
 
 // Generate classroom code
 function generateClassroomCode(): string {
@@ -548,7 +539,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/classrooms', authenticate, async (req: any, res) => {
+  app.get('/api/classrooms', authenticate, requireRole('teacher'), async (req: any, res) => {
     try {
       if (req.user.role === 'teacher') {
         const classrooms = await storage.getClassroomsByTeacher(req.user.id);

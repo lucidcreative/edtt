@@ -1078,6 +1078,24 @@ export class DatabaseStorage implements IStorage {
 
   // PHASE 1C: TOKEN ECONOMY IMPLEMENTATION
 
+  // Check if student is enrolled in classroom
+  async isStudentEnrolledInClassroom(studentId: string, classroomId: string): Promise<boolean> {
+    const enrollment = await db
+      .select()
+      .from(studentClassrooms)
+      .where(and(
+        eq(studentClassrooms.studentId, studentId),
+        eq(studentClassrooms.classroomId, classroomId)
+      ))
+      .limit(1);
+    return enrollment.length > 0;
+  }
+
+  // Get all classrooms for a teacher
+  async getTeacherClassrooms(teacherId: string): Promise<Classroom[]> {
+    return db.select().from(classrooms).where(eq(classrooms.teacherId, teacherId));
+  }
+
   async getStudentWallet(studentId: string, classroomId: string): Promise<StudentWallet | undefined> {
     const [wallet] = await db
       .select()
