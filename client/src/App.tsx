@@ -9,6 +9,7 @@ import { Suspense, lazy } from "react";
 import Sidebar from "@/components/sidebar";
 import Header from "@/components/header";
 import MobileNav from "@/components/mobile-nav";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 // Lazy load all page components for route-based code splitting
 const NotFound = lazy(() => import("@/pages/not-found"));
@@ -100,12 +101,14 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

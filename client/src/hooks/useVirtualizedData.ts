@@ -3,8 +3,51 @@ import { useQuery } from '@tanstack/react-query';
 import { queryConfigs } from '@/lib/queryClient';
 import { useClassroom } from '@/contexts/ClassroomContext';
 
+// Types for virtualized data
+interface VirtualizedStudent {
+  id: string;
+  name?: string;
+  username: string;
+  tokens: number;
+  isActive: boolean;
+  rank: number;
+  displayName: string;
+  tokenRank: number;
+}
+
+interface VirtualizedAssignment {
+  id: string;
+  title: string;
+  description?: string;
+  category: string;
+  tokenReward: number;
+  dueDate?: string;
+  createdAt: string;
+  isActive: boolean;
+  submissionCount?: number;
+  isOverdue: boolean;
+  isDueSoon: boolean;
+  daysUntilDue: number | null;
+  urgencyScore: number;
+}
+
+interface VirtualizedStoreItem {
+  id: string;
+  name: string;
+  description?: string;
+  cost: number;
+  category?: string;
+  imageUrl?: string;
+  inventory: number;
+  isActive: boolean;
+  createdAt: string;
+  isInStock: boolean;
+  affordabilityTier: 'low' | 'medium' | 'high';
+  displayCategory: string;
+}
+
 // Hook for virtualized roster data with optimized loading
-export function useVirtualizedRoster() {
+export function useVirtualizedRoster(): { data: VirtualizedStudent[] | undefined; isLoading: boolean; error: any } {
   const { currentClassroom } = useClassroom();
   
   return useQuery({
@@ -29,7 +72,7 @@ export function useVirtualizedRoster() {
 }
 
 // Hook for virtualized assignments with performance optimizations
-export function useVirtualizedAssignments() {
+export function useVirtualizedAssignments(): { data: VirtualizedAssignment[] | undefined; isLoading: boolean; error: any } {
   const { currentClassroom } = useClassroom();
   
   return useQuery({
@@ -73,7 +116,7 @@ export function useVirtualizedAssignments() {
 }
 
 // Hook for virtualized store items with enhanced filtering
-export function useVirtualizedStore() {
+export function useVirtualizedStore(): { data: VirtualizedStoreItem[] | undefined; isLoading: boolean; error: any } {
   const { currentClassroom } = useClassroom();
   
   return useQuery({

@@ -11,6 +11,8 @@ import { z } from "zod";
 
 // Import RBAC middleware
 import { authenticate } from "./middleware/auth";
+import analyticsRoutes from "./routes/analytics";
+import timeTrackingRoutes from "./routes/timeTracking";
 import { 
   requireRole, 
   requireAnyRole, 
@@ -97,6 +99,10 @@ async function ensureDemoData() {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Ensure demo data on startup
   // await ensureDemoData(); // Temporarily disabled until schema migration is complete
+  
+  // Mount modular route handlers
+  app.use('/api/analytics', authenticate, requireClassroomAccess, analyticsRoutes);
+  app.use('/api/time-tracking', authenticate, timeTrackingRoutes);
   
   // Authentication routes
   app.post('/api/auth/register/teacher', async (req, res) => {

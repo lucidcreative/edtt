@@ -298,6 +298,89 @@ export const announcementReads = pgTable("announcement_reads", {
   announcementStudentUnique: unique("announcement_student_read_unique").on(table.announcementId, table.studentId)
 }));
 
+// Audit logging for all critical operations
+export const auditLogs = pgTable("audit_logs", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  classroomId: uuid("classroom_id").references(() => classrooms.id),
+  action: varchar("action", { length: 50 }).notNull(), // 'token_award', 'token_purchase', 'submission_grade', etc.
+  entityType: varchar("entity_type", { length: 30 }).notNull(), // 'token', 'assignment', 'submission', etc.
+  entityId: uuid("entity_id"),
+  oldValue: jsonb("old_value"),
+  newValue: jsonb("new_value"),
+  metadata: jsonb("metadata").default({}),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: varchar("user_agent", { length: 500 }),
+  createdAt: timestamp("created_at").defaultNow()
+}, (table) => ({
+  // Indexes for audit log queries
+  userIdIdx: index("audit_logs_user_id_idx").on(table.userId),
+  classroomIdIdx: index("audit_logs_classroom_id_idx").on(table.classroomId),
+  actionIdx: index("audit_logs_action_idx").on(table.action),
+  entityTypeIdx: index("audit_logs_entity_type_idx").on(table.entityType),
+  createdAtIdx: index("audit_logs_created_at_idx").on(table.createdAt)
+}));
+
+// Time-tracking sessions with anti-cheat measures
+export const timeSessions = pgTable("time_sessions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  studentId: uuid("student_id").references(() => users.id).notNull(),
+  classroomId: uuid("classroom_id").references(() => classrooms.id).notNull(),
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time"),
+  duration: integer("duration").default(0), // in minutes
+  status: varchar("status", { length: 20 }).notNull().$type<'active' | 'completed' | 'abandoned' | 'terminated'>().default('active'),
+  ipAddress: varchar("ip_address", { length: 45 }).notNull(),
+  userAgentHash: varchar("user_agent_hash", { length: 64 }).notNull(), // SHA-256 hash
+  fingerprintHash: varchar("fingerprint_hash", { length: 64 }), // Browser fingerprint hash
+  lastHeartbeat: timestamp("last_heartbeat").defaultNow(),
+  idleTime: integer("idle_time").default(0), // total idle time in minutes
+  tokensEarned: integer("tokens_earned").default(0),
+  notes: text("notes"),
+  terminatedBy: uuid("terminated_by").references(() => users.id),
+  terminationReason: varchar("termination_reason", { length: 100 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+}, (table) => ({
+  // Indexes for time session queries
+  studentIdIdx: index("time_sessions_student_id_idx").on(table.studentId),
+  classroomIdIdx: index("time_sessions_classroom_id_idx").on(table.classroomId),
+  statusIdx: index("time_sessions_status_idx").on(table.status),
+  startTimeIdx: index("time_sessions_start_time_idx").on(table.startTime),
+  ipAddressIdx: index("time_sessions_ip_address_idx").on(table.ipAddress),
+  userAgentHashIdx: index("time_sessions_user_agent_hash_idx").on(table.userAgentHash),
+  // Constraint to prevent multiple active sessions
+  uniqueActiveSession: unique("unique_active_student_session").on(table.studentId, table.status)
+}));
+
+// Heartbeat tracking for idle detection
+export const sessionHeartbeats = pgTable("session_heartbeats", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: uuid("session_id").references(() => timeSessions.id).notNull(),
+  timestamp: timestamp("timestamp").defaultNow(),
+  activity: varchar("activity", { length: 30 }).notNull(), // 'click', 'keypress', 'focus', 'blur'
+  metadata: jsonb("metadata").default({})
+}, (table) => ({
+  sessionIdIdx: index("session_heartbeats_session_id_idx").on(table.sessionId),
+  timestampIdx: index("session_heartbeats_timestamp_idx").on(table.timestamp)
+}));
+
+// Analytics materialized views (computed nightly)
+export const analyticsSnapshots = pgTable("analytics_snapshots", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  classroomId: uuid("classroom_id").references(() => classrooms.id).notNull(),
+  snapshotDate: timestamp("snapshot_date").notNull(),
+  analyticsType: varchar("analytics_type", { length: 30 }).notNull(), // 'daily', 'weekly', 'monthly'
+  data: jsonb("data").notNull(), // Precomputed analytics data
+  createdAt: timestamp("created_at").defaultNow()
+}, (table) => ({
+  classroomIdIdx: index("analytics_snapshots_classroom_id_idx").on(table.classroomId),
+  snapshotDateIdx: index("analytics_snapshots_date_idx").on(table.snapshotDate),
+  analyticsTypeIdx: index("analytics_snapshots_type_idx").on(table.analyticsType),
+  // Unique constraint for snapshots
+  uniqueSnapshot: unique("unique_analytics_snapshot").on(table.classroomId, table.snapshotDate, table.analyticsType)
+}));
+
 // PHASE 1C: TOKEN ECONOMY FOUNDATION
 
 // Student token wallets with comprehensive tracking

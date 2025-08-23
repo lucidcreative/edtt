@@ -7,6 +7,8 @@ import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { initializeSentry, sentryErrorHandler } from "./sentry";
+import { initializeCronJobs } from "./cron";
 
 const app = express();
 
@@ -87,8 +89,17 @@ const logger = pinoHttp({
 
 app.use(logger);
 
+// Initialize Sentry
+initializeSentry(app);
+
 (async () => {
   const server = await registerRoutes(app);
+  
+  // Initialize cron jobs
+  initializeCronJobs();
+
+  // Sentry error handler (must be before other error handlers)
+  sentryErrorHandler(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
