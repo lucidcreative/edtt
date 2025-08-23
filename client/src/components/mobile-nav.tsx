@@ -38,10 +38,10 @@ export default function MobileNav() {
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: index * 0.1 }}
             onClick={() => setLocation(item.path)}
-            className={`flex flex-col items-center py-2 px-3 rounded-lg transition-all duration-200 ${
+            className={`flex flex-col items-center py-2 px-3 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 hover:bg-gray-50 ${
               location === item.path
-                ? 'text-blue-600'
-                : 'text-gray-500'
+                ? 'text-blue-600 bg-blue-50 scale-105'
+                : 'text-gray-500 hover:text-gray-700'
             }`}
             data-testid={`mobile-nav-${item.path.slice(1) || 'dashboard'}`}
           >

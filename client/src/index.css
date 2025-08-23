@@ -421,11 +421,23 @@
   }
 
   .interactive:hover {
-    @apply scale-105;
+    @apply scale-[1.02] shadow-sm;
   }
 
   .interactive:active {
     @apply scale-95;
+  }
+  
+  .link-hover {
+    @apply transition-colors duration-200 hover:text-primary/80;
+  }
+  
+  .icon-hover {
+    @apply transition-all duration-200 hover:scale-110 hover:text-primary;
+  }
+  
+  .card-interactive {
+    @apply transition-all duration-200 hover:shadow-md hover:scale-[1.01] cursor-pointer;
   }
 
   /* Loading States */
