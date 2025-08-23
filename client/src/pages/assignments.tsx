@@ -140,6 +140,11 @@ export default function Assignments() {
     selectedCategory === "all" || assignment.category === selectedCategory
   ) || [];
 
+  // Get only categories that exist in current assignments
+  const availableCategories = categories.filter(category => 
+    assignments?.some((assignment: any) => assignment.category === category.value)
+  );
+
   if (!currentClassroom) {
     return (
       <div className="p-4 lg:p-6">
@@ -278,7 +283,7 @@ export default function Assignments() {
           >
             All
           </Button>
-          {categories.map((category) => (
+          {availableCategories.map((category) => (
             <Button
               key={category.value}
               variant={selectedCategory === category.value ? "default" : "outline"}
