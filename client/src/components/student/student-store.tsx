@@ -61,10 +61,14 @@ export default function StudentStore() {
   // Purchase item mutation
   const purchaseItemMutation = useMutation({
     mutationFn: async (itemId: string) => {
+      console.log('Making purchase request for item:', itemId);
       const response = await apiRequest('POST', `/api/store/${itemId}/purchase`, {});
-      return response.json();
+      const result = await response.json();
+      console.log('Purchase response:', result);
+      return result;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Purchase successful:', data);
       toast({ title: "Purchase Successful", description: "Item purchased successfully! Check your inventory." });
       queryClient.invalidateQueries({ queryKey: ["/api/students", user?.id, "store-items"] });
       queryClient.invalidateQueries({ queryKey: ["/api/students", user?.id, "purchases"] });
@@ -73,6 +77,7 @@ export default function StudentStore() {
       setSelectedItem(null);
     },
     onError: (error: any) => {
+      console.error('Purchase error:', error);
       toast({ 
         title: "Purchase Failed", 
         description: error.message || "Not enough tokens or item unavailable.", 
@@ -315,6 +320,42 @@ export default function StudentStore() {
                                 <i className="fas fa-coins"></i>
                                 {item.cost} tokens
                               </div>
+                            </div>
+                            
+                            {/* Purchase Button in Dialog */}
+                            <div className="pt-4">
+                              <Button 
+                                className="w-full"
+                                disabled={!canAfford(item.cost) || !item.isAvailable || purchaseItemMutation.isPending}
+                                onClick={() => {
+                                  setSelectedItem(item);
+                                  purchaseItemMutation.mutate(item.id);
+                                }}
+                                data-testid={`button-buy-dialog-${item.id}`}
+                                variant={canAfford(item.cost) && item.isAvailable ? "default" : "secondary"}
+                              >
+                                {purchaseItemMutation.isPending ? (
+                                  <>
+                                    <i className="fas fa-spinner fa-spin mr-2"></i>
+                                    Purchasing...
+                                  </>
+                                ) : !canAfford(item.cost) ? (
+                                  <>
+                                    <i className="fas fa-ban mr-2 text-xs"></i>
+                                    Not Enough Tokens
+                                  </>
+                                ) : !item.isAvailable ? (
+                                  <>
+                                    <i className="fas fa-times mr-2 text-xs"></i>
+                                    Out of Stock
+                                  </>
+                                ) : (
+                                  <>
+                                    <i className="fas fa-shopping-cart mr-2"></i>
+                                    Buy Now for {item.cost} tokens
+                                  </>
+                                )}
+                              </Button>
                             </div>
                           </div>
                         </DialogContent>

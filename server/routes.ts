@@ -2190,6 +2190,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Student purchases endpoint 
+  app.get('/api/students/:studentId/purchases', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.id !== req.params.studentId && req.user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
+      // For now, return empty array since we don't have purchase storage implemented yet
+      // TODO: Implement purchase history storage
+      res.json([]);
+    } catch (error) {
+      console.error("Get student purchases error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // PHASE 2A: ASSIGNMENT MANAGEMENT SYSTEM
   
   // Assignment Management for Teachers
