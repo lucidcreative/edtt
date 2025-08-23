@@ -164,6 +164,7 @@ export interface IStorage {
   getBadge(id: string): Promise<Badge | undefined>;
   getBadgesByClassroom(classroomId: string): Promise<Badge[]>;
   createBadge(badge: InsertBadge): Promise<Badge>;
+  updateBadge(id: string, updates: Partial<InsertBadge>): Promise<Badge>;
   awardBadge(studentId: string, badgeId: string): Promise<StudentBadge>;
   getStudentBadges(studentId: string): Promise<(StudentBadge & { badge: Badge })[]>;
   
@@ -171,6 +172,7 @@ export interface IStorage {
   getChallenge(id: string): Promise<Challenge | undefined>;
   getChallengesByClassroom(classroomId: string): Promise<Challenge[]>;
   createChallenge(challenge: InsertChallenge): Promise<Challenge>;
+  updateChallenge(id: string, updates: Partial<InsertChallenge>): Promise<Challenge>;
   updateChallengeProgress(studentId: string, challengeId: string, progress: number): Promise<ChallengeProgress>;
   getStudentChallengeProgress(studentId: string, classroomId: string): Promise<(ChallengeProgress & { challenge: Challenge })[]>;
   
@@ -669,6 +671,14 @@ export class DatabaseStorage implements IStorage {
     return newBadge;
   }
 
+  async updateBadge(id: string, updates: Partial<InsertBadge>): Promise<Badge> {
+    const [updated] = await db.update(badges)
+      .set(updates)
+      .where(eq(badges.id, id))
+      .returning();
+    return updated;
+  }
+
   async awardBadge(studentId: string, badgeId: string): Promise<StudentBadge> {
     const [award] = await db
       .insert(studentBadges)
@@ -711,6 +721,14 @@ export class DatabaseStorage implements IStorage {
   async createChallenge(challenge: InsertChallenge): Promise<Challenge> {
     const [newChallenge] = await db.insert(challenges).values(challenge).returning();
     return newChallenge;
+  }
+
+  async updateChallenge(id: string, updates: Partial<InsertChallenge>): Promise<Challenge> {
+    const [updated] = await db.update(challenges)
+      .set(updates)
+      .where(eq(challenges.id, id))
+      .returning();
+    return updated;
   }
 
   async updateChallengeProgress(studentId: string, challengeId: string, progress: number): Promise<ChallengeProgress> {

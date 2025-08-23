@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { motion } from "framer-motion";
+import BadgeManagement from "@/components/badge-management";
+import ChallengeManagement from "@/components/challenge-management";
 
 export default function Analytics() {
   const { user } = useAuth();
@@ -325,51 +327,7 @@ export default function Analytics() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.7 }}
         >
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <i className="fas fa-award text-yellow-500"></i>
-                  Classroom Badges
-                </CardTitle>
-                <button
-                  onClick={() => {
-                    // This would open a modal to create badges
-                    // For now, show a message about the feature
-                    alert('Badge creation feature - add your badges here!');
-                  }}
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
-                >
-                  <i className="fas fa-plus"></i>
-                  Add Badge
-                </button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-3">
-                {/* Display existing badges or placeholder */}
-                <div className="text-center p-4 border-2 border-dashed border-gray-200 rounded-lg">
-                  <i className="fas fa-trophy text-yellow-500 text-2xl mb-2"></i>
-                  <p className="text-sm text-gray-600">Perfect Attendance</p>
-                  <p className="text-xs text-gray-400">Create badges to motivate students</p>
-                </div>
-                <div className="text-center p-4 border-2 border-dashed border-gray-200 rounded-lg">
-                  <i className="fas fa-star text-blue-500 text-2xl mb-2"></i>
-                  <p className="text-sm text-gray-600">Top Performer</p>
-                  <p className="text-xs text-gray-400">Reward achievement</p>
-                </div>
-                <div className="text-center p-4 border-2 border-dashed border-gray-200 rounded-lg">
-                  <i className="fas fa-heart text-red-500 text-2xl mb-2"></i>
-                  <p className="text-sm text-gray-600">Helper</p>
-                  <p className="text-xs text-gray-400">Recognize kindness</p>
-                </div>
-                <div className="text-center p-4 border-2 border-dashed border-gray-200 rounded-lg opacity-50">
-                  <i className="fas fa-plus text-gray-400 text-2xl mb-2"></i>
-                  <p className="text-sm text-gray-400">Add More</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <BadgeManagement classroomId={currentClassroom?.id || ''} />
         </motion.div>
 
         <motion.div
@@ -377,59 +335,7 @@ export default function Analytics() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.8 }}
         >
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <i className="fas fa-target text-green-500"></i>
-                  Class Challenges
-                </CardTitle>
-                <button
-                  onClick={() => {
-                    // This would open a modal to create challenges
-                    alert('Challenge creation feature - design engaging challenges here!');
-                  }}
-                  className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
-                >
-                  <i className="fas fa-plus"></i>
-                  Add Challenge
-                </button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {/* Display existing challenges or placeholders */}
-                <div className="p-4 border border-gray-200 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium text-gray-800">Reading Marathon</h4>
-                    <span className="text-sm text-green-600">Active</span>
-                  </div>
-                  <p className="text-sm text-gray-600 mb-2">Read 10 books this month</p>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-green-500 h-2 rounded-full" style={{ width: '70%' }}></div>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">7/10 books completed</p>
-                </div>
-                
-                <div className="p-4 border border-gray-200 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium text-gray-800">Homework Heroes</h4>
-                    <span className="text-sm text-blue-600">Active</span>
-                  </div>
-                  <p className="text-sm text-gray-600 mb-2">Complete 15 assignments</p>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-blue-500 h-2 rounded-full" style={{ width: '40%' }}></div>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">6/15 assignments done</p>
-                </div>
-                
-                <div className="p-4 border-2 border-dashed border-gray-200 rounded-lg text-center opacity-50">
-                  <i className="fas fa-plus text-gray-400 text-xl mb-2"></i>
-                  <p className="text-sm text-gray-400">Create More Challenges</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <ChallengeManagement classroomId={currentClassroom?.id || ''} />
         </motion.div>
       </div>
     </div>

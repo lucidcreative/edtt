@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema, insertClassroomSchema, insertAssignmentSchema, insertSubmissionSchema, insertStoreItemSchema, users, insertAssignmentAdvancedSchema, insertAssignmentSubmissionSchema, insertAssignmentFeedbackSchema, insertAssignmentTemplateSchema, insertMarketplaceSellerSchema, insertMarketplaceListingSchema, insertMarketplaceTransactionSchema, insertMarketplaceReviewSchema, insertMarketplaceWishlistSchema, insertMarketplaceMessageSchema, type User } from "@shared/schema";
+import { insertUserSchema, insertClassroomSchema, insertAssignmentSchema, insertSubmissionSchema, insertStoreItemSchema, users, insertAssignmentAdvancedSchema, insertAssignmentSubmissionSchema, insertAssignmentFeedbackSchema, insertAssignmentTemplateSchema, insertMarketplaceSellerSchema, insertMarketplaceListingSchema, insertMarketplaceTransactionSchema, insertMarketplaceReviewSchema, insertMarketplaceWishlistSchema, insertMarketplaceMessageSchema, insertBadgeSchema, insertChallengeSchema, type User } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcrypt";
@@ -704,6 +704,237 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Get time entries error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
+  });
+
+  // Badge routes
+  app.get('/api/classrooms/:id/badges', authenticate, async (req: AuthenticatedRequest, res) => {
+    try {
+      const classroomId = req.params.id;
+      const badges = await storage.getBadgesByClassroom(classroomId);
+      res.json(badges);
+    } catch (error) {
+      console.error("Get badges error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post('/api/classrooms/:id/badges', authenticate, async (req: AuthenticatedRequest, res) => {
+    try {
+      const classroomId = req.params.id;
+      const classroom = await storage.getClassroom(classroomId);
+      
+      if (!classroom) {
+        return res.status(404).json({ message: "Classroom not found" });
+      }
+      
+      if (req.user.role !== 'teacher' || classroom.teacherId !== req.user.id) {
+        return res.status(403).json({ message: "Only classroom teachers can create badges" });
+      }
+      
+      const badge = await storage.createBadge({ ...req.body, classroomId });
+      res.status(201).json(badge);
+    } catch (error) {
+      console.error("Create badge error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.put('/api/badges/:id', authenticate, async (req: AuthenticatedRequest, res) => {
+    try {
+      const badgeId = req.params.id;
+      const badge = await storage.getBadge(badgeId);
+      
+      if (!badge) {
+        return res.status(404).json({ message: "Badge not found" });
+      }
+      
+      const classroom = await storage.getClassroom(badge.classroomId!);
+      if (req.user.role !== 'teacher' || classroom?.teacherId !== req.user.id) {
+        return res.status(403).json({ message: "Only classroom teachers can edit badges" });
+      }
+      
+      const updated = await storage.updateBadge(badgeId, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error("Update badge error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Challenge routes
+  app.get('/api/classrooms/:id/challenges', authenticate, async (req: AuthenticatedRequest, res) => {
+    try {
+      const classroomId = req.params.id;
+      const challenges = await storage.getChallengesByClassroom(classroomId);
+      res.json(challenges);
+    } catch (error) {
+      console.error("Get challenges error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post('/api/classrooms/:id/challenges', authenticate, async (req: AuthenticatedRequest, res) => {
+    try {
+      const classroomId = req.params.id;
+      const classroom = await storage.getClassroom(classroomId);
+      
+      if (!classroom) {
+        return res.status(404).json({ message: "Classroom not found" });
+      }
+      
+      if (req.user.role !== 'teacher' || classroom.teacherId !== req.user.id) {
+        return res.status(403).json({ message: "Only classroom teachers can create challenges" });
+      }
+      
+      const challenge = await storage.createChallenge({ ...req.body, classroomId });
+      res.status(201).json(challenge);
+    } catch (error) {
+      console.error("Create challenge error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.put('/api/challenges/:id', authenticate, async (req: AuthenticatedRequest, res) => {
+    try {
+      const challengeId = req.params.id;
+      const challenge = await storage.getChallenge(challengeId);
+      
+      if (!challenge) {
+        return res.status(404).json({ message: "Challenge not found" });
+      }
+      
+      const classroom = await storage.getClassroom(challenge.classroomId);
+      if (req.user.role !== 'teacher' || classroom?.teacherId !== req.user.id) {
+        return res.status(403).json({ message: "Only classroom teachers can edit challenges" });
+      }
+      
+      const updated = await storage.updateChallenge(challengeId, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error("Update challenge error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Badge and Challenge template routes
+  app.get('/api/badge-templates', authenticate, async (req: AuthenticatedRequest, res) => {
+    const templates = [
+      {
+        id: 'perfect_attendance',
+        name: 'Perfect Attendance',
+        description: 'Awarded for excellent attendance',
+        icon: 'fas fa-calendar-check',
+        color: '#10b981',
+        category: 'attendance'
+      },
+      {
+        id: 'top_performer',
+        name: 'Top Performer',
+        description: 'Recognize outstanding academic achievement',
+        icon: 'fas fa-trophy',
+        color: '#f59e0b',
+        category: 'academic'
+      },
+      {
+        id: 'helper',
+        name: 'Helper',
+        description: 'Given to students who help others',
+        icon: 'fas fa-heart',
+        color: '#ef4444',
+        category: 'behavior'
+      },
+      {
+        id: 'creative_thinker',
+        name: 'Creative Thinker',
+        description: 'For innovative and creative work',
+        icon: 'fas fa-lightbulb',
+        color: '#8b5cf6',
+        category: 'creativity'
+      },
+      {
+        id: 'team_player',
+        name: 'Team Player',
+        description: 'Excellent collaboration skills',
+        icon: 'fas fa-users',
+        color: '#06b6d4',
+        category: 'collaboration'
+      },
+      {
+        id: 'problem_solver',
+        name: 'Problem Solver',
+        description: 'Tackles challenges with determination',
+        icon: 'fas fa-puzzle-piece',
+        color: '#84cc16',
+        category: 'academic'
+      }
+    ];
+    res.json(templates);
+  });
+
+  app.get('/api/challenge-templates', authenticate, async (req: AuthenticatedRequest, res) => {
+    const templates = [
+      {
+        id: 'reading_marathon',
+        name: 'Reading Marathon',
+        description: 'Read multiple books in a set timeframe',
+        icon: 'fas fa-book',
+        color: '#10b981',
+        targetValue: 10,
+        tokenReward: 50,
+        category: 'reading'
+      },
+      {
+        id: 'homework_heroes',
+        name: 'Homework Heroes',
+        description: 'Complete assignments consistently',
+        icon: 'fas fa-pencil-alt',
+        color: '#3b82f6',
+        targetValue: 15,
+        tokenReward: 30,
+        category: 'academic'
+      },
+      {
+        id: 'math_master',
+        name: 'Math Master',
+        description: 'Excel in mathematics assignments',
+        icon: 'fas fa-calculator',
+        color: '#f59e0b',
+        targetValue: 20,
+        tokenReward: 40,
+        category: 'math'
+      },
+      {
+        id: 'science_explorer',
+        name: 'Science Explorer',
+        description: 'Conduct experiments and investigations',
+        icon: 'fas fa-flask',
+        color: '#8b5cf6',
+        targetValue: 8,
+        tokenReward: 35,
+        category: 'science'
+      },
+      {
+        id: 'participation_champion',
+        name: 'Participation Champion',
+        description: 'Active participation in class discussions',
+        icon: 'fas fa-hand-paper',
+        color: '#ef4444',
+        targetValue: 25,
+        tokenReward: 25,
+        category: 'participation'
+      },
+      {
+        id: 'token_saver',
+        name: 'Token Saver',
+        description: 'Save up a certain amount of tokens',
+        icon: 'fas fa-piggy-bank',
+        color: '#06b6d4',
+        targetValue: 100,
+        tokenReward: 20,
+        category: 'economy'
+      }
+    ];
+    res.json(templates);
   });
 
   // Store routes
