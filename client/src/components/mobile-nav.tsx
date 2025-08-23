@@ -5,17 +5,16 @@ import { motion } from "framer-motion";
 const teacherMobileNav = [
   { path: '/', name: 'Home', icon: 'fas fa-home' },
   { path: '/students', name: 'Students', icon: 'fas fa-users' },
-  { path: '/assignments', name: 'Assignments', icon: 'fas fa-tasks' },
+  { path: '/earn', name: 'Earn', icon: 'fas fa-coins' },
   { path: '/store', name: 'Store', icon: 'fas fa-store' },
-  { path: '/analytics', name: 'More', icon: 'fas fa-ellipsis-h' },
+  { path: '/leaderboard', name: 'Leaderboard', icon: 'fas fa-trophy' },
 ];
 
 const studentMobileNav = [
   { path: '/', name: 'Home', icon: 'fas fa-home' },
   { path: '/earn', name: 'Earn', icon: 'fas fa-coins' },
   { path: '/store', name: 'Store', icon: 'fas fa-store' },
-  { path: '/progress', name: 'Progress', icon: 'fas fa-chart-line' },
-  { path: '/badges', name: 'Badges', icon: 'fas fa-award' },
+  { path: '/leaderboard', name: 'Leaderboard', icon: 'fas fa-trophy' },
 ];
 
 export default function MobileNav() {

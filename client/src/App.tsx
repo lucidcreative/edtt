@@ -25,6 +25,7 @@ const Earn = lazy(() => import("@/pages/earn"));
 const Badges = lazy(() => import("@/pages/badges"));
 const Challenges = lazy(() => import("@/pages/challenges"));
 const Progress = lazy(() => import("@/pages/progress"));
+const Leaderboard = lazy(() => import("@/pages/leaderboard"));
 const ChangePinPage = lazy(() => import("@/pages/change-pin"));
 
 // Loading fallback component
@@ -57,6 +58,7 @@ function AuthenticatedApp() {
                 <Route path="/badges" component={Badges} />
                 <Route path="/challenges" component={Challenges} />
                 <Route path="/progress" component={Progress} />
+                <Route path="/leaderboard" component={Leaderboard} />
                 <Route path="/change-pin" component={ChangePinPage} />
                 <Route component={NotFound} />
               </Switch>
