@@ -242,7 +242,16 @@ export default function StudentTimeTracking() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="text-center p-4 bg-blue-50 rounded-lg">
                 <div className="text-2xl font-bold text-blue-700">
-                  {formatDuration(totalHoursThisWeek)}
+                  {formatDuration(
+                    timeEntries
+                      .filter(entry => {
+                        const entryDate = new Date(entry.date);
+                        const weekStart = new Date();
+                        weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+                        return entryDate >= weekStart && entry.clockOutTime; // Only completed sessions
+                      })
+                      .reduce((total, entry) => total + (entry.duration || 0), 0)
+                  )}
                 </div>
                 <p className="text-sm text-blue-600">Total Time</p>
               </div>
@@ -252,19 +261,23 @@ export default function StudentTimeTracking() {
                     const entryDate = new Date(entry.date);
                     const weekStart = new Date();
                     weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-                    return entryDate >= weekStart;
+                    return entryDate >= weekStart && entry.clockOutTime; // Only completed sessions
                   }).length}
                 </div>
                 <p className="text-sm text-green-600">Sessions</p>
               </div>
               <div className="text-center p-4 bg-purple-50 rounded-lg">
                 <div className="text-2xl font-bold text-purple-700">
-                  {totalHoursThisWeek > 0 ? Math.round(totalHoursThisWeek / Math.max(1, timeEntries.filter(entry => {
-                    const entryDate = new Date(entry.date);
-                    const weekStart = new Date();
-                    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-                    return entryDate >= weekStart;
-                  }).length)) : 0}m
+                  {(() => {
+                    const completedSessionsThisWeek = timeEntries.filter(entry => {
+                      const entryDate = new Date(entry.date);
+                      const weekStart = new Date();
+                      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+                      return entryDate >= weekStart && entry.clockOutTime; // Only completed sessions
+                    });
+                    const totalMinutes = completedSessionsThisWeek.reduce((total, entry) => total + (entry.duration || 0), 0);
+                    return completedSessionsThisWeek.length > 0 ? Math.round(totalMinutes / completedSessionsThisWeek.length) : 0;
+                  })()}m
                 </div>
                 <p className="text-sm text-purple-600">Avg Session</p>
               </div>
