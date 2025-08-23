@@ -1296,55 +1296,70 @@ export class DatabaseStorage implements IStorage {
 
   // PHASE 2A: ASSIGNMENT MANAGEMENT IMPLEMENTATION
   
-  async createAssignment(assignment: InsertAssignmentAdvanced): Promise<AssignmentAdvanced> {
+  async createAssignment(assignment: any): Promise<any> {
+    // Map the assignment data to basic assignment schema
+    const basicAssignment = {
+      title: assignment.title,
+      description: assignment.description,
+      category: assignment.category,
+      tokenReward: assignment.tokenReward || 0,
+      classroomId: assignment.classroomId,
+      teacherId: assignment.teacherId || assignment.createdBy,
+      dueDate: assignment.dueDate,
+      isActive: assignment.isActive !== false
+    };
+    
     const [newAssignment] = await db
-      .insert(assignmentsAdvanced)
-      .values(assignment)
+      .insert(assignments)
+      .values(basicAssignment)
       .returning();
     return newAssignment;
   }
 
-  async updateAssignment(assignmentId: string, updates: Partial<InsertAssignmentAdvanced>): Promise<AssignmentAdvanced> {
+  async updateAssignment(assignmentId: string, updates: any): Promise<any> {
+    const basicUpdates: any = {};
+    if (updates.title) basicUpdates.title = updates.title;
+    if (updates.description) basicUpdates.description = updates.description;
+    if (updates.category) basicUpdates.category = updates.category;
+    if (updates.tokenReward !== undefined) basicUpdates.tokenReward = updates.tokenReward;
+    if (updates.dueDate !== undefined) basicUpdates.dueDate = updates.dueDate;
+    if (updates.isActive !== undefined) basicUpdates.isActive = updates.isActive;
+    basicUpdates.updatedAt = new Date();
+    
     const [assignment] = await db
-      .update(assignmentsAdvanced)
-      .set({ ...updates, updatedAt: new Date() })
-      .where(eq(assignmentsAdvanced.id, assignmentId))
+      .update(assignments)
+      .set(basicUpdates)
+      .where(eq(assignments.id, assignmentId))
       .returning();
     return assignment;
   }
 
   async deleteAssignment(assignmentId: string): Promise<void> {
-    await db.delete(assignmentsAdvanced).where(eq(assignmentsAdvanced.id, assignmentId));
+    await db.delete(assignments).where(eq(assignments.id, assignmentId));
   }
 
   async getAssignments(classroomId: string, filters?: {
     status?: string;
     category?: string;
     visibleToStudents?: boolean;
-  }): Promise<AssignmentAdvanced[]> {
+  }): Promise<any[]> {
     let query = db
       .select()
-      .from(assignmentsAdvanced)
-      .where(eq(assignmentsAdvanced.classroomId, classroomId));
+      .from(assignments)
+      .where(eq(assignments.classroomId, classroomId));
     
-    if (filters?.status) {
-      query = query.where(eq(assignmentsAdvanced.status, filters.status));
-    }
     if (filters?.category) {
-      query = query.where(eq(assignmentsAdvanced.category, filters.category));
-    }
-    if (filters?.visibleToStudents !== undefined) {
-      query = query.where(eq(assignmentsAdvanced.visibleToStudents, filters.visibleToStudents));
+      query = query.where(eq(assignments.category, filters.category));
     }
     
-    return await query.orderBy(desc(assignmentsAdvanced.dueDate));
+    return await query.orderBy(desc(assignments.dueDate), desc(assignments.createdAt));
   }
 
-  async getAssignment(assignmentId: string): Promise<AssignmentAdvanced | undefined> {
+  async getAssignment(assignmentId: string): Promise<any | undefined> {
     const [assignment] = await db
       .select()
-      .from(assignmentsAdvanced)
-      .where(eq(assignmentsAdvanced.id, assignmentId));
+      .from(assignments)
+      .where(eq(assignments.id, assignmentId));
     return assignment;
   }
 

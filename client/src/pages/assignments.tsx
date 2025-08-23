@@ -45,7 +45,8 @@ export default function Assignments() {
   // Create assignment mutation
   const createAssignmentMutation = useMutation({
     mutationFn: async (assignmentData: any) => {
-      return apiRequest('POST', '/api/assignments', assignmentData);
+      const response = await apiRequest('POST', '/api/assignments', { ...assignmentData, teacherId: user?.id });
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/classrooms", currentClassroom?.id, "assignments"] });
@@ -211,30 +212,32 @@ export default function Assignments() {
         )}
       </div>
 
-      {/* Category Filter */}
-      <div className="flex items-center space-x-3 overflow-x-auto pb-2">
-        <Button
-          variant={selectedCategory === "all" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setSelectedCategory("all")}
-          data-testid="filter-all"
-        >
-          All
-        </Button>
-        {categories.map((category) => (
+      {/* Category Filter - Only show when there are assignments */}
+      {(assignments && assignments.length > 0) && (
+        <div className="flex items-center space-x-3 overflow-x-auto pb-2">
           <Button
-            key={category.value}
-            variant={selectedCategory === category.value ? "default" : "outline"}
+            variant={selectedCategory === "all" ? "default" : "outline"}
             size="sm"
-            onClick={() => setSelectedCategory(category.value)}
-            data-testid={`filter-${category.value}`}
-            className="whitespace-nowrap"
+            onClick={() => setSelectedCategory("all")}
+            data-testid="filter-all"
           >
-            <i className={`${category.icon} mr-2`}></i>
-            {category.label}
+            All
           </Button>
-        ))}
-      </div>
+          {categories.map((category) => (
+            <Button
+              key={category.value}
+              variant={selectedCategory === category.value ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSelectedCategory(category.value)}
+              data-testid={`filter-${category.value}`}
+              className="whitespace-nowrap"
+            >
+              <i className={`${category.icon} mr-2`}></i>
+              {category.label}
+            </Button>
+          ))}
+        </div>
+      )}
 
       {/* Assignments Grid */}
       {filteredAssignments.length === 0 ? (
@@ -254,69 +257,83 @@ export default function Assignments() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredAssignments.map((assignment: any, index: number) => {
             const category = categories.find(c => c.value === assignment.category);
+            const categoryGradient = category?.value === 'math' 
+              ? 'from-red-500 to-red-600'
+              : category?.value === 'science'
+              ? 'from-blue-500 to-blue-600'
+              : category?.value === 'history'
+              ? 'from-green-500 to-green-600'
+              : category?.value === 'english'
+              ? 'from-purple-500 to-purple-600'
+              : category?.value === 'art'
+              ? 'from-pink-500 to-pink-600'
+              : 'from-gray-500 to-gray-600';
+              
             return (
               <motion.div
                 key={assignment.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
+                className={`rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 group overflow-hidden bg-gradient-to-r ${categoryGradient} text-white cursor-pointer`}
+                data-testid={`assignment-card-${index}`}
               >
-                <Card className="hover:shadow-lg transition-all duration-300 group cursor-pointer" data-testid={`assignment-card-${index}`}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg font-semibold text-gray-800 group-hover:text-blue-600 transition-colors" data-testid={`assignment-title-${index}`}>
-                          {assignment.title}
-                        </CardTitle>
-                        {category && (
-                          <Badge variant="outline" className={`mt-2 ${category.color}`} data-testid={`assignment-category-${index}`}>
-                            <i className={`${category.icon} mr-1`}></i>
-                            {category.label}
-                          </Badge>
-                        )}
-                      </div>
-                      {assignment.tokenReward > 0 && (
-                        <div className="text-right">
-                          <div className="text-lg font-bold text-blue-600" data-testid={`assignment-reward-${index}`}>
-                            {assignment.tokenReward}
-                          </div>
-                          <div className="text-xs text-gray-500">tokens</div>
-                        </div>
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      {category && (
+                        <i className={`${category.icon} text-3xl`}></i>
                       )}
+                      <h3 className="text-xl font-bold" data-testid={`assignment-title-${index}`}>
+                        {assignment.title}
+                      </h3>
                     </div>
-                  </CardHeader>
+                    
+                    {assignment.tokenReward > 0 && (
+                      <div className="text-right">
+                        <div className="text-2xl font-bold" data-testid={`assignment-reward-${index}`}>
+                          {assignment.tokenReward}
+                        </div>
+                        <div className="text-sm text-white/80">tokens</div>
+                      </div>
+                    )}
+                  </div>
                   
-                  <CardContent className="pt-0">
-                    {assignment.description && (
-                      <p className="text-gray-600 text-sm mb-4 line-clamp-3" data-testid={`assignment-description-${index}`}>
-                        {assignment.description}
-                      </p>
+                  {assignment.description && (
+                    <p className="text-white/90 text-sm mb-4" data-testid={`assignment-description-${index}`}>
+                      {assignment.description}
+                    </p>
+                  )}
+                  
+                  <div className="flex items-center justify-between mb-4">
+                    {assignment.dueDate ? (
+                      <span className="text-white/80 text-sm" data-testid={`assignment-due-date-${index}`}>
+                        Due: {new Date(assignment.dueDate).toLocaleDateString()}
+                      </span>
+                    ) : (
+                      <span className="text-white/80 text-sm">No due date</span>
                     )}
                     
-                    <div className="flex items-center justify-between text-sm text-gray-500">
-                      {assignment.dueDate ? (
-                        <span data-testid={`assignment-due-date-${index}`}>
-                          Due: {new Date(assignment.dueDate).toLocaleDateString()}
-                        </span>
-                      ) : (
-                        <span>No due date</span>
-                      )}
-                      
-                      <span data-testid={`assignment-created-${index}`}>
-                        {new Date(assignment.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
+                    <span className="text-white/80 text-sm" data-testid={`assignment-created-${index}`}>
+                      {new Date(assignment.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    {category && (
+                      <Badge variant="outline" className="text-white border-white/50" data-testid={`assignment-category-${index}`}>
+                        {category.label}
+                      </Badge>
+                    )}
                     
                     {user?.role === 'student' && (
-                      <div className="mt-4">
-                        <Button size="sm" className="w-full" data-testid={`button-submit-${index}`}>
-                          <i className="fas fa-paper-plane mr-2"></i>
-                          Submit Assignment
-                        </Button>
-                      </div>
+                      <Button size="sm" variant="secondary" data-testid={`button-submit-${index}`}>
+                        <i className="fas fa-paper-plane mr-2"></i>
+                        Submit
+                      </Button>
                     )}
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               </motion.div>
             );
           })}
