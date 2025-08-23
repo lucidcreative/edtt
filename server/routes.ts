@@ -506,6 +506,206 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Time tracking routes
+  app.get('/api/classrooms/:id/time-settings', authenticate, async (req: AuthenticatedRequest, res) => {
+    try {
+      const classroomId = req.params.id;
+      const classroom = await storage.getClassroom(classroomId);
+      
+      if (!classroom) {
+        return res.status(404).json({ message: "Classroom not found" });
+      }
+      
+      // Check access
+      if (req.user.role === 'teacher' && classroom.teacherId !== req.user.id) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const settings = await storage.getTimeTrackingSettings(classroomId);
+      res.json(settings);
+    } catch (error) {
+      console.error("Get time settings error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.put('/api/classrooms/:id/time-settings', authenticate, async (req: AuthenticatedRequest, res) => {
+    try {
+      const classroomId = req.params.id;
+      const classroom = await storage.getClassroom(classroomId);
+      
+      if (!classroom) {
+        return res.status(404).json({ message: "Classroom not found" });
+      }
+      
+      // Only teachers can update settings
+      if (req.user.role !== 'teacher' || classroom.teacherId !== req.user.id) {
+        return res.status(403).json({ message: "Only classroom teachers can update time tracking settings" });
+      }
+      
+      const settings = await storage.updateTimeTrackingSettings(classroomId, req.body);
+      res.json(settings);
+    } catch (error) {
+      console.error("Update time settings error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post('/api/classrooms/:id/clock-in', authenticate, async (req: AuthenticatedRequest, res) => {
+    try {
+      const classroomId = req.params.id;
+      const classroom = await storage.getClassroom(classroomId);
+      
+      if (!classroom) {
+        return res.status(404).json({ message: "Classroom not found" });
+      }
+      
+      // Only students can clock in
+      if (req.user.role !== 'student') {
+        return res.status(403).json({ message: "Only students can clock in" });
+      }
+      
+      // Check if time tracking is enabled
+      const settings = await storage.getTimeTrackingSettings(classroomId);
+      if (!settings?.timeTrackingEnabled) {
+        return res.status(400).json({ message: "Time tracking is not enabled for this classroom" });
+      }
+      
+      // Check if student already has an active session
+      const activeEntry = await storage.getActiveTimeEntry(req.user.id, classroomId);
+      if (activeEntry) {
+        return res.status(400).json({ message: "You already have an active time session" });
+      }
+      
+      // Check daily hour limit
+      const todayHours = await storage.getTodayTimeHours(req.user.id, classroomId);
+      const maxHours = parseFloat(settings.maxDailyHours || '8');
+      if (todayHours >= maxHours) {
+        return res.status(400).json({ message: `You've reached your daily limit of ${maxHours} hours` });
+      }
+      
+      // Create time entry
+      const timeEntry = await storage.createTimeEntry({
+        studentId: req.user.id,
+        classroomId,
+        clockInTime: new Date(),
+        ipAddress: req.ip || req.connection.remoteAddress
+      });
+      
+      res.json(timeEntry);
+    } catch (error) {
+      console.error("Clock in error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post('/api/classrooms/:id/clock-out', authenticate, async (req: AuthenticatedRequest, res) => {
+    try {
+      const classroomId = req.params.id;
+      const classroom = await storage.getClassroom(classroomId);
+      
+      if (!classroom) {
+        return res.status(404).json({ message: "Classroom not found" });
+      }
+      
+      // Only students can clock out
+      if (req.user.role !== 'student') {
+        return res.status(403).json({ message: "Only students can clock out" });
+      }
+      
+      // Get active time entry
+      const activeEntry = await storage.getActiveTimeEntry(req.user.id, classroomId);
+      if (!activeEntry) {
+        return res.status(400).json({ message: "No active time session found" });
+      }
+      
+      const settings = await storage.getTimeTrackingSettings(classroomId);
+      const clockOutTime = new Date();
+      const totalMinutes = Math.floor((clockOutTime.getTime() - new Date(activeEntry.clockInTime).getTime()) / (1000 * 60));
+      
+      // Check minimum duration
+      const minDuration = settings?.minClockInDuration || 15;
+      if (totalMinutes < minDuration) {
+        return res.status(400).json({ message: `Minimum session duration is ${minDuration} minutes` });
+      }
+      
+      // Calculate tokens
+      const tokensPerHour = settings?.tokensPerHour || 5;
+      const tokensEarned = Math.floor((totalMinutes / 60) * tokensPerHour);
+      
+      // Update time entry
+      const updatedEntry = await storage.updateTimeEntry(activeEntry.id, {
+        clockOutTime,
+        totalMinutes,
+        tokensEarned,
+        status: 'completed'
+      });
+      
+      // Add tokens to student
+      const updatedUser = await storage.updateUserTokens(req.user.id, req.user.tokens + tokensEarned);
+      
+      res.json({ ...updatedEntry, tokensEarned });
+    } catch (error) {
+      console.error("Clock out error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get('/api/time-entries/active/:classroomId', authenticate, async (req: AuthenticatedRequest, res) => {
+    try {
+      const classroomId = req.params.classroomId;
+      
+      if (req.user.role !== 'student') {
+        return res.status(403).json({ message: "Only students can view active time entries" });
+      }
+      
+      const entry = await storage.getActiveTimeEntry(req.user.id, classroomId);
+      res.json(entry);
+    } catch (error) {
+      console.error("Get active entry error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get('/api/time-entries/today/:classroomId', authenticate, async (req: AuthenticatedRequest, res) => {
+    try {
+      const classroomId = req.params.classroomId;
+      
+      if (req.user.role !== 'student') {
+        return res.status(403).json({ message: "Only students can view today's hours" });
+      }
+      
+      const hours = await storage.getTodayTimeHours(req.user.id, classroomId);
+      res.json(hours);
+    } catch (error) {
+      console.error("Get today hours error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get('/api/time-entries/:classroomId', authenticate, async (req: AuthenticatedRequest, res) => {
+    try {
+      const classroomId = req.params.classroomId;
+      const classroom = await storage.getClassroom(classroomId);
+      
+      if (!classroom) {
+        return res.status(404).json({ message: "Classroom not found" });
+      }
+      
+      // Check access
+      if (req.user.role === 'teacher' && classroom.teacherId !== req.user.id) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const studentId = req.user.role === 'student' ? req.user.id : undefined;
+      const entries = await storage.getTimeEntries(classroomId, studentId);
+      res.json(entries);
+    } catch (error) {
+      console.error("Get time entries error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // Store routes
   app.get('/api/classrooms/:id/store', authenticate, async (req: any, res) => {
     try {

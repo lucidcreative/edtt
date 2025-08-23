@@ -73,6 +73,7 @@ import {
   assignmentSubmissions,
   assignmentFeedback,
   assignmentTemplates,
+  timeEntries,
   // Phase 2B Marketplace Tables
   marketplaceSellers,
   marketplaceListings,
@@ -172,6 +173,15 @@ export interface IStorage {
   createChallenge(challenge: InsertChallenge): Promise<Challenge>;
   updateChallengeProgress(studentId: string, challengeId: string, progress: number): Promise<ChallengeProgress>;
   getStudentChallengeProgress(studentId: string, classroomId: string): Promise<(ChallengeProgress & { challenge: Challenge })[]>;
+  
+  // Time tracking operations
+  getTimeTrackingSettings(classroomId: string): Promise<any>;
+  updateTimeTrackingSettings(classroomId: string, settings: any): Promise<any>;
+  createTimeEntry(entry: any): Promise<any>;
+  updateTimeEntry(id: string, updates: any): Promise<any>;
+  getActiveTimeEntry(studentId: string, classroomId: string): Promise<any>;
+  getTimeEntries(classroomId: string, studentId?: string): Promise<any[]>;
+  getTodayTimeHours(studentId: string, classroomId: string): Promise<number>;
   
   // Dashboard/Analytics operations
   getClassroomStats(classroomId: string): Promise<{
@@ -2410,6 +2420,120 @@ export class DatabaseStorage implements IStorage {
       topSellingItems: [], // TODO: Implement top selling items query
       revenueByMonth: [] // TODO: Implement revenue by month query
     };
+  }
+
+  // Time tracking methods
+  async getTimeTrackingSettings(classroomId: string): Promise<any> {
+    const [classroom] = await db.select({
+      timeTrackingEnabled: classrooms.timeTrackingEnabled,
+      maxDailyHours: classrooms.maxDailyHours,
+      tokensPerHour: classrooms.tokensPerHour,
+      minClockInDuration: classrooms.minClockInDuration
+    }).from(classrooms).where(eq(classrooms.id, classroomId));
+    return classroom;
+  }
+
+  async updateTimeTrackingSettings(classroomId: string, settings: any): Promise<any> {
+    const [updated] = await db.update(classrooms)
+      .set({
+        timeTrackingEnabled: settings.timeTrackingEnabled,
+        maxDailyHours: settings.maxDailyHours.toString(),
+        tokensPerHour: settings.tokensPerHour,
+        minClockInDuration: settings.minClockInDuration,
+        updatedAt: new Date()
+      })
+      .where(eq(classrooms.id, classroomId))
+      .returning();
+    return updated;
+  }
+
+  async createTimeEntry(entry: any): Promise<any> {
+    const [created] = await db.insert(timeEntries).values({
+      studentId: entry.studentId,
+      classroomId: entry.classroomId,
+      clockInTime: entry.clockInTime,
+      ipAddress: entry.ipAddress,
+      status: 'active'
+    }).returning();
+    return created;
+  }
+
+  async updateTimeEntry(id: string, updates: any): Promise<any> {
+    const [updated] = await db.update(timeEntries)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(eq(timeEntries.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getActiveTimeEntry(studentId: string, classroomId: string): Promise<any> {
+    const [entry] = await db.select()
+      .from(timeEntries)
+      .where(and(
+        eq(timeEntries.studentId, studentId),
+        eq(timeEntries.classroomId, classroomId),
+        eq(timeEntries.status, 'active')
+      ))
+      .orderBy(desc(timeEntries.createdAt))
+      .limit(1);
+    return entry;
+  }
+
+  async getTimeEntries(classroomId: string, studentId?: string): Promise<any[]> {
+    let conditions = [eq(timeEntries.classroomId, classroomId)];
+    
+    if (studentId) {
+      conditions.push(eq(timeEntries.studentId, studentId));
+    }
+
+    const entries = await db.select({
+      id: timeEntries.id,
+      studentId: timeEntries.studentId,
+      classroomId: timeEntries.classroomId,
+      clockInTime: timeEntries.clockInTime,
+      clockOutTime: timeEntries.clockOutTime,
+      totalMinutes: timeEntries.totalMinutes,
+      tokensEarned: timeEntries.tokensEarned,
+      status: timeEntries.status,
+      createdAt: timeEntries.createdAt,
+      student: {
+        id: users.id,
+        nickname: users.nickname,
+        firstName: users.firstName,
+        lastName: users.lastName
+      }
+    })
+    .from(timeEntries)
+    .leftJoin(users, eq(timeEntries.studentId, users.id))
+    .where(and(...conditions))
+    .orderBy(desc(timeEntries.createdAt));
+
+    return entries;
+  }
+
+  async getTodayTimeHours(studentId: string, classroomId: string): Promise<number> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const entries = await db.select({
+      totalMinutes: timeEntries.totalMinutes
+    })
+    .from(timeEntries)
+    .where(and(
+      eq(timeEntries.studentId, studentId),
+      eq(timeEntries.classroomId, classroomId),
+      eq(timeEntries.status, 'completed'),
+      sql`${timeEntries.clockInTime} >= ${today}`,
+      sql`${timeEntries.clockInTime} < ${tomorrow}`
+    ));
+
+    const totalMinutes = entries.reduce((sum, entry) => sum + (entry.totalMinutes || 0), 0);
+    return totalMinutes / 60; // Convert to hours
   }
 
   async getMarketplaceAnalytics(classroomId: string, timeframe?: string): Promise<{

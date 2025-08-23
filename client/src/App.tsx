@@ -12,6 +12,7 @@ import Store from "@/pages/store";
 import Assignments from "@/pages/assignments";
 import Analytics from "@/pages/analytics";
 import Announcements from "@/pages/announcements";
+import TimeTracking from "@/pages/time-tracking";
 import Sidebar from "@/components/sidebar";
 import Header from "@/components/header";
 
@@ -28,6 +29,7 @@ function AuthenticatedApp() {
             <Route path="/announcements" component={Announcements} />
             <Route path="/store" component={Store} />
             <Route path="/assignments" component={Assignments} />
+            <Route path="/time-tracking" component={TimeTracking} />
             <Route path="/analytics" component={Analytics} />
             <Route component={NotFound} />
           </Switch>

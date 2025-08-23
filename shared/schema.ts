@@ -56,6 +56,11 @@ export const classrooms = pgTable("classrooms", {
   description: text("description"),
   isActive: boolean("is_active").default(true),
   settings: jsonb("settings").default({}),
+  // Time tracking settings
+  timeTrackingEnabled: boolean("time_tracking_enabled").default(false),
+  maxDailyHours: decimal("max_daily_hours", { precision: 4, scale: 2 }).default('8.00'),
+  tokensPerHour: integer("tokens_per_hour").default(5),
+  minClockInDuration: integer("min_clock_in_duration").default(15), // minutes
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
 });
@@ -123,6 +128,23 @@ export const purchases = pgTable("purchases", {
   status: varchar("status", { length: 20 }).notNull().$type<'pending' | 'fulfilled' | 'cancelled'>().default('pending'),
   purchasedAt: timestamp("purchased_at").defaultNow(),
   fulfilledAt: timestamp("fulfilled_at")
+});
+
+// Time tracking entries
+export const timeEntries = pgTable("time_entries", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  studentId: uuid("student_id").references(() => users.id).notNull(),
+  classroomId: uuid("classroom_id").references(() => classrooms.id).notNull(),
+  clockInTime: timestamp("clock_in_time").notNull(),
+  clockOutTime: timestamp("clock_out_time"),
+  totalMinutes: integer("total_minutes").default(0),
+  tokensEarned: integer("tokens_earned").default(0),
+  status: varchar("status", { length: 20 }).notNull().$type<'active' | 'completed' | 'cancelled'>().default('active'),
+  ipAddress: varchar("ip_address", { length: 45 }), // For basic abuse prevention
+  notes: text("notes"),
+  approvedBy: uuid("approved_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
 });
 
 // Badges/Achievements

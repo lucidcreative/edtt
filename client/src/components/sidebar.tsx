@@ -9,6 +9,7 @@ const navigation = [
   { path: '/students', name: 'Students', icon: 'fas fa-users' },
   { path: '/announcements', name: 'Announcements', icon: 'fas fa-bullhorn' },
   { path: '/assignments', name: 'Assignments', icon: 'fas fa-tasks' },
+  { path: '/time-tracking', name: 'Time Clock', icon: 'fas fa-clock' },
   { path: '/store', name: 'Store', icon: 'fas fa-store' },
   { path: '/analytics', name: 'Analytics', icon: 'fas fa-chart-bar' },
 ];
