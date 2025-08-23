@@ -63,10 +63,42 @@ export default function ChallengeManagement({ classroomId }: { classroomId: stri
     enabled: !!classroomId
   });
 
-  // Get challenge templates
-  const { data: templates = [] } = useQuery({
-    queryKey: ["/api/challenge-templates"]
-  });
+  // Predefined challenge templates
+  const templates: ChallengeTemplate[] = [
+    // Academic Challenges
+    { id: 'perfect-week', name: 'Perfect Week', description: 'Score 100% on 5 assignments in a row', icon: 'fas fa-star', color: '#f59e0b', targetValue: 5, tokenReward: 100, category: 'academic' },
+    { id: 'reading-marathon', name: 'Reading Marathon', description: 'Read 10 books this month', icon: 'fas fa-book', color: '#06b6d4', targetValue: 10, tokenReward: 150, category: 'academic' },
+    { id: 'math-master', name: 'Math Master', description: 'Complete 25 math problems correctly', icon: 'fas fa-calculator', color: '#8b5cf6', targetValue: 25, tokenReward: 75, category: 'academic' },
+    { id: 'homework-hero', name: 'Homework Hero', description: 'Submit 20 assignments on time', icon: 'fas fa-pencil-alt', color: '#10b981', targetValue: 20, tokenReward: 80, category: 'academic' },
+    { id: 'science-explorer', name: 'Science Explorer', description: 'Complete 8 science experiments', icon: 'fas fa-flask', color: '#f97316', targetValue: 8, tokenReward: 120, category: 'academic' },
+    
+    // Behavior & Character Challenges
+    { id: 'kindness-champion', name: 'Kindness Champion', description: 'Perform 15 acts of kindness', icon: 'fas fa-heart', color: '#ef4444', targetValue: 15, tokenReward: 90, category: 'behavior' },
+    { id: 'helping-hands', name: 'Helping Hands', description: 'Help classmates 20 times', icon: 'fas fa-hands-helping', color: '#10b981', targetValue: 20, tokenReward: 85, category: 'behavior' },
+    { id: 'respect-warrior', name: 'Respect Warrior', description: 'Show respect in 30 interactions', icon: 'fas fa-handshake', color: '#3b82f6', targetValue: 30, tokenReward: 95, category: 'behavior' },
+    
+    // Participation Challenges
+    { id: 'question-master', name: 'Question Master', description: 'Ask 25 thoughtful questions', icon: 'fas fa-question-circle', color: '#84cc16', targetValue: 25, tokenReward: 70, category: 'participation' },
+    { id: 'discussion-leader', name: 'Discussion Leader', description: 'Lead 10 class discussions', icon: 'fas fa-comments', color: '#06b6d4', targetValue: 10, tokenReward: 110, category: 'participation' },
+    { id: 'presentation-pro', name: 'Presentation Pro', description: 'Give 5 excellent presentations', icon: 'fas fa-chalkboard-teacher', color: '#f59e0b', targetValue: 5, tokenReward: 125, category: 'participation' },
+    
+    // Creativity Challenges
+    { id: 'creative-genius', name: 'Creative Genius', description: 'Complete 12 creative projects', icon: 'fas fa-palette', color: '#f97316', targetValue: 12, tokenReward: 100, category: 'creativity' },
+    { id: 'innovation-expert', name: 'Innovation Expert', description: 'Propose 8 innovative solutions', icon: 'fas fa-lightbulb', color: '#8b5cf6', targetValue: 8, tokenReward: 130, category: 'creativity' },
+    { id: 'art-master', name: 'Art Master', description: 'Create 15 artistic pieces', icon: 'fas fa-paint-brush', color: '#ef4444', targetValue: 15, tokenReward: 85, category: 'creativity' },
+    
+    // Collaboration Challenges
+    { id: 'team-builder', name: 'Team Builder', description: 'Successfully complete 10 group projects', icon: 'fas fa-users', color: '#10b981', targetValue: 10, tokenReward: 90, category: 'collaboration' },
+    { id: 'peer-mentor', name: 'Peer Mentor', description: 'Mentor 5 struggling classmates', icon: 'fas fa-user-friends', color: '#3b82f6', targetValue: 5, tokenReward: 140, category: 'collaboration' },
+    
+    // Attendance & Punctuality Challenges
+    { id: 'attendance-ace', name: 'Attendance Ace', description: 'Perfect attendance for 30 days', icon: 'fas fa-calendar-check', color: '#10b981', targetValue: 30, tokenReward: 150, category: 'attendance' },
+    { id: 'punctuality-pro', name: 'Punctuality Pro', description: 'Arrive on time for 25 days', icon: 'fas fa-clock', color: '#f59e0b', targetValue: 25, tokenReward: 75, category: 'attendance' },
+    
+    // Special Achievement Challenges
+    { id: 'goal-crusher', name: 'Goal Crusher', description: 'Achieve 10 personal learning goals', icon: 'fas fa-target', color: '#8b5cf6', targetValue: 10, tokenReward: 120, category: 'achievement' },
+    { id: 'improvement-star', name: 'Improvement Star', description: 'Show improvement in 8 areas', icon: 'fas fa-chart-line', color: '#06b6d4', targetValue: 8, tokenReward: 110, category: 'achievement' }
+  ];
 
   // Create challenge mutation
   const createChallengeMutation = useMutation({
@@ -165,17 +197,27 @@ export default function ChallengeManagement({ classroomId }: { classroomId: stri
     { value: 'fas fa-pencil-alt', label: '✏️ Pencil' },
     { value: 'fas fa-calculator', label: '🧮 Calculator' },
     { value: 'fas fa-flask', label: '🧪 Flask' },
-    { value: 'fas fa-hand-paper', label: '✋ Hand' },
-    { value: 'fas fa-piggy-bank', label: '🐷 Piggy Bank' },
-    { value: 'fas fa-running', label: '🏃 Running' },
-    { value: 'fas fa-puzzle-piece', label: '🧩 Puzzle' },
-    { value: 'fas fa-star', label: '⭐ Star' }
+    { value: 'fas fa-star', label: '⭐ Star' },
+    { value: 'fas fa-heart', label: '❤️ Heart' },
+    { value: 'fas fa-hands-helping', label: '🤝 Helping Hands' },
+    { value: 'fas fa-handshake', label: '🤝 Handshake' },
+    { value: 'fas fa-question-circle', label: '❓ Question' },
+    { value: 'fas fa-comments', label: '💬 Comments' },
+    { value: 'fas fa-chalkboard-teacher', label: '👨‍🏫 Teacher' },
+    { value: 'fas fa-palette', label: '🎨 Palette' },
+    { value: 'fas fa-lightbulb', label: '💡 Lightbulb' },
+    { value: 'fas fa-paint-brush', label: '🖌️ Paint Brush' },
+    { value: 'fas fa-users', label: '👥 Users' },
+    { value: 'fas fa-user-friends', label: '👫 Friends' },
+    { value: 'fas fa-calendar-check', label: '📅 Calendar Check' },
+    { value: 'fas fa-clock', label: '🕐 Clock' },
+    { value: 'fas fa-chart-line', label: '📈 Chart Line' }
   ];
 
   const colorOptions = [
     { value: '#10b981', label: 'Green' },
     { value: '#3b82f6', label: 'Blue' },
-    { value: '#f59e0b', label: 'Orange' },
+    { value: '#f59e0b', label: 'Gold' },
     { value: '#ef4444', label: 'Red' },
     { value: '#8b5cf6', label: 'Purple' },
     { value: '#06b6d4', label: 'Cyan' },
