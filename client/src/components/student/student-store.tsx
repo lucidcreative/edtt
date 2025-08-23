@@ -51,14 +51,6 @@ export default function StudentStore() {
     enabled: !!user?.id && user?.role === 'student'
   });
 
-  // Debug log to check store items data
-  console.log('Store items data:', storeItems);
-  console.log('Store items error:', error);
-  
-  // Add debugging for error details
-  if (error) {
-    console.error('Store fetch error details:', error);
-  }
 
   // Get student's purchase history
   const { data: purchases = [] } = useQuery<Purchase[]>({
@@ -216,14 +208,12 @@ export default function StudentStore() {
                     </div>
                   )}
                   
-                  {/* Image or Icon */}
+                  {/* Icon Display */}
                   <div className="relative h-40 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center overflow-hidden">
                     {item.imageUrl ? (
-                      <img 
-                        src={item.imageUrl} 
-                        alt={item.name || item.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
+                      <div className="text-6xl group-hover:scale-110 transition-transform duration-300">
+                        {item.imageUrl}
+                      </div>
                     ) : (
                       <div className="text-5xl text-gray-300 group-hover:scale-110 transition-transform duration-300">
                         <i className={categoryInfo.icon}></i>
@@ -302,12 +292,10 @@ export default function StudentStore() {
                           </DialogHeader>
                           <div className="space-y-4">
                             {item.imageUrl && (
-                              <div className="w-full h-48 bg-gray-200 rounded-lg overflow-hidden">
-                                <img 
-                                  src={item.imageUrl} 
-                                  alt={item.name || item.title}
-                                  className="w-full h-full object-cover"
-                                />
+                              <div className="w-full h-48 bg-gray-50 rounded-lg flex items-center justify-center">
+                                <div className="text-8xl">
+                                  {item.imageUrl}
+                                </div>
                               </div>
                             )}
                             
