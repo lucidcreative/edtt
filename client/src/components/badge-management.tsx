@@ -57,10 +57,40 @@ export default function BadgeManagement({ classroomId }: { classroomId: string }
     enabled: !!classroomId
   });
 
-  // Get badge templates
-  const { data: templates = [] } = useQuery({
-    queryKey: ["/api/badge-templates"]
-  });
+  // Predefined badge templates
+  const templates: BadgeTemplate[] = [
+    // Academic Excellence
+    { id: 'perfect-score', name: 'Perfect Score', description: 'Achieved 100% on an assignment', icon: 'fas fa-star', color: '#f59e0b', category: 'academic' },
+    { id: 'honor-roll', name: 'Honor Roll', description: 'Maintained excellent grades', icon: 'fas fa-trophy', color: '#10b981', category: 'academic' },
+    { id: 'quick-learner', name: 'Quick Learner', description: 'Grasped new concepts rapidly', icon: 'fas fa-lightbulb', color: '#3b82f6', category: 'academic' },
+    { id: 'math-wizard', name: 'Math Wizard', description: 'Outstanding performance in mathematics', icon: 'fas fa-calculator', color: '#8b5cf6', category: 'academic' },
+    { id: 'reading-champion', name: 'Reading Champion', description: 'Completed reading goals and beyond', icon: 'fas fa-book', color: '#06b6d4', category: 'academic' },
+    
+    // Behavior & Character
+    { id: 'kindness-award', name: 'Kindness Award', description: 'Showed exceptional kindness to others', icon: 'fas fa-heart', color: '#ef4444', category: 'behavior' },
+    { id: 'helpful-student', name: 'Helpful Student', description: 'Always ready to help classmates', icon: 'fas fa-hands-helping', color: '#10b981', category: 'behavior' },
+    { id: 'respectful-listener', name: 'Respectful Listener', description: 'Shows respect and listens actively', icon: 'fas fa-ear-listen', color: '#3b82f6', category: 'behavior' },
+    { id: 'positive-attitude', name: 'Positive Attitude', description: 'Maintains optimism and enthusiasm', icon: 'fas fa-smile', color: '#f59e0b', category: 'behavior' },
+    { id: 'problem-solver', name: 'Problem Solver', description: 'Finds creative solutions to challenges', icon: 'fas fa-puzzle-piece', color: '#8b5cf6', category: 'behavior' },
+    
+    // Participation & Engagement
+    { id: 'active-participant', name: 'Active Participant', description: 'Actively engages in class discussions', icon: 'fas fa-comments', color: '#06b6d4', category: 'participation' },
+    { id: 'question-asker', name: 'Question Asker', description: 'Asks thoughtful questions', icon: 'fas fa-question-circle', color: '#84cc16', category: 'participation' },
+    { id: 'class-leader', name: 'Class Leader', description: 'Shows leadership in group activities', icon: 'fas fa-crown', color: '#f59e0b', category: 'participation' },
+    
+    // Creativity & Innovation
+    { id: 'creative-genius', name: 'Creative Genius', description: 'Demonstrates exceptional creativity', icon: 'fas fa-palette', color: '#f97316', category: 'creativity' },
+    { id: 'innovative-thinker', name: 'Innovative Thinker', description: 'Thinks outside the box', icon: 'fas fa-rocket', color: '#8b5cf6', category: 'creativity' },
+    { id: 'artist-badge', name: 'Artist Badge', description: 'Exceptional work in arts and crafts', icon: 'fas fa-paint-brush', color: '#ef4444', category: 'creativity' },
+    
+    // Collaboration & Teamwork  
+    { id: 'team-player', name: 'Team Player', description: 'Works excellently with others', icon: 'fas fa-users', color: '#10b981', category: 'collaboration' },
+    { id: 'collaboration-star', name: 'Collaboration Star', description: 'Outstanding teamwork skills', icon: 'fas fa-handshake', color: '#3b82f6', category: 'collaboration' },
+    
+    // Attendance & Punctuality
+    { id: 'perfect-attendance', name: 'Perfect Attendance', description: 'Never missed a class', icon: 'fas fa-calendar-check', color: '#10b981', category: 'attendance' },
+    { id: 'early-bird', name: 'Early Bird', description: 'Always arrives on time', icon: 'fas fa-clock', color: '#f59e0b', category: 'attendance' }
+  ];
 
   // Create badge mutation
   const createBadgeMutation = useMutation({
@@ -152,7 +182,20 @@ export default function BadgeManagement({ classroomId }: { classroomId: string }
     { value: 'fas fa-heart', label: '❤️ Heart' },
     { value: 'fas fa-lightbulb', label: '💡 Lightbulb' },
     { value: 'fas fa-puzzle-piece', label: '🧩 Puzzle' },
-    { value: 'fas fa-rocket', label: '🚀 Rocket' }
+    { value: 'fas fa-rocket', label: '🚀 Rocket' },
+    { value: 'fas fa-book', label: '📚 Book' },
+    { value: 'fas fa-calculator', label: '🧮 Calculator' },
+    { value: 'fas fa-hands-helping', label: '🤝 Helping Hands' },
+    { value: 'fas fa-comments', label: '💬 Comments' },
+    { value: 'fas fa-question-circle', label: '❓ Question' },
+    { value: 'fas fa-palette', label: '🎨 Palette' },
+    { value: 'fas fa-paint-brush', label: '🖌️ Paint Brush' },
+    { value: 'fas fa-users', label: '👥 Users' },
+    { value: 'fas fa-handshake', label: '🤝 Handshake' },
+    { value: 'fas fa-calendar-check', label: '📅 Calendar Check' },
+    { value: 'fas fa-clock', label: '🕐 Clock' },
+    { value: 'fas fa-smile', label: '😊 Smile' },
+    { value: 'fas fa-ear-listen', label: '👂 Ear' }
   ];
 
   const colorOptions = [
@@ -274,12 +317,12 @@ export default function BadgeManagement({ classroomId }: { classroomId: string }
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="academic">Academic</SelectItem>
-                        <SelectItem value="behavior">Behavior</SelectItem>
-                        <SelectItem value="attendance">Attendance</SelectItem>
-                        <SelectItem value="creativity">Creativity</SelectItem>
-                        <SelectItem value="collaboration">Collaboration</SelectItem>
-                        <SelectItem value="participation">Participation</SelectItem>
+                        <SelectItem value="academic">📚 Academic</SelectItem>
+                        <SelectItem value="behavior">😊 Behavior</SelectItem>
+                        <SelectItem value="attendance">📅 Attendance</SelectItem>
+                        <SelectItem value="creativity">🎨 Creativity</SelectItem>
+                        <SelectItem value="collaboration">🤝 Collaboration</SelectItem>
+                        <SelectItem value="participation">💬 Participation</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -328,7 +371,7 @@ export default function BadgeManagement({ classroomId }: { classroomId: string }
                   </div>
                   <h4 className="font-medium text-sm mb-1">{badge.name}</h4>
                   <p className="text-xs text-gray-500 mb-2">{badge.description}</p>
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="outline" className="text-xs capitalize">
                     {badge.category}
                   </Badge>
                   
