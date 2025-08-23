@@ -78,6 +78,7 @@ export const assignments = pgTable("assignments", {
   classroomId: uuid("classroom_id").references(() => classrooms.id).notNull(),
   teacherId: uuid("teacher_id").references(() => users.id).notNull(),
   dueDate: timestamp("due_date"),
+  resources: jsonb("resources").default([]), // Array of resource links
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()

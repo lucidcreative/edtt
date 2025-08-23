@@ -1306,6 +1306,7 @@ export class DatabaseStorage implements IStorage {
       classroomId: assignment.classroomId,
       teacherId: assignment.teacherId || assignment.createdBy,
       dueDate: assignment.dueDate,
+      resources: assignment.resources || [],
       isActive: assignment.isActive !== false
     };
     
@@ -1323,6 +1324,7 @@ export class DatabaseStorage implements IStorage {
     if (updates.category) basicUpdates.category = updates.category;
     if (updates.tokenReward !== undefined) basicUpdates.tokenReward = updates.tokenReward;
     if (updates.dueDate !== undefined) basicUpdates.dueDate = updates.dueDate;
+    if (updates.resources !== undefined) basicUpdates.resources = updates.resources;
     if (updates.isActive !== undefined) basicUpdates.isActive = updates.isActive;
     basicUpdates.updatedAt = new Date();
     

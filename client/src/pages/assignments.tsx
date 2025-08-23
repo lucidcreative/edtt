@@ -1,5 +1,10 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { format } from "date-fns";
+import { CalendarIcon, Plus, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,9 +14,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 const categories = [
   { value: "math", label: "Math", icon: "fas fa-calculator", color: "bg-red-100 text-red-600" },
@@ -20,6 +29,21 @@ const categories = [
   { value: "english", label: "English", icon: "fas fa-book", color: "bg-purple-100 text-purple-600" },
   { value: "art", label: "Art", icon: "fas fa-palette", color: "bg-pink-100 text-pink-600" },
 ];
+
+// Form schema for assignment creation
+const assignmentFormSchema = z.object({
+  title: z.string().min(1, "Title is required").max(200, "Title must be less than 200 characters"),
+  description: z.string().optional(),
+  category: z.string().min(1, "Category is required"),
+  tokenReward: z.number().min(0, "Token reward must be positive"),
+  dueDate: z.date().optional(),
+  resources: z.array(z.object({
+    title: z.string().min(1, "Resource title is required"),
+    url: z.string().url("Must be a valid URL")
+  })).default([])
+});
+
+type AssignmentFormData = z.infer<typeof assignmentFormSchema>;
 
 export default function Assignments() {
   const { user } = useAuth();
@@ -30,7 +54,32 @@ export default function Assignments() {
   const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [editForm, setEditForm] = useState({ title: '', description: '', category: '', tokenReward: 0, dueDate: '' });
+  
+  // Form for creating assignments
+  const createForm = useForm<AssignmentFormData>({
+    resolver: zodResolver(assignmentFormSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      category: "",
+      tokenReward: 0,
+      dueDate: undefined,
+      resources: []
+    }
+  });
+  
+  // Form for editing assignments
+  const editForm = useForm<AssignmentFormData>({
+    resolver: zodResolver(assignmentFormSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      category: "",
+      tokenReward: 0,
+      dueDate: undefined,
+      resources: []
+    }
+  });
 
   // Get user's classrooms
   const { data: classrooms } = useQuery({
@@ -48,13 +97,19 @@ export default function Assignments() {
 
   // Create assignment mutation
   const createAssignmentMutation = useMutation({
-    mutationFn: async (assignmentData: any) => {
-      const response = await apiRequest('POST', '/api/assignments', { ...assignmentData, teacherId: user?.id });
+    mutationFn: async (data: AssignmentFormData) => {
+      const assignmentData = {
+        ...data,
+        teacherId: user?.id,
+        classroomId: currentClassroom?.id
+      };
+      const response = await apiRequest('POST', '/api/assignments', assignmentData);
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/classrooms", currentClassroom?.id, "assignments"] });
       setIsCreateDialogOpen(false);
+      createForm.reset();
       toast({
         title: "Assignment Created",
         description: "The assignment has been successfully created.",
@@ -71,8 +126,9 @@ export default function Assignments() {
 
   // Update assignment mutation
   const updateAssignmentMutation = useMutation({
-    mutationFn: async (data: { assignmentId: string; updates: any }) => {
-      const response = await apiRequest('PATCH', `/api/assignments/${data.assignmentId}`, data.updates);
+    mutationFn: async (data: AssignmentFormData) => {
+      if (!selectedAssignment) throw new Error("No assignment selected");
+      const response = await apiRequest('PATCH', `/api/assignments/${selectedAssignment.id}`, data);
       return response.json();
     },
     onSuccess: () => {
@@ -93,47 +149,36 @@ export default function Assignments() {
     }
   });
 
-  const handleCreateAssignment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget as HTMLFormElement);
-    
-    const assignmentData = {
-      title: formData.get('title') as string,
-      description: formData.get('description') as string,
-      category: formData.get('category') as string,
-      tokenReward: parseInt(formData.get('tokenReward') as string) || 0,
-      classroomId: currentClassroom?.id,
-      dueDate: formData.get('dueDate') ? new Date(formData.get('dueDate') as string) : null
-    };
+  const onCreateSubmit = (data: AssignmentFormData) => {
+    createAssignmentMutation.mutate(data);
+  };
 
-    createAssignmentMutation.mutate(assignmentData);
+  const onUpdateSubmit = (data: AssignmentFormData) => {
+    updateAssignmentMutation.mutate(data);
   };
 
   const handleAssignmentClick = (assignment: any) => {
     setSelectedAssignment(assignment);
-    setEditForm({
+    editForm.reset({
       title: assignment.title || '',
       description: assignment.description || '',
       category: assignment.category || '',
       tokenReward: assignment.tokenReward || 0,
-      dueDate: assignment.dueDate ? new Date(assignment.dueDate).toISOString().split('T')[0] : ''
+      dueDate: assignment.dueDate ? new Date(assignment.dueDate) : undefined,
+      resources: assignment.resources || []
     });
     setIsEditing(false);
     setIsDetailDialogOpen(true);
   };
 
-  const handleUpdateAssignment = () => {
-    if (!selectedAssignment) return;
-    updateAssignmentMutation.mutate({
-      assignmentId: selectedAssignment.id,
-      updates: {
-        title: editForm.title,
-        description: editForm.description,
-        category: editForm.category,
-        tokenReward: editForm.tokenReward,
-        dueDate: editForm.dueDate ? new Date(editForm.dueDate) : null
-      }
-    });
+  const addResource = (form: any) => {
+    const currentResources = form.getValues('resources');
+    form.setValue('resources', [...currentResources, { title: '', url: '' }]);
+  };
+
+  const removeResource = (form: any, index: number) => {
+    const currentResources = form.getValues('resources');
+    form.setValue('resources', currentResources.filter((_: any, i: number) => i !== index));
   };
 
   const filteredAssignments = assignments?.filter((assignment: any) => 
@@ -190,83 +235,221 @@ export default function Assignments() {
                 Create Assignment
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Create New Assignment</DialogTitle>
+                <DialogTitle className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
+                    <i className="fas fa-plus text-white text-sm"></i>
+                  </div>
+                  Create New Assignment
+                </DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleCreateAssignment} className="space-y-4">
-                <div>
-                  <Label htmlFor="title">Title</Label>
-                  <Input
-                    id="title"
+              
+              <Form {...createForm}>
+                <form onSubmit={createForm.handleSubmit(onCreateSubmit)} className="space-y-6">
+                  <FormField
+                    control={createForm.control}
                     name="title"
-                    placeholder="Assignment title"
-                    required
-                    data-testid="input-assignment-title"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Assignment Title</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter assignment title" {...field} data-testid="input-assignment-title" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                </div>
-                
-                <div>
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
+                  
+                  <FormField
+                    control={createForm.control}
                     name="description"
-                    placeholder="Assignment description"
-                    rows={3}
-                    data-testid="textarea-assignment-description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Describe the assignment and instructions"
+                            rows={3}
+                            {...field} 
+                            data-testid="textarea-assignment-description"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                </div>
-                
-                <div>
-                  <Label htmlFor="category">Category</Label>
-                  <Select name="category" required>
-                    <SelectTrigger data-testid="select-assignment-category">
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem key={category.value} value={category.value}>
-                          <div className="flex items-center">
-                            <i className={`${category.icon} mr-2`}></i>
-                            {category.label}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div>
-                  <Label htmlFor="tokenReward">Token Reward</Label>
-                  <Input
-                    id="tokenReward"
-                    name="tokenReward"
-                    type="number"
-                    min="0"
-                    placeholder="0"
-                    data-testid="input-token-reward"
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="dueDate">Due Date (Optional)</Label>
-                  <Input
-                    id="dueDate"
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={createForm.control}
+                      name="category"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Category</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-assignment-category">
+                                <SelectValue placeholder="Select category" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {categories.map((category) => (
+                                <SelectItem key={category.value} value={category.value}>
+                                  <div className="flex items-center">
+                                    <i className={`${category.icon} mr-2`}></i>
+                                    {category.label}
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={createForm.control}
+                      name="tokenReward"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Token Reward</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="0"
+                              {...field}
+                              onChange={(e) => field.onChange(Number(e.target.value))}
+                              data-testid="input-token-reward"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <FormField
+                    control={createForm.control}
                     name="dueDate"
-                    type="datetime-local"
-                    data-testid="input-due-date"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Due Date (Optional)</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant={"outline"}
+                                className={cn(
+                                  "w-full pl-3 text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                                data-testid="input-due-date"
+                              >
+                                {field.value ? (
+                                  format(field.value, "PPP")
+                                ) : (
+                                  <span>Pick a date</span>
+                                )}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value}
+                              onSelect={field.onChange}
+                              disabled={(date) =>
+                                date < new Date(new Date().setHours(0, 0, 0, 0))
+                              }
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                </div>
-                
-                <div className="flex space-x-3">
-                  <Button type="submit" className="flex-1" disabled={createAssignmentMutation.isPending}>
-                    {createAssignmentMutation.isPending ? "Creating..." : "Create"}
-                  </Button>
-                  <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                </div>
-              </form>
+                  
+                  {/* Resources Section */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <FormLabel>Resources & Links</FormLabel>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => addResource(createForm)}
+                        className="flex items-center gap-1"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Add Resource
+                      </Button>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      {createForm.watch('resources').map((_, index) => (
+                        <div key={index} className="flex items-end gap-2 p-3 border rounded-lg">
+                          <FormField
+                            control={createForm.control}
+                            name={`resources.${index}.title`}
+                            render={({ field }) => (
+                              <FormItem className="flex-1">
+                                <FormLabel className="text-sm">Title</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="Resource title" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={createForm.control}
+                            name={`resources.${index}.url`}
+                            render={({ field }) => (
+                              <FormItem className="flex-1">
+                                <FormLabel className="text-sm">URL</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="https://..." {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={() => removeResource(createForm, index)}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                      
+                      {createForm.watch('resources').length === 0 && (
+                        <p className="text-sm text-gray-500 text-center py-4">
+                          No resources added yet. Click "Add Resource" to include helpful links.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-3 pt-4">
+                    <Button type="submit" className="flex-1" disabled={createAssignmentMutation.isPending}>
+                      {createAssignmentMutation.isPending ? "Creating..." : "Create Assignment"}
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              </Form>
             </DialogContent>
           </Dialog>
         )}
@@ -450,6 +633,26 @@ export default function Assignments() {
                     </div>
                   )}
                   
+                  {selectedAssignment.resources && selectedAssignment.resources.length > 0 && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-700 mb-2">Resources</h3>
+                      <div className="space-y-2">
+                        {selectedAssignment.resources.map((resource: any, index: number) => (
+                          <a
+                            key={index}
+                            href={resource.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 p-2 border rounded-lg hover:bg-gray-50 transition-colors"
+                          >
+                            <i className="fas fa-external-link-alt text-blue-500"></i>
+                            <span className="text-blue-600 hover:underline">{resource.title}</span>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <h3 className="text-sm font-medium text-gray-700 mb-1">Due Date</h3>
@@ -482,76 +685,208 @@ export default function Assignments() {
                 </div>
               ) : (
                 // Edit Mode
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                    <Input
-                      value={editForm.title}
-                      onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
-                      placeholder="Assignment title"
+                <Form {...editForm}>
+                  <form onSubmit={editForm.handleSubmit(onUpdateSubmit)} className="space-y-6">
+                    <FormField
+                      control={editForm.control}
+                      name="title"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Assignment Title</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter assignment title" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                    <Textarea
-                      value={editForm.description}
-                      onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                      placeholder="Assignment description and instructions"
-                      rows={4}
-                    />
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                      <Select value={editForm.category} onValueChange={(value) => setEditForm({ ...editForm, category: value })}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.map((category) => (
-                            <SelectItem key={category.value} value={category.value}>
-                              <span className="flex items-center gap-2">
-                                <i className={category.icon}></i>
-                                {category.label}
-                              </span>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
                     
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Token Reward</label>
-                      <Input
-                        type="number"
-                        value={editForm.tokenReward}
-                        onChange={(e) => setEditForm({ ...editForm, tokenReward: parseInt(e.target.value) || 0 })}
-                        placeholder="0"
-                        min="0"
+                    <FormField
+                      control={editForm.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Description</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              placeholder="Describe the assignment and instructions"
+                              rows={4}
+                              {...field} 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={editForm.control}
+                        name="category"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Category</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select category" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {categories.map((category) => (
+                                  <SelectItem key={category.value} value={category.value}>
+                                    <div className="flex items-center">
+                                      <i className={`${category.icon} mr-2`}></i>
+                                      {category.label}
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={editForm.control}
+                        name="tokenReward"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Token Reward</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                placeholder="0"
+                                {...field}
+                                onChange={(e) => field.onChange(Number(e.target.value))}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
                     </div>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Due Date (Optional)</label>
-                    <Input
-                      type="date"
-                      value={editForm.dueDate}
-                      onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value })}
+                    
+                    <FormField
+                      control={editForm.control}
+                      name="dueDate"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Due Date (Optional)</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant={"outline"}
+                                  className={cn(
+                                    "w-full pl-3 text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                >
+                                  {field.value ? (
+                                    format(field.value, "PPP")
+                                  ) : (
+                                    <span>Pick a date</span>
+                                  )}
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                disabled={(date) =>
+                                  date < new Date(new Date().setHours(0, 0, 0, 0))
+                                }
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                  </div>
-                  
-                  <div className="flex gap-2 pt-4">
-                    <Button onClick={handleUpdateAssignment} disabled={updateAssignmentMutation.isPending} className="flex-1">
-                      {updateAssignmentMutation.isPending ? 'Updating...' : 'Save Changes'}
-                    </Button>
-                    <Button variant="outline" onClick={() => setIsEditing(false)}>
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
+                    
+                    {/* Resources Section */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <FormLabel>Resources & Links</FormLabel>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => addResource(editForm)}
+                          className="flex items-center gap-1"
+                        >
+                          <Plus className="h-4 w-4" />
+                          Add Resource
+                        </Button>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        {editForm.watch('resources').map((_, index) => (
+                          <div key={index} className="flex items-end gap-2 p-3 border rounded-lg">
+                            <FormField
+                              control={editForm.control}
+                              name={`resources.${index}.title`}
+                              render={({ field }) => (
+                                <FormItem className="flex-1">
+                                  <FormLabel className="text-sm">Title</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="Resource title" {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            
+                            <FormField
+                              control={editForm.control}
+                              name={`resources.${index}.url`}
+                              render={({ field }) => (
+                                <FormItem className="flex-1">
+                                  <FormLabel className="text-sm">URL</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="https://..." {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              onClick={() => removeResource(editForm, index)}
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                        
+                        {editForm.watch('resources').length === 0 && (
+                          <p className="text-sm text-gray-500 text-center py-4">
+                            No resources added yet. Click "Add Resource" to include helpful links.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-3 pt-4">
+                      <Button type="submit" className="flex-1" disabled={updateAssignmentMutation.isPending}>
+                        {updateAssignmentMutation.isPending ? 'Updating...' : 'Save Changes'}
+                      </Button>
+                      <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
               )}
             </div>
           )}
