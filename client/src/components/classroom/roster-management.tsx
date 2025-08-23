@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
+import QRCode from 'qrcode';
+import { Share2, Copy, QrCode, Download, ExternalLink } from 'lucide-react';
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -61,9 +63,35 @@ interface RosterManagementProps {
 export default function RosterManagement({ classroomId, classroomName, joinCode }: RosterManagementProps) {
   const [selectedTab, setSelectedTab] = useState("approved");
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [qrCodeUrl, setQrCodeUrl] = useState('');
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Generate QR code for the join code
+  useEffect(() => {
+    const generateQRCode = async () => {
+      try {
+        const joinUrl = `${window.location.origin}/join?code=${joinCode}`;
+        const qrUrl = await QRCode.toDataURL(joinUrl, {
+          width: 256,
+          margin: 2,
+          color: {
+            dark: '#000000',
+            light: '#FFFFFF'
+          }
+        });
+        setQrCodeUrl(qrUrl);
+      } catch (error) {
+        console.error('Error generating QR code:', error);
+      }
+    };
+
+    if (joinCode) {
+      generateQRCode();
+    }
+  }, [joinCode]);
 
   // Fetch classroom roster
   const { data: enrollments, isLoading } = useQuery<Enrollment[]>({
@@ -120,6 +148,52 @@ export default function RosterManagement({ classroomId, classroomName, joinCode 
       });
     },
   });
+
+  const copyJoinCode = async () => {
+    try {
+      await navigator.clipboard.writeText(joinCode);
+      toast({
+        title: "Copied!",
+        description: "Join code copied to clipboard",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to copy join code",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const copyJoinLink = async () => {
+    try {
+      const joinUrl = `${window.location.origin}/join?code=${joinCode}`;
+      await navigator.clipboard.writeText(joinUrl);
+      toast({
+        title: "Copied!",
+        description: "Join link copied to clipboard",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to copy join link",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const downloadQRCode = () => {
+    const link = document.createElement('a');
+    link.download = `${classroomName}-qr-code.png`;
+    link.href = qrCodeUrl;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast({
+      title: "Downloaded!",
+      description: "QR code saved to your device",
+    });
+  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -231,6 +305,91 @@ export default function RosterManagement({ classroomId, classroomName, joinCode 
               <strong>Join Code:</strong> <code className="bg-blue-100 px-2 py-1 rounded font-mono">{joinCode}</code>
             </p>
           </div>
+          
+          <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
+            <DialogTrigger asChild>
+              <Button
+                variant="default"
+                className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600"
+              >
+                <Share2 className="h-4 w-4 mr-2" />
+                Share Classroom
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-lg flex items-center justify-center">
+                    <Share2 className="h-4 w-4 text-white" />
+                  </div>
+                  Share {classroomName}
+                </DialogTitle>
+              </DialogHeader>
+              
+              <div className="space-y-6">
+                {/* QR Code Section */}
+                <div className="text-center">
+                  <h3 className="text-lg font-semibold mb-3">QR Code</h3>
+                  {qrCodeUrl && (
+                    <div className="bg-white p-4 rounded-lg border-2 border-gray-200 inline-block shadow-sm">
+                      <img src={qrCodeUrl} alt="QR Code for joining classroom" className="w-48 h-48" />
+                    </div>
+                  )}
+                  <p className="text-sm text-gray-600 mt-2 mb-3">
+                    Students can scan this QR code to join your classroom
+                  </p>
+                  <Button onClick={downloadQRCode} variant="outline" size="sm">
+                    <Download className="h-4 w-4 mr-2" />
+                    Download QR Code
+                  </Button>
+                </div>
+                
+                {/* Join Code Section */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Join Code</h3>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Input
+                      value={joinCode}
+                      readOnly
+                      className="text-center font-mono text-xl tracking-wider bg-gray-50"
+                    />
+                    <Button onClick={copyJoinCode} variant="outline" size="icon">
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    Share this 6-character code with your students
+                  </p>
+                </div>
+                
+                {/* Join Link Section */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Direct Link</h3>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Input
+                      value={`${window.location.origin}/join?code=${joinCode}`}
+                      readOnly
+                      className="text-sm bg-gray-50"
+                    />
+                    <Button onClick={copyJoinLink} variant="outline" size="icon">
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    Students can click this link to join directly
+                  </p>
+                </div>
+                
+                <div className="bg-blue-50 p-3 rounded-lg">
+                  <p className="text-blue-800 text-sm">
+                    <i className="fas fa-info-circle mr-2"></i>
+                    <strong>Tip:</strong> Share the QR code for easy mobile access, or send the join code for quick entry.
+                  </p>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+          
           <Dialog open={isAddStudentOpen} onOpenChange={setIsAddStudentOpen}>
             <DialogTrigger asChild>
               <Button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700" data-testid="button-add-student">
