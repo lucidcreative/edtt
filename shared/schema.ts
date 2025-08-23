@@ -697,8 +697,8 @@ export type AnnouncementRead = typeof announcementReads.$inferSelect;
 export type InsertAnnouncementRead = z.infer<typeof insertAnnouncementReadSchema>;
 export type StudentClassroom = typeof studentClassrooms.$inferSelect;
 export type Purchase = typeof purchases.$inferSelect;
-export type StudentBadge = typeof studentBadges.$inferSelect;
-export type ChallengeProgress = typeof challengeProgress.$inferSelect;
+export type StudentBadgeOld = typeof studentBadges.$inferSelect;
+export type ChallengeProgressOld = typeof challengeProgress.$inferSelect;
 
 // Phase 2A Assignment Management Tables
 

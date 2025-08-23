@@ -71,19 +71,22 @@ export default function AuthPage() {
 
       const data = await response.json();
       
-      // Check if this is first login and PIN needs to be changed
-      if (data.requiresPinChange) {
-        // Handle PIN change flow
-        setAuthToken(data.token);
+      if (data.token) {
+        // Store token
+        localStorage.setItem('auth_token', data.token);
+        
+        // Update auth queries to refetch user data
         await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-        setLocation('/change-pin');
-        return;
+        
+        // Check if PIN change is required
+        if (data.requiresPinChange) {
+          setLocation('/change-pin');
+        } else {
+          setLocation('/');
+        }
+      } else {
+        throw new Error('Invalid response from server');
       }
-      
-      setAuthToken(data.token);
-      
-      // Invalidate auth query to refetch user data
-      await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       
       toast({
         title: "Welcome back!",
@@ -412,13 +415,13 @@ export default function AuthPage() {
                       </div>
                       
                       <div>
-                        <Label htmlFor="student-nickname">Nickname</Label>
+                        <Label htmlFor="student-username">Username</Label>
                         <Input
-                          id="student-nickname"
-                          name="nickname"
-                          placeholder="Your nickname"
+                          id="student-username"
+                          name="username"
+                          placeholder="Your username"
                           required
-                          data-testid="input-student-nickname"
+                          data-testid="input-student-username"
                           className="mt-1"
                         />
                       </div>
