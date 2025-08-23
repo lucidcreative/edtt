@@ -158,40 +158,74 @@ export default function StudentTimeTracking() {
           <CardContent>
             {activeSession ? (
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
-                  <div>
-                    <p className="font-medium text-green-800">Session Active</p>
-                    <p className="text-sm text-green-600">
-                      Started at {new Date(activeSession.clockInTime).toLocaleTimeString()}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-green-700">
-                      {formatDuration(calculateSessionDuration())}
+                {/* Clock In Details */}
+                <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                      <i className="fas fa-play-circle text-green-600 text-xl"></i>
                     </div>
-                    <p className="text-sm text-green-600">Duration</p>
+                    <div>
+                      <p className="font-bold text-green-800 text-lg">Session Active</p>
+                      <p className="text-sm text-green-600">You're clocked in and earning time!</p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="text-center p-3 bg-white rounded-lg border border-green-200">
+                      <p className="text-sm text-green-600 mb-1">Clock In Time</p>
+                      <p className="text-xl font-bold text-green-800">
+                        {new Date(activeSession.clockInTime).toLocaleTimeString('en-US', {
+                          hour: 'numeric',
+                          minute: '2-digit',
+                          second: '2-digit',
+                          hour12: true
+                        })}
+                      </p>
+                      <p className="text-xs text-green-600">
+                        {new Date(activeSession.clockInTime).toLocaleDateString('en-US', {
+                          weekday: 'short',
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                      </p>
+                    </div>
+                    
+                    <div className="text-center p-3 bg-white rounded-lg border border-green-200">
+                      <p className="text-sm text-green-600 mb-1">Session Duration</p>
+                      <p className="text-xl font-bold text-green-800">
+                        {formatDuration(calculateSessionDuration())}
+                      </p>
+                      <p className="text-xs text-green-600">Time earned so far</p>
+                    </div>
                   </div>
                 </div>
                 
-                <Button
-                  onClick={() => clockOutMutation.mutate()}
-                  disabled={clockOutMutation.isPending}
-                  className="w-full bg-red-500 hover:bg-red-600 text-white"
-                  size="lg"
-                  data-testid="button-clock-out"
-                >
-                  {clockOutMutation.isPending ? (
-                    <>
-                      <i className="fas fa-spinner fa-spin mr-2"></i>
-                      Clocking Out...
-                    </>
-                  ) : (
-                    <>
-                      <i className="fas fa-stop-circle mr-2"></i>
-                      Clock Out
-                    </>
-                  )}
-                </Button>
+                {/* Clock Out Button */}
+                <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+                  <div className="text-center mb-3">
+                    <p className="text-sm text-red-600 mb-1">Ready to finish your session?</p>
+                    <p className="text-xs text-red-500">Click below to clock out and save your time</p>
+                  </div>
+                  <Button
+                    onClick={() => clockOutMutation.mutate()}
+                    disabled={clockOutMutation.isPending}
+                    className="w-full bg-red-500 hover:bg-red-600 text-white"
+                    size="lg"
+                    data-testid="button-clock-out"
+                  >
+                    {clockOutMutation.isPending ? (
+                      <>
+                        <i className="fas fa-spinner fa-spin mr-2"></i>
+                        Clocking Out...
+                      </>
+                    ) : (
+                      <>
+                        <i className="fas fa-stop-circle mr-2"></i>
+                        Clock Out & End Session
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             ) : (
               <div className="space-y-4">
