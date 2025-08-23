@@ -6,6 +6,7 @@ import * as z from "zod";
 import { format } from "date-fns";
 import { CalendarIcon, Plus, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useClassroom } from "@/contexts/ClassroomContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -81,13 +82,7 @@ export default function Assignments() {
     }
   });
 
-  // Get user's classrooms
-  const { data: classrooms } = useQuery({
-    queryKey: ["/api/classrooms"],
-    enabled: !!user
-  });
-
-  const currentClassroom = classrooms?.[0];
+  const { currentClassroom } = useClassroom();
 
   // Get assignments
   const { data: assignments, isLoading } = useQuery({

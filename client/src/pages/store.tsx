@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { useClassroom } from "@/contexts/ClassroomContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -21,13 +22,7 @@ export default function Store() {
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [editForm, setEditForm] = useState({ name: '', description: '', cost: 0, category: '', icon: '📦' });
 
-  // Get user's classrooms
-  const { data: classrooms } = useQuery({
-    queryKey: ["/api/classrooms"],
-    enabled: !!user
-  });
-
-  const currentClassroom = classrooms?.[0] || null;
+  const { currentClassroom } = useClassroom();
 
   // Get store items
   const { data: items, isLoading } = useQuery({

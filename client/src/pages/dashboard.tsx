@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { useClassroom } from "@/contexts/ClassroomContext";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { Plus } from "lucide-react";
@@ -18,26 +19,12 @@ import { Button } from "@/components/ui/button";
 export default function Dashboard() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
-  const [selectedClassroom, setSelectedClassroom] = useState<any>(null);
-
   // Show student dashboard for students
   if (user?.role === 'student') {
     return <StudentDashboard />;
   }
 
-  // Get user's classrooms
-  const { data: classrooms = [] } = useQuery({
-    queryKey: ["/api/classrooms"],
-    enabled: !!user
-  });
-
-  // Auto-select first classroom when available
-  const currentClassroom = selectedClassroom || classrooms[0];
-  
-  // Update selected classroom when classrooms load
-  if (!selectedClassroom && classrooms.length > 0) {
-    setSelectedClassroom(classrooms[0]);
-  }
+  const { currentClassroom, setSelectedClassroom } = useClassroom();
 
   // Get classroom stats for teachers - ONLY real data, no fake data
   const { data: stats } = useQuery({
@@ -141,10 +128,7 @@ export default function Dashboard() {
         transition={{ duration: 0.3 }}
         className="mb-6"
       >
-        <ClassroomSwitcher 
-          currentClassroom={currentClassroom}
-          onClassroomChange={setSelectedClassroom}
-        />
+        <ClassroomSwitcher />
       </motion.div>
 
       {/* Main Metrics Row */}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { useClassroom } from "@/contexts/ClassroomContext";
 import { motion } from "framer-motion";
 import { Clock, Play, Square, Settings, AlertTriangle, CheckCircle, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,13 +29,7 @@ export default function TimeTracking() {
     return () => clearInterval(timer);
   }, []);
 
-  // Get user's classrooms
-  const { data: classrooms = [] } = useQuery({
-    queryKey: ["/api/classrooms"],
-    enabled: !!user
-  });
-
-  const currentClassroom = classrooms[0];
+  const { currentClassroom } = useClassroom();
 
   // Get time tracking settings for current classroom
   const { data: timeSettings } = useQuery({

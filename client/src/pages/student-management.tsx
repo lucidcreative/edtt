@@ -1,17 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { useClassroom } from "@/contexts/ClassroomContext";
 import RosterManagement from "@/components/classroom/roster-management";
 
 export default function StudentManagement() {
   const { user } = useAuth();
 
-  // Get user's classrooms
-  const { data: classrooms, isLoading: classroomsLoading } = useQuery({
-    queryKey: ["/api/classrooms"],
-    enabled: !!user
-  });
-
-  const currentClassroom = classrooms?.[0];
+  const { currentClassroom, isLoading: classroomsLoading } = useClassroom();
 
   if (classroomsLoading) {
     return (

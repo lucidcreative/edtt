@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useClassroom } from "@/contexts/ClassroomContext";
 import { Button } from "@/components/ui/button";
 import { 
   DropdownMenu, 
@@ -12,22 +12,8 @@ import { ChevronDown, Plus, School } from "lucide-react";
 import { motion } from "framer-motion";
 import CreateClassroomModal from "@/components/classroom/create-classroom-modal";
 
-interface Classroom {
-  id: string;
-  name: string;
-  subject?: string;
-  gradeLevel?: string;
-}
-
-interface ClassroomSwitcherProps {
-  currentClassroom: Classroom | null;
-  onClassroomChange: (classroom: Classroom) => void;
-}
-
-export default function ClassroomSwitcher({ currentClassroom, onClassroomChange }: ClassroomSwitcherProps) {
-  const { data: classrooms = [] } = useQuery({
-    queryKey: ["/api/classrooms"]
-  });
+export default function ClassroomSwitcher() {
+  const { currentClassroom, classrooms, setSelectedClassroom } = useClassroom();
 
   return (
     <motion.div
@@ -68,7 +54,7 @@ export default function ClassroomSwitcher({ currentClassroom, onClassroomChange 
             classrooms.map((classroom: any) => (
               <DropdownMenuItem
                 key={classroom.id}
-                onClick={() => onClassroomChange(classroom)}
+                onClick={() => setSelectedClassroom(classroom)}
                 className="flex items-center gap-3 p-3 cursor-pointer hover:bg-gray-50"
                 data-testid={`option-classroom-${classroom.id}`}
               >

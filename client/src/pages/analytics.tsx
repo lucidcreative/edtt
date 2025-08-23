@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { useClassroom } from "@/contexts/ClassroomContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import BadgeManagement from "@/components/badge-management";
@@ -8,13 +9,7 @@ import ChallengeManagement from "@/components/challenge-management";
 export default function Analytics() {
   const { user } = useAuth();
 
-  // Get user's classrooms
-  const { data: classrooms } = useQuery({
-    queryKey: ["/api/classrooms"],
-    enabled: !!user
-  });
-
-  const currentClassroom = classrooms?.[0];
+  const { currentClassroom } = useClassroom();
 
   // Get classroom stats
   const { data: stats, isLoading: statsLoading } = useQuery({
