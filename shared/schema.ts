@@ -20,14 +20,17 @@ import { z } from "zod";
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email", { length: 255 }).unique(), // NULL for students
+  username: varchar("username", { length: 50 }).unique(), // For students
   role: varchar("role", { length: 20 }).notNull().$type<'teacher' | 'student' | 'admin'>(),
   passwordHash: varchar("password_hash", { length: 255 }), // NULL for students
   pinHash: varchar("pin_hash", { length: 255 }), // NULL for teachers
   nickname: varchar("nickname", { length: 50 }), // NULL for teachers
+  name: varchar("name", { length: 100 }), // Full name for students
   firstName: varchar("first_name", { length: 50 }),
   lastName: varchar("last_name", { length: 50 }),
   profileImageUrl: varchar("profile_image_url", { length: 500 }),
   tempPasswordFlag: boolean("temp_password_flag").default(false),
+  requiresPinChange: boolean("requires_pin_change").default(false),
   emailVerified: boolean("email_verified").default(false),
   accountApproved: boolean("account_approved").default(false),
   loginAttempts: integer("login_attempts").default(0),
@@ -604,8 +607,8 @@ export type Badge = typeof badges.$inferSelect;
 export type InsertBadge = z.infer<typeof insertBadgeSchema>;
 export type Challenge = typeof challenges.$inferSelect;
 export type InsertChallenge = z.infer<typeof insertChallengeSchema>;
-export type StudentBadge = typeof studentBadges.$inferSelect;
-export type ChallengeProgress = typeof challengeProgress.$inferSelect;
+export type StudentBadgeType = typeof studentBadges.$inferSelect;
+export type ChallengeProgressType = typeof challengeProgress.$inferSelect;
 export type ClassroomEnrollment = typeof classroomEnrollments.$inferSelect;
 export type InsertClassroomEnrollment = z.infer<typeof insertClassroomEnrollmentSchema>;
 

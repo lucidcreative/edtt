@@ -65,6 +65,8 @@ export default function RosterManagement({ classroomId, classroomName, joinCode 
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState('');
+  const [isAddingStudent, setIsAddingStudent] = useState(false);
+  const [isUploadingCSV, setIsUploadingCSV] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -148,6 +150,96 @@ export default function RosterManagement({ classroomId, classroomName, joinCode 
       });
     },
   });
+
+  // Add individual student
+  const handleAddStudent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsAddingStudent(true);
+    
+    const formData = new FormData(e.currentTarget as HTMLFormElement);
+    const username = formData.get('username') as string;
+    const name = formData.get('name') as string;
+    const tempPin = formData.get('tempPin') as string;
+
+    try {
+      await apiRequest('POST', `/api/classrooms/${classroomId}/students`, {
+        username,
+        name,
+        tempPin,
+        requiresPinChange: true
+      });
+
+      toast({
+        title: "Student Added",
+        description: `${name} has been added to the classroom.`,
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ["/api/classrooms", classroomId, "roster"] });
+      setIsAddStudentOpen(false);
+      (e.target as HTMLFormElement).reset();
+    } catch (error: any) {
+      toast({
+        title: "Failed to add student",
+        description: error.message || "Unable to add student",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAddingStudent(false);
+    }
+  };
+
+  // Handle CSV upload
+  const handleCSVUpload = async () => {
+    const fileInput = document.getElementById('csv-file') as HTMLInputElement;
+    const file = fileInput?.files?.[0];
+    
+    if (!file) {
+      toast({
+        title: "No file selected",
+        description: "Please select a CSV file to upload.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploadingCSV(true);
+
+    try {
+      const text = await file.text();
+      const lines = text.trim().split('\n');
+      const headers = lines[0].split(',').map(h => h.trim());
+      
+      if (headers[0] !== 'username' || headers[1] !== 'name' || headers[2] !== 'tempPin') {
+        throw new Error('Invalid CSV format. Expected columns: username,name,tempPin');
+      }
+
+      const students = lines.slice(1).map(line => {
+        const [username, name, tempPin] = line.split(',').map(s => s.trim());
+        return { username, name, tempPin, requiresPinChange: true };
+      });
+
+      await apiRequest('POST', `/api/classrooms/${classroomId}/students/bulk`, {
+        students
+      });
+
+      toast({
+        title: "Students Added",
+        description: `Successfully added ${students.length} students to the classroom.`,
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ["/api/classrooms", classroomId, "roster"] });
+      setIsAddStudentOpen(false);
+      fileInput.value = '';
+    } catch (error: any) {
+      toast({
+        title: "Failed to upload CSV",
+        description: error.message || "Unable to process CSV file",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingCSV(false);
+    }
+  };
 
   const copyJoinCode = async () => {
     try {
@@ -394,44 +486,109 @@ export default function RosterManagement({ classroomId, classroomName, joinCode 
             <DialogTrigger asChild>
               <Button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700" data-testid="button-add-student">
                 <i className="fas fa-user-plus mr-2"></i>
-                Add Student
+                Add Students
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-2xl">
               <DialogHeader>
-                <DialogTitle>Add New Student</DialogTitle>
+                <DialogTitle>Add Students to Classroom</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4">
-                <p className="text-sm text-gray-600">
-                  Share the join code <strong>{joinCode}</strong> with students to have them join your classroom.
-                </p>
-                <div>
-                  <Label htmlFor="join-code-copy">Classroom Join Code</Label>
-                  <div className="flex gap-2 mt-1">
-                    <Input
-                      id="join-code-copy"
-                      value={joinCode}
-                      readOnly
-                      className="font-mono bg-gray-50"
-                      data-testid="input-join-code"
-                    />
-                    <Button
-                      onClick={() => {
-                        navigator.clipboard.writeText(joinCode);
-                        toast({
-                          title: "Copied!",
-                          description: "Join code copied to clipboard",
-                          variant: "default",
-                        });
-                      }}
-                      variant="outline"
-                      data-testid="button-copy-join-code"
-                    >
-                      <i className="fas fa-copy"></i>
-                    </Button>
+              <Tabs defaultValue="individual" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="individual">Individual Student</TabsTrigger>
+                  <TabsTrigger value="bulk">CSV Upload</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="individual" className="space-y-4">
+                  <form onSubmit={handleAddStudent} className="space-y-4">
+                    <div>
+                      <Label htmlFor="student-username">Username</Label>
+                      <Input
+                        id="student-username"
+                        name="username"
+                        placeholder="student123"
+                        required
+                        data-testid="input-student-username"
+                        className="mt-1"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="student-name">Full Name</Label>
+                      <Input
+                        id="student-name"
+                        name="name"
+                        placeholder="John Doe"
+                        required
+                        data-testid="input-student-name"
+                        className="mt-1"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="temp-pin">Temporary PIN</Label>
+                      <Input
+                        id="temp-pin"
+                        name="tempPin"
+                        type="password"
+                        placeholder="123456"
+                        maxLength={6}
+                        pattern="[0-9]*"
+                        required
+                        data-testid="input-temp-pin"
+                        className="mt-1"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Student will change this on first login</p>
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <Button type="button" variant="outline" className="flex-1" onClick={() => setIsAddStudentOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button type="submit" className="flex-1" disabled={isAddingStudent}>
+                        {isAddingStudent ? "Adding..." : "Add Student"}
+                      </Button>
+                    </div>
+                  </form>
+                </TabsContent>
+                
+                <TabsContent value="bulk" className="space-y-4">
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="csv-file">CSV File</Label>
+                      <Input
+                        id="csv-file"
+                        name="csvFile"
+                        type="file"
+                        accept=".csv"
+                        className="mt-1"
+                        data-testid="input-csv-file"
+                      />
+                    </div>
+                    
+                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                      <p className="text-sm text-blue-800 mb-2">
+                        <i className="fas fa-info-circle mr-2"></i>
+                        <strong>CSV Format:</strong>
+                      </p>
+                      <code className="text-xs bg-white px-2 py-1 rounded block">
+                        username,name,tempPin<br/>
+                        student1,John Doe,123456<br/>
+                        student2,Jane Smith,654321
+                      </code>
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <Button type="button" variant="outline" className="flex-1" onClick={() => setIsAddStudentOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button onClick={handleCSVUpload} className="flex-1" disabled={isUploadingCSV}>
+                        {isUploadingCSV ? "Uploading..." : "Upload Students"}
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </div>
+                </TabsContent>
+              </Tabs>
             </DialogContent>
           </Dialog>
         </div>

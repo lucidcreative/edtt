@@ -60,18 +60,26 @@ export default function AuthPage() {
     setIsLoading(true);
 
     const formData = new FormData(e.currentTarget as HTMLFormElement);
-    const nickname = formData.get('nickname') as string;
+    const username = formData.get('username') as string;
     const pin = formData.get('pin') as string;
-    const classroomCode = formData.get('classroomCode') as string;
 
     try {
       const response = await apiRequest('POST', '/api/auth/login/student', {
-        nickname,
-        pin,
-        classroomCode
+        username,
+        pin
       });
 
       const data = await response.json();
+      
+      // Check if this is first login and PIN needs to be changed
+      if (data.requiresPinChange) {
+        // Handle PIN change flow
+        setAuthToken(data.token);
+        await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+        setLocation('/change-pin');
+        return;
+      }
+      
       setAuthToken(data.token);
       
       // Invalidate auth query to refetch user data
@@ -79,14 +87,14 @@ export default function AuthPage() {
       
       toast({
         title: "Welcome back!",
-        description: `Hello ${data.user.nickname}!`,
+        description: `Hello ${data.user.name || data.user.username}!`,
       });
 
       setLocation('/');
     } catch (error) {
       toast({
         title: "Login failed",
-        description: error instanceof Error ? error.message : "Invalid credentials",
+        description: error instanceof Error ? error.message : "Invalid username or PIN",
         variant: "destructive",
       });
     } finally {
@@ -180,44 +188,7 @@ export default function AuthPage() {
     }
   };
 
-  const handleStudentJoin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsJoining(true);
-
-    const formData = new FormData(e.currentTarget as HTMLFormElement);
-    const nickname = formData.get('nickname') as string;
-    const pin = formData.get('pin') as string;
-    const classroomCode = formData.get('classroomCode') as string;
-
-    try {
-      const response = await apiRequest('POST', '/api/auth/join-classroom', {
-        nickname,
-        pin,
-        classroomCode
-      });
-
-      const data = await response.json();
-      setAuthToken(data.token);
-      
-      // Invalidate auth query to refetch user data
-      await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-      
-      toast({
-        title: "Welcome to the classroom!",
-        description: `Hello ${data.user.nickname}! You've successfully joined ${data.classroom.name}.`,
-      });
-
-      setLocation('/');
-    } catch (error) {
-      toast({
-        title: "Failed to join classroom",
-        description: error instanceof Error ? error.message : "Unable to join classroom",
-        variant: "destructive",
-      });
-    } finally {
-      setIsJoining(false);
-    }
-  };
+  // Remove student join function - students are now pre-registered by teachers
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
@@ -478,78 +449,11 @@ export default function AuthPage() {
                     </form>
                   </div>
 
-                  {/* Divider */}
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <span className="w-full border-t" />
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-white px-2 text-muted-foreground">New Student?</span>
-                    </div>
-                  </div>
-
-                  {/* Student Join Section */}
-                  <div className="bg-green-50 rounded-lg p-6 border border-green-100">
-                    <div className="text-center mb-4">
-                      <h2 className="text-xl font-bold text-gray-800 flex items-center justify-center gap-2">
-                        <i className="fas fa-user-plus text-green-600"></i>
-                        Join Classroom
-                      </h2>
-                      <p className="text-sm text-gray-600">First time? Create your account and join</p>
-                    </div>
-                    
-                    <form onSubmit={handleStudentJoin} className="space-y-4">
-                      <div>
-                        <Label htmlFor="join-classroom-code">Classroom Code</Label>
-                        <Input
-                          id="join-classroom-code"
-                          name="classroomCode"
-                          placeholder="ABC123"
-                          maxLength={6}
-                          required
-                          data-testid="input-join-classroom-code"
-                          className="mt-1 text-center text-lg font-mono uppercase"
-                          onChange={(e) => e.target.value = e.target.value.toUpperCase()}
-                        />
-                      </div>
-                      
-                      <div>
-                        <Label htmlFor="join-nickname">Choose Nickname</Label>
-                        <Input
-                          id="join-nickname"
-                          name="nickname"
-                          placeholder="Your nickname"
-                          required
-                          data-testid="input-join-nickname"
-                          className="mt-1"
-                        />
-                      </div>
-                      
-                      <div>
-                        <Label htmlFor="join-pin">Create 4-Digit PIN</Label>
-                        <Input
-                          id="join-pin"
-                          name="pin"
-                          type="password"
-                          placeholder="••••"
-                          maxLength={4}
-                          pattern="[0-9]{4}"
-                          required
-                          data-testid="input-join-pin"
-                          className="mt-1 text-center text-lg"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">Numbers only (e.g., 1234)</p>
-                      </div>
-
-                      <Button
-                        type="submit"
-                        className="w-full bg-green-600 hover:bg-green-700"
-                        disabled={isJoining}
-                        data-testid="button-join-classroom"
-                      >
-                        {isJoining ? "Joining..." : "Join Classroom"}
-                      </Button>
-                    </form>
+                  <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <p className="text-sm text-blue-800">
+                      <i className="fas fa-info-circle mr-2"></i>
+                      <strong>New Student?</strong> Your teacher will provide your username and temporary PIN.
+                    </p>
                   </div>
 
                   {/* Demo Button */}

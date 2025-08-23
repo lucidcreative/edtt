@@ -17,6 +17,7 @@ import TimeTracking from "@/pages/time-tracking";
 import Badges from "@/pages/badges";
 import Challenges from "@/pages/challenges";
 import Progress from "@/pages/progress";
+import ChangePinPage from "@/pages/change-pin";
 import Sidebar from "@/components/sidebar";
 import Header from "@/components/header";
 import MobileNav from "@/components/mobile-nav";
@@ -40,6 +41,7 @@ function AuthenticatedApp() {
               <Route path="/badges" component={Badges} />
               <Route path="/challenges" component={Challenges} />
               <Route path="/progress" component={Progress} />
+              <Route path="/change-pin" component={ChangePinPage} />
               <Route component={NotFound} />
             </Switch>
           </div>

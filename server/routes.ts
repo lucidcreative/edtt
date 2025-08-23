@@ -187,28 +187,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/auth/login/student', async (req, res) => {
     try {
-      const { nickname, pin, classroomCode } = req.body;
+      const { username, pin } = req.body;
 
-      if (!nickname || !pin || !classroomCode) {
-        return res.status(400).json({ message: "Nickname, PIN, and classroom code are required" });
+      if (!username || !pin) {
+        return res.status(400).json({ message: "Username and PIN are required" });
       }
 
-      // Find classroom
-      const classroom = await storage.getClassroomByCode(classroomCode);
-      if (!classroom) {
-        return res.status(401).json({ message: "Invalid classroom code" });
-      }
-
-      // Find student in this classroom
-      const user = await storage.getUserByNickname(nickname, classroom.id);
+      // Find student by username (across all classrooms)
+      const user = await storage.getUserByUsername(username);
       if (!user || user.role !== 'student' || !user.pinHash) {
-        return res.status(401).json({ message: "Invalid credentials" });
+        return res.status(401).json({ message: "Invalid username or PIN" });
       }
 
       // Verify PIN
       const isValidPin = await bcrypt.compare(pin, user.pinHash);
       if (!isValidPin) {
-        return res.status(401).json({ message: "Invalid credentials" });
+        return res.status(401).json({ message: "Invalid username or PIN" });
       }
 
       // Generate JWT
@@ -221,17 +215,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         token,
         user: {
           id: user.id,
+          username: user.username,
           nickname: user.nickname,
           role: user.role,
+          name: user.name,
           tokens: user.tokens,
           level: user.level,
           profileImageUrl: user.profileImageUrl
         },
-        classroom: {
-          id: classroom.id,
-          name: classroom.name,
-          code: classroom.code
-        }
+        requiresPinChange: user.requiresPinChange || false
       });
     } catch (error) {
       console.error("Student login error:", error);
@@ -311,6 +303,161 @@ export async function registerRoutes(app: Express): Promise<Server> {
         profileImageUrl: req.user.profileImageUrl
       }
     });
+  });
+
+  // PIN change endpoint
+  app.post('/api/auth/change-pin', authenticate, async (req: any, res) => {
+    try {
+      const { newPin } = req.body;
+      
+      if (!newPin || newPin.length < 4) {
+        return res.status(400).json({ message: "PIN must be at least 4 digits" });
+      }
+
+      // Hash new PIN
+      const pinHash = await bcrypt.hash(newPin, 12);
+
+      // Update user
+      await db.update(users).set({ 
+        pinHash,
+        requiresPinChange: false 
+      }).where(eq(users.id, req.user.id));
+
+      res.json({ success: true, message: "PIN updated successfully" });
+    } catch (error) {
+      console.error("Change PIN error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Add individual student to classroom
+  app.post('/api/classrooms/:classroomId/students', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Only teachers can add students' });
+      }
+
+      const { username, name, tempPin, requiresPinChange = true } = req.body;
+      const classroomId = req.params.classroomId;
+      
+      if (!username || !name || !tempPin) {
+        return res.status(400).json({ message: "Username, name, and temporary PIN are required" });
+      }
+
+      // Check if username already exists
+      const existingUser = await db.select().from(users).where(eq(users.username, username)).limit(1);
+      if (existingUser.length > 0) {
+        return res.status(400).json({ message: "Username already exists" });
+      }
+
+      // Hash temporary PIN
+      const pinHash = await bcrypt.hash(tempPin, 12);
+
+      // Create student
+      const studentResult = await db.insert(users).values({
+        id: nanoid(),
+        username,
+        name,
+        pinHash,
+        role: 'student',
+        requiresPinChange,
+        isActive: true,
+        tokens: 0,
+        level: 1,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }).returning();
+
+      const student = studentResult[0];
+
+      // Enroll student in classroom
+      await db.insert(enrollments).values({
+        id: nanoid(),
+        studentId: student.id,
+        classroomId,
+        enrollmentStatus: 'approved',
+        enrolledAt: new Date()
+      });
+
+      res.json({ success: true, student });
+    } catch (error) {
+      console.error("Add student error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Bulk add students via CSV
+  app.post('/api/classrooms/:classroomId/students/bulk', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Only teachers can add students' });
+      }
+
+      const { students } = req.body;
+      const classroomId = req.params.classroomId;
+      
+      if (!students || !Array.isArray(students)) {
+        return res.status(400).json({ message: "Students array is required" });
+      }
+
+      const results = [];
+      const errors = [];
+
+      for (let i = 0; i < students.length; i++) {
+        const { username, name, tempPin, requiresPinChange = true } = students[i];
+        
+        try {
+          // Check if username already exists
+          const existingUser = await db.select().from(users).where(eq(users.username, username)).limit(1);
+          if (existingUser.length > 0) {
+            errors.push(`Row ${i + 1}: Username '${username}' already exists`);
+            continue;
+          }
+
+          // Hash temporary PIN
+          const pinHash = await bcrypt.hash(tempPin, 12);
+
+          // Create student
+          const studentResult = await db.insert(users).values({
+            id: nanoid(),
+            username,
+            name,
+            pinHash,
+            role: 'student',
+            requiresPinChange,
+            isActive: true,
+            tokens: 0,
+            level: 1,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          }).returning();
+
+          const student = studentResult[0];
+
+          // Enroll student in classroom
+          await db.insert(enrollments).values({
+            id: nanoid(),
+            studentId: student.id,
+            classroomId,
+            enrollmentStatus: 'approved',
+            enrolledAt: new Date()
+          });
+
+          results.push(student);
+        } catch (error) {
+          errors.push(`Row ${i + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+
+      res.json({ 
+        success: true, 
+        added: results.length,
+        errors: errors.length > 0 ? errors : undefined
+      });
+    } catch (error) {
+      console.error("Bulk add students error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
   });
 
   // Classroom routes
