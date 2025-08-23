@@ -13,9 +13,17 @@ interface Classroom {
   isActive?: boolean;
 }
 
+interface StudentEnrollment {
+  id: string;
+  classroom: Classroom;
+  enrollmentStatus: 'pending' | 'approved' | 'denied' | 'withdrawn';
+  enrolledAt: string;
+}
+
 interface ClassroomContextType {
   currentClassroom: Classroom | null;
   classrooms: Classroom[];
+  enrollments: StudentEnrollment[];
   isLoading: boolean;
   setSelectedClassroom: (classroom: Classroom | null) => void;
   refreshClassrooms: () => void;
@@ -27,11 +35,19 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [selectedClassroom, setSelectedClassroom] = useState<Classroom | null>(null);
 
-  // Get user's classrooms
-  const { data: classrooms = [], isLoading, refetch } = useQuery<Classroom[]>({
+  // Get user's classrooms - different endpoints for teachers vs students
+  const { data: teacherClassrooms = [], isLoading: teacherLoading, refetch: refetchTeacher } = useQuery<Classroom[]>({
     queryKey: ["/api/classrooms"],
-    enabled: !!user && user.role === 'teacher' // Only for teachers
+    enabled: !!user && user.role === 'teacher'
   });
+
+  const { data: studentEnrollments = [], isLoading: studentLoading, refetch: refetchStudent } = useQuery<StudentEnrollment[]>({
+    queryKey: ["/api/students", user?.id, "enrollments"],
+    enabled: !!user && user.role === 'student'
+  });
+
+  const classrooms = user?.role === 'teacher' ? teacherClassrooms : studentEnrollments.filter(e => e.enrollmentStatus === 'approved').map(e => e.classroom);
+  const isLoading = user?.role === 'teacher' ? teacherLoading : studentLoading;
 
   // Auto-select first classroom when classrooms load or when no classroom is selected
   useEffect(() => {
@@ -59,13 +75,18 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
   }, [classrooms]);
 
   const refreshClassrooms = () => {
-    refetch();
+    if (user?.role === 'teacher') {
+      refetchTeacher();
+    } else {
+      refetchStudent();
+    }
   };
 
   return (
     <ClassroomContext.Provider value={{
       currentClassroom: selectedClassroom,
       classrooms,
+      enrollments: studentEnrollments,
       isLoading,
       setSelectedClassroom,
       refreshClassrooms

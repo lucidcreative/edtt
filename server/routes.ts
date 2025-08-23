@@ -1129,6 +1129,271 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/students/:studentId/enrollments', authenticate, async (req: any, res) => {
     try {
+      if (req.user.id !== req.params.studentId && req.user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
+      const enrollments = await storage.getStudentEnrollments(req.params.studentId);
+      res.json(enrollments);
+    } catch (error) {
+      console.error("Get student enrollments error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Student-specific endpoints that pull from classroom data
+  app.get('/api/students/:studentId/store-items', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.id !== req.params.studentId && req.user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
+      // Get student's approved enrollments
+      const enrollments = await storage.getStudentEnrollments(req.params.studentId);
+      const approvedEnrollments = enrollments.filter(e => e.enrollmentStatus === 'approved');
+      
+      if (approvedEnrollments.length === 0) {
+        return res.json([]);
+      }
+      
+      // For now, use the first classroom (could be expanded to support multiple later)
+      const classroomId = approvedEnrollments[0].classroomId;
+      const items = await storage.getStoreItemsByClassroom(classroomId);
+      res.json(items);
+    } catch (error) {
+      console.error("Get student store items error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get('/api/students/:studentId/assignments', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.id !== req.params.studentId && req.user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
+      // Get student's approved enrollments
+      const enrollments = await storage.getStudentEnrollments(req.params.studentId);
+      const approvedEnrollments = enrollments.filter(e => e.enrollmentStatus === 'approved');
+      
+      if (approvedEnrollments.length === 0) {
+        return res.json([]);
+      }
+      
+      // For now, use the first classroom
+      const classroomId = approvedEnrollments[0].classroomId;
+      const assignments = await storage.getAssignmentsByClassroom(classroomId);
+      res.json(assignments);
+    } catch (error) {
+      console.error("Get student assignments error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get('/api/students/:studentId/announcements', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.id !== req.params.studentId && req.user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
+      // Get student's approved enrollments
+      const enrollments = await storage.getStudentEnrollments(req.params.studentId);
+      const approvedEnrollments = enrollments.filter(e => e.enrollmentStatus === 'approved');
+      
+      if (approvedEnrollments.length === 0) {
+        return res.json([]);
+      }
+      
+      // For now, use the first classroom
+      const classroomId = approvedEnrollments[0].classroomId;
+      const announcements = await storage.getAnnouncementsByClassroom(classroomId);
+      res.json(announcements);
+    } catch (error) {
+      console.error("Get student announcements error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get('/api/students/:studentId/challenges', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.id !== req.params.studentId && req.user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
+      // Get student's approved enrollments
+      const enrollments = await storage.getStudentEnrollments(req.params.studentId);
+      const approvedEnrollments = enrollments.filter(e => e.enrollmentStatus === 'approved');
+      
+      if (approvedEnrollments.length === 0) {
+        return res.json([]);
+      }
+      
+      // For now, use the first classroom
+      const classroomId = approvedEnrollments[0].classroomId;
+      const challenges = await storage.getChallengesByClassroom(classroomId);
+      res.json(challenges);
+    } catch (error) {
+      console.error("Get student challenges error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get('/api/students/:studentId/progress', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.id !== req.params.studentId && req.user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
+      // Get student's approved enrollments
+      const enrollments = await storage.getStudentEnrollments(req.params.studentId);
+      const approvedEnrollments = enrollments.filter(e => e.enrollmentStatus === 'approved');
+      
+      if (approvedEnrollments.length === 0) {
+        return res.json({ totalTokens: 0, level: 1, assignmentsCompleted: 0, badgesEarned: 0 });
+      }
+      
+      // Calculate progress across all classrooms (or primary classroom)
+      const student = await storage.getUser(req.params.studentId);
+      const progress = {
+        totalTokens: student?.tokens || 0,
+        level: student?.level || 1,
+        assignmentsCompleted: 0, // TODO: Calculate from assignments
+        badgesEarned: 0 // TODO: Calculate from badges
+      };
+      
+      res.json(progress);
+    } catch (error) {
+      console.error("Get student progress error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get('/api/students/:studentId/purchases', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.id !== req.params.studentId && req.user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
+      // TODO: Implement purchase history from marketplace transactions
+      res.json([]);
+    } catch (error) {
+      console.error("Get student purchases error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get('/api/students/:studentId/badge-progress', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.id !== req.params.studentId && req.user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
+      // TODO: Implement badge progress tracking
+      res.json({});
+    } catch (error) {
+      console.error("Get student badge progress error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Time tracking endpoints
+  app.get('/api/students/:studentId/time-entries', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.id !== req.params.studentId && req.user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
+      // TODO: Implement time entry retrieval
+      res.json([]);
+    } catch (error) {
+      console.error("Get student time entries error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get('/api/students/:studentId/active-session', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.id !== req.params.studentId && req.user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
+      // TODO: Check for active time tracking session
+      res.json(null);
+    } catch (error) {
+      console.error("Get student active session error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post('/api/time-tracking/clock-in', authenticate, async (req: any, res) => {
+    try {
+      // TODO: Implement clock in functionality
+      console.log('Clock in attempt by user:', req.user.id);
+      res.json({ success: true, clockInTime: new Date().toISOString() });
+    } catch (error) {
+      console.error("Clock in error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post('/api/time-tracking/clock-out', authenticate, async (req: any, res) => {
+    try {
+      // TODO: Implement clock out functionality
+      console.log('Clock out attempt by user:', req.user.id);
+      res.json({ success: true, clockOutTime: new Date().toISOString() });
+    } catch (error) {
+      console.error("Clock out error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Classroom joining endpoint for existing students
+  app.post('/api/classrooms/join', authenticate, async (req: any, res) => {
+    try {
+      const { classroomCode } = req.body;
+      
+      if (!classroomCode) {
+        return res.status(400).json({ message: "Classroom code is required" });
+      }
+
+      // Find classroom by join code
+      const classroom = await storage.getClassroomByJoinCode(classroomCode);
+      if (!classroom) {
+        return res.status(400).json({ message: "Invalid classroom code" });
+      }
+
+      // Check if already enrolled
+      const existingEnrollment = await storage.getStudentEnrollments(req.user.id);
+      const alreadyEnrolled = existingEnrollment.some(e => e.classroomId === classroom.id);
+      
+      if (alreadyEnrolled) {
+        return res.status(400).json({ message: "Already enrolled in this classroom" });
+      }
+
+      // Create enrollment (auto-approve for now)
+      const enrollment = await storage.createEnrollment({
+        studentId: req.user.id,
+        classroomId: classroom.id,
+        enrollmentStatus: classroom.autoApproveStudents ? 'approved' : 'pending'
+      });
+
+      res.json({
+        success: true,
+        enrollment,
+        classroom: {
+          id: classroom.id,
+          name: classroom.name,
+          subject: classroom.subject
+        }
+      });
+    } catch (error) {
+      console.error("Join classroom error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get('/api/students/:studentId/enrollments_old', authenticate, async (req: any, res) => {
+    try {
       if (req.user.id !== req.params.studentId) {
         return res.status(403).json({ message: 'Access denied' });
       }

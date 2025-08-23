@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import JoinClassroomModal from "./join-classroom-modal";
 import MetricCard from "@/components/dashboard/metric-card";
+import ClassroomSelector from "@/components/student/classroom-selector";
 
 interface Classroom {
   id: string;
@@ -300,39 +301,13 @@ export default function StudentMainDashboard() {
         </motion.div>
       </div>
 
-      {/* Classroom Info */}
+      {/* Classroom Management */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.6 }}
       >
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <i className="fas fa-info-circle text-blue-500"></i>
-              Classroom Info
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <i className="fas fa-chalkboard text-2xl text-blue-500 mb-2"></i>
-                <p className="font-medium text-gray-800">{currentClassroom.classroom.name}</p>
-                <p className="text-sm text-gray-600">{currentClassroom.classroom.subject}</p>
-              </div>
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <i className="fas fa-graduation-cap text-2xl text-purple-500 mb-2"></i>
-                <p className="font-medium text-gray-800">Grade {currentClassroom.classroom.gradeLevel}</p>
-                <p className="text-sm text-gray-600">Your level</p>
-              </div>
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <i className="fas fa-users text-2xl text-green-500 mb-2"></i>
-                <p className="font-medium text-gray-800">Active Student</p>
-                <p className="text-sm text-gray-600">Enrolled status</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <ClassroomSelector />
       </motion.div>
     </div>
   );
