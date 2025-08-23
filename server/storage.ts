@@ -1515,38 +1515,102 @@ export class DatabaseStorage implements IStorage {
 
   // PHASE 1D: DIGITAL STORE IMPLEMENTATION
   
-  async createStoreItem(item: InsertStoreItemAdvanced): Promise<StoreItemAdvanced> {
+  async createStoreItem(item: any): Promise<any> {
+    // Map advanced item data to basic store item schema
+    const basicItem = {
+      name: item.title || item.name,
+      description: item.description,
+      cost: parseInt(item.basePrice || item.currentPrice || item.cost),
+      imageUrl: item.metadata?.icon || item.icon || '📦', // Store icon in imageUrl field
+      category: item.category,
+      classroomId: item.classroomId,
+      isActive: item.activeStatus !== false,
+      inventory: item.inventoryType === 'unlimited' ? -1 : (item.totalQuantity || -1)
+    };
+    
     const [storeItem] = await db
-      .insert(storeItemsAdvanced)
-      .values(item)
+      .insert(storeItems)
+      .values(basicItem)
       .returning();
-    return storeItem;
+      
+    // Return in advanced format for compatibility
+    return {
+      ...storeItem,
+      title: storeItem.name,
+      basePrice: storeItem.cost.toString(),
+      currentPrice: storeItem.cost.toString(),
+      activeStatus: storeItem.isActive,
+      metadata: { icon: storeItem.imageUrl }
+    };
   }
 
-  async updateStoreItem(itemId: string, updates: Partial<InsertStoreItemAdvanced>): Promise<StoreItemAdvanced> {
+  async updateStoreItem(itemId: string, updates: any): Promise<any> {
+    // Map advanced updates to basic store item schema
+    const basicUpdates: any = {};
+    if (updates.name) basicUpdates.name = updates.name;
+    if (updates.title) basicUpdates.name = updates.title;
+    if (updates.description) basicUpdates.description = updates.description;
+    if (updates.cost !== undefined) basicUpdates.cost = parseInt(updates.cost);
+    if (updates.basePrice !== undefined) basicUpdates.cost = parseInt(updates.basePrice);
+    if (updates.currentPrice !== undefined) basicUpdates.cost = parseInt(updates.currentPrice);
+    if (updates.category) basicUpdates.category = updates.category;
+    if (updates.metadata?.icon) basicUpdates.imageUrl = updates.metadata.icon;
+    if (updates.icon) basicUpdates.imageUrl = updates.icon;
+    if (updates.activeStatus !== undefined) basicUpdates.isActive = updates.activeStatus;
+    basicUpdates.updatedAt = new Date();
+    
     const [storeItem] = await db
-      .update(storeItemsAdvanced)
-      .set({ ...updates, updatedAt: new Date() })
-      .where(eq(storeItemsAdvanced.id, itemId))
+      .update(storeItems)
+      .set(basicUpdates)
+      .where(eq(storeItems.id, itemId))
       .returning();
-    return storeItem;
+      
+    // Return in advanced format for compatibility
+    return {
+      ...storeItem,
+      title: storeItem.name,
+      basePrice: storeItem.cost.toString(),
+      currentPrice: storeItem.cost.toString(),
+      activeStatus: storeItem.isActive,
+      metadata: { icon: storeItem.imageUrl }
+    };
   }
 
   async deleteStoreItem(itemId: string): Promise<void> {
-    await db.delete(storeItemsAdvanced).where(eq(storeItemsAdvanced.id, itemId));
+    await db.delete(storeItems).where(eq(storeItems.id, itemId));
   }
 
-  async getStoreItems(classroomId: string): Promise<StoreItemAdvanced[]> {
-    return await db
+  async getStoreItems(classroomId: string): Promise<any[]> {
+    const items = await db
       .select()
-      .from(storeItemsAdvanced)
-      .where(eq(storeItemsAdvanced.classroomId, classroomId))
-      .orderBy(storeItemsAdvanced.priorityOrder, storeItemsAdvanced.createdAt);
+      .from(storeItems)
+      .where(eq(storeItems.classroomId, classroomId))
+      .orderBy(storeItems.createdAt);
+      
+    // Return in advanced format for compatibility
+    return items.map(item => ({
+      ...item,
+      title: item.name,
+      basePrice: item.cost.toString(),
+      currentPrice: item.cost.toString(),
+      activeStatus: item.isActive,
+      metadata: { icon: item.imageUrl || '📦' }
+    }));
   }
 
-  async getStoreItem(itemId: string): Promise<StoreItemAdvanced | undefined> {
-    const [item] = await db.select().from(storeItemsAdvanced).where(eq(storeItemsAdvanced.id, itemId));
-    return item;
+  async getStoreItem(itemId: string): Promise<any | undefined> {
+    const [item] = await db.select().from(storeItems).where(eq(storeItems.id, itemId));
+    if (!item) return undefined;
+    
+    // Return in advanced format for compatibility
+    return {
+      ...item,
+      title: item.name,
+      basePrice: item.cost.toString(),
+      currentPrice: item.cost.toString(),
+      activeStatus: item.isActive,
+      metadata: { icon: item.imageUrl || '📦' }
+    };
   }
 
   async getStoreItemTemplates(): Promise<Array<{
