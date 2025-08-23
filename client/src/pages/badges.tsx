@@ -1,9 +1,16 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useClassroom } from "@/contexts/ClassroomContext";
 import BadgeManagement from "@/components/badge-management";
+import StudentBadges from "@/components/student/student-badges";
 
 export default function Badges() {
   const { user } = useAuth();
+  
+  // Show student badges view for students
+  if (user?.role === 'student') {
+    return <StudentBadges />;
+  }
+  
   const { currentClassroom } = useClassroom();
 
   if (!currentClassroom) {

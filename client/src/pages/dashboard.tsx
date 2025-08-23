@@ -13,7 +13,7 @@ import Badges from "@/components/dashboard/badges";
 import Challenges from "@/components/dashboard/challenges";
 import IncomeCard from "@/components/dashboard/income-card";
 import CreateClassroomModal from "@/components/classroom/create-classroom-modal";
-import StudentDashboard from "@/components/student/student-dashboard";
+import StudentMainDashboard from "@/components/student/student-main-dashboard";
 import { Button } from "@/components/ui/button";
 
 export default function Dashboard() {
@@ -21,7 +21,7 @@ export default function Dashboard() {
   const [, setLocation] = useLocation();
   // Show student dashboard for students
   if (user?.role === 'student') {
-    return <StudentDashboard />;
+    return <StudentMainDashboard />;
   }
 
   const { currentClassroom, setSelectedClassroom } = useClassroom();

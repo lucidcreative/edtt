@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useClassroom } from "@/contexts/ClassroomContext";
+import StudentTimeTracking from "@/components/student/student-time-tracking";
 import { motion } from "framer-motion";
 import { Clock, Play, Square, Settings, AlertTriangle, CheckCircle, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +18,12 @@ import { apiRequest } from "@/lib/queryClient";
 
 export default function TimeTracking() {
   const { user } = useAuth();
+  
+  // Show student time tracking view for students
+  if (user?.role === 'student') {
+    return <StudentTimeTracking />;
+  }
+  
   const { toast } = useToast();
   const queryClient = useQueryClient();
   

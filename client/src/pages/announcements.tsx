@@ -1,11 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
+import StudentAnnouncements from "@/components/student/student-announcements";
 import AnnouncementFeed from "@/components/announcements/announcement-feed";
 import CreateAnnouncementModal from "@/components/announcements/create-announcement-modal";
 
 export default function Announcements() {
   const { user } = useAuth();
+  
+  // Show student announcements view for students
+  if (user?.role === 'student') {
+    return <StudentAnnouncements />;
+  }
 
   // Get user's classrooms
   const { data: classrooms, isLoading } = useQuery({

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { removeAuthToken } from "@/lib/authUtils";
 import { motion } from "framer-motion";
 
-const navigation = [
+const teacherNavigation = [
   { path: '/', name: 'Dashboard', icon: 'fas fa-home' },
   { path: '/students', name: 'Students', icon: 'fas fa-users' },
   { path: '/announcements', name: 'Announcements', icon: 'fas fa-bullhorn' },
@@ -12,6 +12,19 @@ const navigation = [
   { path: '/time-tracking', name: 'Time Clock', icon: 'fas fa-clock' },
   { path: '/store', name: 'Store', icon: 'fas fa-store' },
   { path: '/analytics', name: 'Analytics', icon: 'fas fa-chart-bar' },
+  { path: '/badges', name: 'Badges', icon: 'fas fa-award' },
+  { path: '/challenges', name: 'Challenges', icon: 'fas fa-trophy' },
+];
+
+const studentNavigation = [
+  { path: '/', name: 'Dashboard', icon: 'fas fa-home' },
+  { path: '/assignments', name: 'My Assignments', icon: 'fas fa-tasks' },
+  { path: '/store', name: 'Token Store', icon: 'fas fa-store' },
+  { path: '/announcements', name: 'Announcements', icon: 'fas fa-bullhorn' },
+  { path: '/time-tracking', name: 'Time Clock', icon: 'fas fa-clock' },
+  { path: '/progress', name: 'My Progress', icon: 'fas fa-chart-line' },
+  { path: '/badges', name: 'My Badges', icon: 'fas fa-award' },
+  { path: '/challenges', name: 'Challenges', icon: 'fas fa-trophy' },
 ];
 
 export default function Sidebar() {
@@ -40,7 +53,7 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-2">
-        {navigation.map((item, index) => (
+        {(user?.role === 'student' ? studentNavigation : teacherNavigation).map((item, index) => (
           <motion.div
             key={item.path}
             initial={{ opacity: 0, x: -20 }}

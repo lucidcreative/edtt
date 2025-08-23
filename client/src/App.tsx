@@ -16,6 +16,7 @@ import Announcements from "@/pages/announcements";
 import TimeTracking from "@/pages/time-tracking";
 import Badges from "@/pages/badges";
 import Challenges from "@/pages/challenges";
+import Progress from "@/pages/progress";
 import Sidebar from "@/components/sidebar";
 import Header from "@/components/header";
 
@@ -37,6 +38,7 @@ function AuthenticatedApp() {
               <Route path="/analytics" component={Analytics} />
               <Route path="/badges" component={Badges} />
               <Route path="/challenges" component={Challenges} />
+              <Route path="/progress" component={Progress} />
               <Route component={NotFound} />
             </Switch>
           </div>

@@ -1,9 +1,16 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useClassroom } from "@/contexts/ClassroomContext";
 import ChallengeManagement from "@/components/challenge-management";
+import StudentChallenges from "@/components/student/student-challenges";
 
 export default function Challenges() {
   const { user } = useAuth();
+  
+  // Show student challenges view for students
+  if (user?.role === 'student') {
+    return <StudentChallenges />;
+  }
+  
   const { currentClassroom } = useClassroom();
 
   if (!currentClassroom) {

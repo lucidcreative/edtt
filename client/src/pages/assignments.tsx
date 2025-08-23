@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { CalendarIcon, Plus, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useClassroom } from "@/contexts/ClassroomContext";
+import StudentAssignments from "@/components/student/student-assignments";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -48,6 +49,12 @@ type AssignmentFormData = z.infer<typeof assignmentFormSchema>;
 
 export default function Assignments() {
   const { user } = useAuth();
+  
+  // Show student assignments view for students
+  if (user?.role === 'student') {
+    return <StudentAssignments />;
+  }
+  
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
