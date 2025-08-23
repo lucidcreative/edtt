@@ -12,7 +12,7 @@ const teacherMobileNav = [
 
 const studentMobileNav = [
   { path: '/', name: 'Home', icon: 'fas fa-home' },
-  { path: '/assignments', name: 'Work', icon: 'fas fa-tasks' },
+  { path: '/earn', name: 'Earn', icon: 'fas fa-coins' },
   { path: '/store', name: 'Store', icon: 'fas fa-store' },
   { path: '/progress', name: 'Progress', icon: 'fas fa-chart-line' },
   { path: '/badges', name: 'Badges', icon: 'fas fa-award' },

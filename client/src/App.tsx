@@ -14,6 +14,7 @@ import Assignments from "@/pages/assignments";
 import Analytics from "@/pages/analytics";
 import Announcements from "@/pages/announcements";
 import TimeTracking from "@/pages/time-tracking";
+import Earn from "@/pages/earn";
 import Badges from "@/pages/badges";
 import Challenges from "@/pages/challenges";
 import Progress from "@/pages/progress";
@@ -37,6 +38,7 @@ function AuthenticatedApp() {
               <Route path="/store" component={Store} />
               <Route path="/assignments" component={Assignments} />
               <Route path="/time-tracking" component={TimeTracking} />
+              <Route path="/earn" component={Earn} />
               <Route path="/analytics" component={Analytics} />
               <Route path="/badges" component={Badges} />
               <Route path="/challenges" component={Challenges} />
