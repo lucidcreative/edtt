@@ -289,41 +289,60 @@ export default function StudentTimeTracking() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {timeEntries.slice(0, 5).map((entry, index) => (
-                  <div key={entry.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <i className="fas fa-calendar text-blue-600"></i>
+                {timeEntries.slice(0, 10).map((entry, index) => {
+                  // Create separate entries for clock in and clock out for student view
+                  const clockInEntry = (
+                    <div key={`${entry.id}-in`} className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                          <i className="fas fa-sign-in-alt text-green-600"></i>
+                        </div>
+                        <div>
+                          <p className="font-medium text-green-800">Clock In</p>
+                          <p className="text-sm text-green-600">
+                            {new Date(entry.date).toLocaleDateString()} at {new Date(entry.clockInTime || entry.date).toLocaleTimeString()}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium text-gray-800">
-                          {new Date(entry.date).toLocaleDateString()}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          {new Date(entry.clockInTime).toLocaleTimeString()} - {
-                            entry.clockOutTime 
-                              ? new Date(entry.clockOutTime).toLocaleTimeString()
-                              : 'In Progress'
-                          }
-                        </p>
-                      </div>
+                      <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300">
+                        <i className="fas fa-play mr-1"></i>
+                        Started
+                      </Badge>
                     </div>
-                    <div className="text-right">
-                      <div className="font-medium text-gray-800">
-                        {entry.duration ? formatDuration(entry.duration) : 'Active'}
+                  );
+
+                  const clockOutEntry = entry.clockOutTime ? (
+                    <div key={`${entry.id}-out`} className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-200">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                          <i className="fas fa-sign-out-alt text-red-600"></i>
+                        </div>
+                        <div>
+                          <p className="font-medium text-red-800">Clock Out</p>
+                          <p className="text-sm text-red-600">
+                            {new Date(entry.date).toLocaleDateString()} at {new Date(entry.clockOutTime).toLocaleTimeString()}
+                          </p>
+                        </div>
                       </div>
-                      {entry.clockOutTime ? (
-                        <Badge variant="outline" className="bg-green-100 text-green-600">
+                      <div className="text-right">
+                        <div className="font-medium text-red-800">
+                          {entry.duration ? formatDuration(entry.duration) : '0m'}
+                        </div>
+                        <Badge variant="outline" className="bg-red-100 text-red-700 border-red-300">
+                          <i className="fas fa-stop mr-1"></i>
                           Complete
                         </Badge>
-                      ) : (
-                        <Badge variant="outline" className="bg-blue-100 text-blue-600">
-                          Active
-                        </Badge>
-                      )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ) : null;
+
+                  return (
+                    <div key={entry.id} className="space-y-2">
+                      {clockInEntry}
+                      {clockOutEntry}
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>

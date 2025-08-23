@@ -341,21 +341,39 @@ export default function TimeTracking() {
                   <div className="flex items-center gap-3">
                     {user?.role === 'teacher' && (
                       <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-semibold">
-                        {entry.student?.nickname?.charAt(0) || 'S'}
+                        {entry.student?.nickname?.charAt(0) || entry.student?.name?.charAt(0) || 'S'}
                       </div>
                     )}
                     <div>
                       {user?.role === 'teacher' && (
-                        <p className="font-medium text-gray-800">{entry.student?.nickname}</p>
+                        <p className="font-medium text-gray-800">{entry.student?.nickname || entry.student?.name}</p>
                       )}
                       <p className="text-sm text-gray-600">
-                        {new Date(entry.clockInTime).toLocaleDateString()}
+                        {new Date(entry.clockInTime || entry.date).toLocaleDateString()}
                       </p>
+                      {user?.role === 'teacher' && (
+                        <p className="text-xs text-gray-500">
+                          Session: {new Date(entry.clockInTime || entry.date).toLocaleTimeString()} - {
+                            entry.clockOutTime 
+                              ? new Date(entry.clockOutTime).toLocaleTimeString()
+                              : 'Active'
+                          }
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-medium">{formatDuration(entry.totalMinutes || 0)}</p>
+                    <p className="font-medium">{formatDuration(entry.totalMinutes || entry.duration || 0)}</p>
                     <p className="text-sm text-green-600">+{entry.tokensEarned || 0} tokens</p>
+                    {entry.clockOutTime ? (
+                      <Badge variant="outline" className="bg-green-100 text-green-600 text-xs">
+                        Complete
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="bg-blue-100 text-blue-600 text-xs">
+                        Active
+                      </Badge>
+                    )}
                   </div>
                 </div>
               ))}
