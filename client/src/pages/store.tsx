@@ -215,25 +215,39 @@ export default function Store() {
             return (
               <motion.div
                 key={item.id}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className={`rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 group overflow-hidden ${
+                transition={{ duration: 0.3, delay: Math.min(index * 0.02, 0.3) }}
+                className={`rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 group overflow-hidden bg-white border-2 hover:border-4 ${
                   item.category === 'Rewards' 
-                    ? 'bg-gradient-to-r from-purple-500 to-pink-500'
+                    ? 'border-purple-300 hover:border-purple-500'
                     : item.category === 'Supplies'
-                    ? 'bg-gradient-to-r from-blue-500 to-cyan-500'
-                    : 'bg-gradient-to-r from-green-500 to-emerald-500'
-                } text-white`}
+                    ? 'border-blue-300 hover:border-blue-500'
+                    : 'border-green-300 hover:border-green-500'
+                } hover:-translate-y-1`}
                 data-testid={`store-item-${index}`}
               >
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
-                      <span className="text-4xl" data-testid={`item-icon-${index}`}>
-                        {itemIcon}
-                      </span>
-                      <h3 className="text-xl font-bold" data-testid={`item-name-${index}`}>
+                      <div className={`p-2 rounded-lg ${
+                        item.category === 'Rewards' 
+                          ? 'bg-purple-100'
+                          : item.category === 'Supplies'
+                          ? 'bg-blue-100'
+                          : 'bg-green-100'
+                      }`}>
+                        <span className="text-3xl" data-testid={`item-icon-${index}`}>
+                          {itemIcon}
+                        </span>
+                      </div>
+                      <h3 className={`text-xl font-bold ${
+                        item.category === 'Rewards' 
+                          ? 'text-purple-700'
+                          : item.category === 'Supplies'
+                          ? 'text-blue-700'
+                          : 'text-green-700'
+                      }`} data-testid={`item-name-${index}`}>
                         {item.name}
                       </h3>
                     </div>
@@ -252,12 +266,18 @@ export default function Store() {
                     )}
                   </div>
                   
-                  <p className="text-white/90 text-sm mb-4" data-testid={`item-description-${index}`}>
+                  <p className="text-gray-600 text-sm mb-4" data-testid={`item-description-${index}`}>
                     {item.description}
                   </p>
                   
                   <div className="flex items-center justify-between mb-4">
-                    <span className="text-2xl font-bold" data-testid={`item-cost-${index}`}>
+                    <span className={`text-2xl font-bold ${
+                      item.category === 'Rewards' 
+                        ? 'text-purple-600'
+                        : item.category === 'Supplies'
+                        ? 'text-blue-600'
+                        : 'text-green-600'
+                    }`} data-testid={`item-cost-${index}`}>
                       {item.cost} tokens
                     </span>
                     
@@ -270,7 +290,13 @@ export default function Store() {
                   
                   <div className="flex items-center justify-between">
                     {item.category && (
-                      <Badge variant="outline" className="text-white border-white/50" data-testid={`item-category-${index}`}>
+                      <Badge variant="outline" className={`${
+                        item.category === 'Rewards' 
+                          ? 'text-purple-700 border-purple-300'
+                          : item.category === 'Supplies'
+                          ? 'text-blue-700 border-blue-300'
+                          : 'text-green-700 border-green-300'
+                      }`} data-testid={`item-category-${index}`}>
                         {item.category}
                       </Badge>
                     )}
@@ -279,9 +305,16 @@ export default function Store() {
                       {user?.role === 'teacher' ? (
                         <Button 
                           size="sm" 
-                          variant="secondary"
+                          variant="outline"
                           onClick={() => handleEditItem(item)}
                           data-testid={`button-edit-item-${index}`}
+                          className={`${
+                            item.category === 'Rewards' 
+                              ? 'border-purple-300 text-purple-700 hover:bg-purple-50'
+                              : item.category === 'Supplies'
+                              ? 'border-blue-300 text-blue-700 hover:bg-blue-50'
+                              : 'border-green-300 text-green-700 hover:bg-green-50'
+                          }`}
                         >
                           <i className="fas fa-edit mr-1"></i>
                           Edit
@@ -289,9 +322,15 @@ export default function Store() {
                       ) : (
                         <Button 
                           size="sm"
-                          variant="secondary"
                           disabled={!isActive || (user?.tokens || 0) < item.cost}
                           data-testid={`button-buy-item-${index}`}
+                          className={`${
+                            item.category === 'Rewards' 
+                              ? 'bg-purple-500 hover:bg-purple-600'
+                              : item.category === 'Supplies'
+                              ? 'bg-blue-500 hover:bg-blue-600'
+                              : 'bg-green-500 hover:bg-green-600'
+                          } text-white`}
                         >
                           {(user?.tokens || 0) >= item.cost ? 'Buy' : 'Not enough tokens'}
                         </Button>
