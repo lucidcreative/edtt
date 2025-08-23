@@ -46,8 +46,8 @@ import {
   type InsertChallenge,
   type StudentClassroom,
   type Purchase,
-  type StudentBadge,
-  type ChallengeProgress,
+  type StudentBadgeType,
+  type ChallengeProgressType,
   // Phase 1C Token Economy Types
   type StudentWallet,
   type InsertStudentWallet,
@@ -166,16 +166,16 @@ export interface IStorage {
   getBadgesByClassroom(classroomId: string): Promise<Badge[]>;
   createBadge(badge: InsertBadge): Promise<Badge>;
   updateBadge(id: string, updates: Partial<InsertBadge>): Promise<Badge>;
-  awardBadge(studentId: string, badgeId: string): Promise<StudentBadge>;
-  getStudentBadges(studentId: string): Promise<(StudentBadge & { badge: Badge })[]>;
+  awardBadge(studentId: string, badgeId: string): Promise<StudentBadgeType>;
+  getStudentBadges(studentId: string): Promise<(StudentBadgeType & { badge: Badge })[]>;
   
   // Challenge operations
   getChallenge(id: string): Promise<Challenge | undefined>;
   getChallengesByClassroom(classroomId: string): Promise<Challenge[]>;
   createChallenge(challenge: InsertChallenge): Promise<Challenge>;
   updateChallenge(id: string, updates: Partial<InsertChallenge>): Promise<Challenge>;
-  updateChallengeProgress(studentId: string, challengeId: string, progress: number): Promise<ChallengeProgress>;
-  getStudentChallengeProgress(studentId: string, classroomId: string): Promise<(ChallengeProgress & { challenge: Challenge })[]>;
+  updateChallengeProgress(studentId: string, challengeId: string, progress: number): Promise<ChallengeProgressType>;
+  getStudentChallengeProgress(studentId: string, classroomId: string): Promise<(ChallengeProgressType & { challenge: Challenge })[]>;
   
   // Time tracking operations
   getTimeTrackingSettings(classroomId: string): Promise<any>;
@@ -439,7 +439,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(user: InsertUser): Promise<User> {
-    const [newUser] = await db.insert(users).values(user).returning();
+    const [newUser] = await db.insert(users).values([user]).returning();
     return newUser;
   }
 
@@ -486,7 +486,7 @@ export class DatabaseStorage implements IStorage {
       ...classroom,
       code: classroom.code || classroom.joinCode
     };
-    const [newClassroom] = await db.insert(classrooms).values(classroomData).returning();
+    const [newClassroom] = await db.insert(classrooms).values([classroomData]).returning();
     return newClassroom;
   }
 
@@ -567,7 +567,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createAssignment(assignment: InsertAssignment): Promise<Assignment> {
-    const [newAssignment] = await db.insert(assignments).values(assignment).returning();
+    const [newAssignment] = await db.insert(assignments).values([assignment]).returning();
     return newAssignment;
   }
 
@@ -603,7 +603,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createSubmission(submission: InsertSubmission): Promise<Submission> {
-    const [newSubmission] = await db.insert(submissions).values(submission).returning();
+    const [newSubmission] = await db.insert(submissions).values([submission]).returning();
     return newSubmission;
   }
 
@@ -631,7 +631,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createStoreItem(item: InsertStoreItem): Promise<StoreItem> {
-    const [newItem] = await db.insert(storeItems).values(item).returning();
+    const [newItem] = await db.insert(storeItems).values([item]).returning();
     return newItem;
   }
 
@@ -646,7 +646,7 @@ export class DatabaseStorage implements IStorage {
 
   // Purchase operations
   async createPurchase(purchase: Omit<Purchase, 'id' | 'purchasedAt'>): Promise<Purchase> {
-    const [newPurchase] = await db.insert(purchases).values(purchase).returning();
+    const [newPurchase] = await db.insert(purchases).values([purchase]).returning();
     return newPurchase;
   }
 
@@ -673,7 +673,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createBadge(badge: InsertBadge): Promise<Badge> {
-    const [newBadge] = await db.insert(badges).values(badge).returning();
+    const [newBadge] = await db.insert(badges).values([badge]).returning();
     return newBadge;
   }
 
@@ -685,7 +685,7 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  async awardBadge(studentId: string, badgeId: string): Promise<StudentBadge> {
+  async awardBadge(studentId: string, badgeId: string): Promise<StudentBadgeType> {
     const [award] = await db
       .insert(studentBadges)
       .values({ studentId, badgeId })
@@ -693,7 +693,7 @@ export class DatabaseStorage implements IStorage {
     return award;
   }
 
-  async getStudentBadges(studentId: string): Promise<(StudentBadge & { badge: Badge })[]> {
+  async getStudentBadges(studentId: string): Promise<(StudentBadgeType & { badge: Badge })[]> {
     const result = await db
       .select({
         id: studentBadges.id,
@@ -725,7 +725,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createChallenge(challenge: InsertChallenge): Promise<Challenge> {
-    const [newChallenge] = await db.insert(challenges).values(challenge).returning();
+    const [newChallenge] = await db.insert(challenges).values([challenge]).returning();
     return newChallenge;
   }
 
@@ -737,7 +737,7 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  async updateChallengeProgress(studentId: string, challengeId: string, progress: number): Promise<ChallengeProgress> {
+  async updateChallengeProgress(studentId: string, challengeId: string, progress: number): Promise<ChallengeProgressType> {
     const [existing] = await db
       .select()
       .from(challengeProgress)
@@ -767,7 +767,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getStudentChallengeProgress(studentId: string, classroomId: string): Promise<(ChallengeProgress & { challenge: Challenge })[]> {
+  async getStudentChallengeProgress(studentId: string, classroomId: string): Promise<(ChallengeProgressType & { challenge: Challenge })[]> {
     const result = await db
       .select({
         id: challengeProgress.id,
@@ -893,7 +893,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createEnrollment(enrollment: InsertClassroomEnrollment): Promise<ClassroomEnrollment> {
-    const [newEnrollment] = await db.insert(classroomEnrollments).values(enrollment).returning();
+    const [newEnrollment] = await db.insert(classroomEnrollments).values([enrollment]).returning();
     return newEnrollment;
   }
 
@@ -1002,7 +1002,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createAnnouncement(announcement: InsertAnnouncement): Promise<Announcement> {
-    const [newAnnouncement] = await db.insert(announcements).values(announcement).returning();
+    const [newAnnouncement] = await db.insert(announcements).values([announcement]).returning();
     return newAnnouncement;
   }
 
