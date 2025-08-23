@@ -33,7 +33,7 @@ export default function Store() {
 
   // Get store items
   const { data: items, isLoading } = useQuery({
-    queryKey: ["/api/classrooms", currentClassroom?.id, "store"],
+    queryKey: ["/api/store/items/classroom", currentClassroom?.id],
     enabled: !!currentClassroom
   });
 
@@ -46,8 +46,10 @@ export default function Store() {
   // Create store item mutation
   const createItemMutation = useMutation({
     mutationFn: async (itemData: any) => {
-      const response = await apiRequest("POST", "/api/store-items", { ...itemData, classroomId: currentClassroom?.id });
-      return response.json();
+      return apiRequest("/api/store/items", {
+        method: "POST",
+        body: JSON.stringify({ ...itemData, classroomId: currentClassroom?.id })
+      });
     },
     onSuccess: () => {
       toast({
@@ -56,7 +58,7 @@ export default function Store() {
         variant: "default"
       });
       setIsAddDialogOpen(false);
-      queryClient.invalidateQueries({ queryKey: ["/api/classrooms", currentClassroom?.id, "store"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/store/items/classroom", currentClassroom?.id] });
     },
     onError: () => {
       toast({
@@ -70,8 +72,10 @@ export default function Store() {
   // Update store item mutation
   const updateItemMutation = useMutation({
     mutationFn: async (data: { itemId: string; updates: any }) => {
-      const response = await apiRequest("PATCH", `/api/store-items/${data.itemId}`, data.updates);
-      return response.json();
+      return apiRequest(`/api/store/items/${data.itemId}`, {
+        method: "PUT",
+        body: JSON.stringify(data.updates)
+      });
     },
     onSuccess: () => {
       toast({
@@ -81,12 +85,36 @@ export default function Store() {
       });
       setIsEditDialogOpen(false);
       setSelectedItem(null);
-      queryClient.invalidateQueries({ queryKey: ["/api/classrooms", currentClassroom?.id, "store"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/store/items/classroom", currentClassroom?.id] });
     },
     onError: () => {
       toast({
         title: "Update Failed",
         description: "Failed to update store item. Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Delete store item mutation
+  const deleteItemMutation = useMutation({
+    mutationFn: async (itemId: string) => {
+      return apiRequest(`/api/store/items/${itemId}`, {
+        method: "DELETE"
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Item Deleted!",
+        description: "Store item has been removed from your store",
+        variant: "default"
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/store/items/classroom", currentClassroom?.id] });
+    },
+    onError: () => {
+      toast({
+        title: "Delete Failed",
+        description: "Failed to delete store item. Please try again.",
         variant: "destructive"
       });
     }
@@ -120,6 +148,12 @@ export default function Store() {
         metadata: { icon: editForm.icon }
       }
     });
+  };
+
+  const handleDeleteItem = (item: any) => {
+    if (confirm(`Are you sure you want to delete "${item.name}"? This action cannot be undone.`)) {
+      deleteItemMutation.mutate(item.id);
+    }
   };
 
   const getItemIcon = (item: any) => {
@@ -310,7 +344,7 @@ export default function Store() {
                           variant="outline"
                           onClick={() => handleEditItem(item)}
                           data-testid={`button-edit-item-${index}`}
-                          className={`${
+                          className={`mr-2 ${
                             item.category === 'Rewards' 
                               ? 'border-purple-300 text-purple-700 hover:bg-purple-50'
                               : item.category === 'Supplies'
@@ -320,6 +354,16 @@ export default function Store() {
                         >
                           <i className="fas fa-edit mr-1"></i>
                           Edit
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleDeleteItem(item)}
+                          data-testid={`button-delete-item-${index}`}
+                          className="border-red-300 text-red-700 hover:bg-red-50"
+                        >
+                          <i className="fas fa-trash mr-1"></i>
+                          Delete
                         </Button>
                       ) : (
                         <Button 
