@@ -393,10 +393,13 @@ export default function Assignments() {
                         Submit
                       </Button>
                     ) : (
-                      <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); handleAssignmentClick(assignment); }}>
-                        <i className="fas fa-eye mr-1"></i>
-                        View Details
-                      </Button>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleAssignmentClick(assignment); }}
+                        className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+                        data-testid={`button-edit-${index}`}
+                      >
+                        <i className="fas fa-edit text-white"></i>
+                      </button>
                     )}
                   </div>
                 </div>
