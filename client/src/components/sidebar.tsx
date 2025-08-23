@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { removeAuthToken } from "@/lib/authUtils";
 import { motion } from "framer-motion";
+import StudentProfileDialog from "@/components/student/student-profile-dialog";
 
 const teacherNavigation = [
   { path: '/', name: 'Dashboard', icon: 'fas fa-home' },
@@ -30,6 +32,7 @@ const studentNavigation = [
 export default function Sidebar() {
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
+  const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
 
   const handleLogout = () => {
     removeAuthToken();
@@ -78,7 +81,15 @@ export default function Sidebar() {
 
       {/* User Profile */}
       <div className="p-4 border-t border-gray-200">
-        <div className="flex items-center space-x-3 mb-3">
+        <button
+          onClick={() => user?.role === 'student' ? setIsProfileDialogOpen(true) : undefined}
+          className={`w-full flex items-center space-x-3 mb-3 p-2 rounded-lg transition-all duration-200 ${
+            user?.role === 'student' 
+              ? 'hover:bg-gray-50 cursor-pointer group' 
+              : 'cursor-default'
+          }`}
+          data-testid="button-profile"
+        >
           <img
             src={user?.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.nickname || user?.email}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`}
             alt="Profile"
@@ -96,7 +107,10 @@ export default function Sidebar() {
               {user?.role}
             </p>
           </div>
-        </div>
+          {user?.role === 'student' && (
+            <i className="fas fa-edit text-gray-400 group-hover:text-gray-600 text-sm"></i>
+          )}
+        </button>
         
         <Button
           onClick={handleLogout}
@@ -108,6 +122,14 @@ export default function Sidebar() {
           <i className="fas fa-sign-out-alt mr-2"></i>
           Logout
         </Button>
+        
+        {/* Student Profile Dialog */}
+        {user?.role === 'student' && (
+          <StudentProfileDialog 
+            open={isProfileDialogOpen} 
+            onOpenChange={setIsProfileDialogOpen} 
+          />
+        )}
       </div>
     </aside>
   );

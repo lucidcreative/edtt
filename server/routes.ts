@@ -330,6 +330,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update user profile
+  app.patch('/api/users/profile', authenticate, async (req: any, res) => {
+    try {
+      const { nickname, profileImageUrl } = req.body;
+      const userId = req.user.id;
+      
+      // Validate inputs
+      if (nickname && nickname.trim().length === 0) {
+        return res.status(400).json({ message: "Nickname cannot be empty" });
+      }
+      
+      if (nickname && nickname.trim().length > 50) {
+        return res.status(400).json({ message: "Nickname cannot exceed 50 characters" });
+      }
+      
+      // Prepare update data
+      const updateData: any = { updatedAt: new Date() };
+      if (nickname !== undefined) updateData.nickname = nickname.trim();
+      if (profileImageUrl !== undefined) updateData.profileImageUrl = profileImageUrl;
+      
+      // Update user
+      const [updatedUser] = await db
+        .update(users)
+        .set(updateData)
+        .where(eq(users.id, userId))
+        .returning();
+      
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      res.json({ 
+        success: true, 
+        message: "Profile updated successfully",
+        user: {
+          id: updatedUser.id,
+          nickname: updatedUser.nickname,
+          profileImageUrl: updatedUser.profileImageUrl,
+          role: updatedUser.role
+        }
+      });
+    } catch (error) {
+      console.error("Update profile error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // Add individual student to classroom
   app.post('/api/classrooms/:classroomId/students', authenticate, async (req: any, res) => {
     try {
