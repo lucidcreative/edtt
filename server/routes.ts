@@ -1602,9 +1602,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/time-tracking/clock-in', authenticate, async (req: any, res) => {
     try {
-      // TODO: Implement clock in functionality
       console.log('Clock in attempt by user:', req.user.id);
-      res.json({ success: true, clockInTime: new Date().toISOString() });
+      
+      // Check if user already has an active session
+      const activeSession = await storage.getActiveTimeSession(req.user.id);
+      if (activeSession) {
+        return res.status(400).json({ message: "You already have an active session. Please clock out first." });
+      }
+      
+      const clockInTime = new Date();
+      
+      // Create a time entry in the database
+      const timeEntry = await storage.createTimeEntry({
+        studentId: req.user.id,
+        classroomId: req.body.classroomId || 'default', // You may want to get this from user context
+        clockInTime: clockInTime,
+        status: 'active'
+      });
+      
+      res.json({ 
+        success: true, 
+        clockInTime: clockInTime.toISOString(),
+        sessionId: timeEntry.id
+      });
     } catch (error) {
       console.error("Clock in error:", error);
       res.status(500).json({ message: "Internal server error" });
@@ -1613,12 +1633,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/time-tracking/clock-out', authenticate, async (req: any, res) => {
     try {
-      // TODO: Implement clock out functionality
       console.log('Clock out attempt by user:', req.user.id);
-      res.json({ success: true, clockOutTime: new Date().toISOString() });
+      
+      // Get the active session for this user (simplified approach)
+      const activeSession = await storage.getActiveTimeSession(req.user.id);
+      
+      if (!activeSession) {
+        return res.status(400).json({ message: "No active session found" });
+      }
+      
+      const clockOutTime = new Date();
+      const clockInTime = new Date(activeSession.clockInTime);
+      const durationMinutes = Math.floor((clockOutTime.getTime() - clockInTime.getTime()) / (1000 * 60));
+      
+      // Calculate tokens: 1 token per 15 minutes (standard rate)
+      const tokensEarned = Math.max(1, Math.floor(durationMinutes / 15)); // 1 token per 15 minutes, minimum 1
+      
+      // Update user's token balance
+      await storage.updateUserTokens(req.user.id, tokensEarned);
+      
+      // End the session
+      await storage.endTimeSession(activeSession.id, durationMinutes, tokensEarned);
+      
+      res.json({ 
+        success: true, 
+        clockOutTime: clockOutTime.toISOString(),
+        duration: durationMinutes,
+        tokensEarned: tokensEarned
+      });
     } catch (error) {
       console.error("Clock out error:", error);
-      res.status(500).json({ message: "Internal server error" });
+      res.status(500).json({ message: "Failed to clock out. Please try again." });
     }
   });
 

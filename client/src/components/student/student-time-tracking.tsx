@@ -66,10 +66,19 @@ export default function StudentTimeTracking() {
       const response = await apiRequest('POST', '/api/time-tracking/clock-out', {});
       return response.json();
     },
-    onSuccess: () => {
-      toast({ title: "Clocked Out", description: "Session complete! Great work today." });
+    onSuccess: (data) => {
+      const tokensEarned = data.tokensEarned || 0;
+      const duration = data.duration || 0;
+      
+      toast({ 
+        title: "Session Complete! 🎉", 
+        description: `You earned ${tokensEarned} tokens for ${formatDuration(duration)} of work time!`,
+      });
+      
+      // Refresh all relevant data including user balance
       queryClient.invalidateQueries({ queryKey: ["/api/students", user?.id, "active-session"] });
       queryClient.invalidateQueries({ queryKey: ["/api/students", user?.id, "time-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] }); // Refresh user balance
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to clock out. Please try again.", variant: "destructive" });
@@ -195,33 +204,33 @@ export default function StudentTimeTracking() {
                       <p className="text-xl font-bold text-green-800">
                         {formatDuration(calculateSessionDuration())}
                       </p>
-                      <p className="text-xs text-green-600">Time earned so far</p>
+                      <p className="text-xs text-green-600">≈ {Math.max(1, Math.floor(calculateSessionDuration() / 15))} tokens earning</p>
                     </div>
                   </div>
                 </div>
                 
                 {/* Clock Out Button */}
-                <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+                <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
                   <div className="text-center mb-3">
-                    <p className="text-sm text-red-600 mb-1">Ready to finish your session?</p>
-                    <p className="text-xs text-red-500">Click below to clock out and save your time</p>
+                    <p className="text-sm text-yellow-700 mb-1 font-medium">Ready to finish your session?</p>
+                    <p className="text-xs text-yellow-600">You'll earn approximately {Math.max(1, Math.floor(calculateSessionDuration() / 15))} tokens for this session</p>
                   </div>
                   <Button
                     onClick={() => clockOutMutation.mutate()}
                     disabled={clockOutMutation.isPending}
-                    className="w-full bg-red-500 hover:bg-red-600 text-white"
+                    className="w-full bg-yellow-500 hover:bg-yellow-600 text-white"
                     size="lg"
                     data-testid="button-clock-out"
                   >
                     {clockOutMutation.isPending ? (
                       <>
                         <i className="fas fa-spinner fa-spin mr-2"></i>
-                        Clocking Out...
+                        Clocking Out & Saving Tokens...
                       </>
                     ) : (
                       <>
-                        <i className="fas fa-stop-circle mr-2"></i>
-                        Clock Out & End Session
+                        <i className="fas fa-coins mr-2"></i>
+                        Clock Out & Earn {Math.max(1, Math.floor(calculateSessionDuration() / 15))} Tokens
                       </>
                     )}
                   </Button>

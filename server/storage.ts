@@ -107,6 +107,10 @@ import { db } from "./db";
 import { eq, desc, asc, and, or, sql, count } from "drizzle-orm";
 
 export interface IStorage {
+  // Time tracking methods
+  getActiveTimeSession(userId: string): Promise<any>;
+  updateUserTokens(userId: string, tokensToAdd: number): Promise<void>;
+  endTimeSession(sessionId: string, duration: number, tokensEarned: number): Promise<void>;
   // User operations
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
@@ -2576,6 +2580,53 @@ export class DatabaseStorage implements IStorage {
 
     const totalMinutes = entries.reduce((sum, entry) => sum + (entry.totalMinutes || 0), 0);
     return totalMinutes / 60; // Convert to hours
+  }
+
+  async getActiveTimeSession(userId: string): Promise<any> {
+    // Look for an active time session for this user
+    const [activeEntry] = await db
+      .select()
+      .from(timeEntries)
+      .where(and(
+        eq(timeEntries.studentId, userId),
+        sql`${timeEntries.clockOutTime} IS NULL`
+      ))
+      .orderBy(desc(timeEntries.clockInTime))
+      .limit(1);
+
+    return activeEntry || null;
+  }
+
+  async updateUserTokens(userId: string, tokensToAdd: number): Promise<void> {
+    try {
+      // Update user's token balance
+      await db
+        .update(users)
+        .set({
+          tokens: sql`${users.tokens} + ${tokensToAdd}`
+        })
+        .where(eq(users.id, userId));
+    } catch (error) {
+      console.error('Failed to update user tokens:', error);
+      throw error;
+    }
+  }
+
+  async endTimeSession(sessionId: string, duration: number, tokensEarned: number): Promise<void> {
+    try {
+      // Update the time entry with clock out time and duration
+      await db
+        .update(timeEntries)
+        .set({
+          clockOutTime: new Date(),
+          totalMinutes: duration,
+          tokensEarned: tokensEarned
+        })
+        .where(eq(timeEntries.id, sessionId));
+    } catch (error) {
+      console.error('Failed to end time session:', error);
+      throw error;
+    }
   }
 
   async getMarketplaceAnalytics(classroomId: string, timeframe?: string): Promise<{
