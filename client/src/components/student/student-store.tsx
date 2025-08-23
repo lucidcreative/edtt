@@ -93,10 +93,49 @@ export default function StudentStore() {
 
   const filteredItems = selectedCategory === "all" 
     ? storeItems 
-    : storeItems.filter(item => item.category === selectedCategory);
+    : storeItems.filter(item => {
+        // Handle case-insensitive category matching and normalize different category names
+        const itemCategory = item.category?.toLowerCase();
+        const filterCategory = selectedCategory.toLowerCase();
+        
+        // Map different category variations to our standard categories
+        const categoryMappings: { [key: string]: string[] } = {
+          'rewards': ['rewards', 'reward'],
+          'supplies': ['supplies', 'supply'],
+          'privileges': ['privileges', 'privilege'],
+          'experiences': ['experiences', 'experience', 'academic benefits', 'academic benefit']
+        };
+        
+        // Check if the item category matches any of the mapped categories
+        for (const [standardCategory, variations] of Object.entries(categoryMappings)) {
+          if (standardCategory === filterCategory && variations.some(variation => itemCategory?.includes(variation))) {
+            return true;
+          }
+        }
+        
+        return itemCategory === filterCategory;
+      });
 
   const getCategoryInfo = (category: string) => {
-    return categories.find(cat => cat.value === category) || { label: category, icon: "fas fa-box", color: "bg-gray-100 text-gray-600" };
+    // Handle category mapping for display
+    const categoryLower = category?.toLowerCase();
+    
+    // Map item categories to our display categories
+    const categoryMap: { [key: string]: string } = {
+      'rewards': 'rewards',
+      'reward': 'rewards',
+      'supplies': 'supplies', 
+      'supply': 'supplies',
+      'privileges': 'privileges',
+      'privilege': 'privileges',
+      'academic benefits': 'experiences',
+      'academic benefit': 'experiences',
+      'experiences': 'experiences',
+      'experience': 'experiences'
+    };
+    
+    const mappedCategory = categoryMap[categoryLower] || categoryLower;
+    return categories.find(cat => cat.value === mappedCategory) || { label: category, icon: "fas fa-box", color: "bg-gray-100 text-gray-600" };
   };
 
   const canAfford = (cost: number) => {
