@@ -63,10 +63,10 @@ interface RosterManagementProps {
 export default function RosterManagement({ classroomId, classroomName, joinCode }: RosterManagementProps) {
   const [selectedTab, setSelectedTab] = useState("approved");
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
-  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [isAddingStudent, setIsAddingStudent] = useState(false);
   const [isUploadingCSV, setIsUploadingCSV] = useState(false);
+  const [defaultTempPin, setDefaultTempPin] = useState('123456');
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -274,6 +274,23 @@ export default function RosterManagement({ classroomId, classroomName, joinCode 
     }
   };
 
+  const copyJoinLinkWithPin = async (pin: string) => {
+    try {
+      const joinUrl = `${window.location.origin}/join?code=${joinCode}&pin=${pin}`;
+      await navigator.clipboard.writeText(joinUrl);
+      toast({
+        title: "Copied!",
+        description: "Join link with default PIN copied to clipboard",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to copy join link",
+        variant: "destructive",
+      });
+    }
+  };
+
   const downloadQRCode = () => {
     const link = document.createElement('a');
     link.download = `${classroomName}-qr-code.png`;
@@ -398,90 +415,6 @@ export default function RosterManagement({ classroomId, classroomName, joinCode 
             </p>
           </div>
           
-          <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
-            <DialogTrigger asChild>
-              <Button
-                variant="default"
-                className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600"
-              >
-                <Share2 className="h-4 w-4 mr-2" />
-                Share Classroom
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-lg flex items-center justify-center">
-                    <Share2 className="h-4 w-4 text-white" />
-                  </div>
-                  Share {classroomName}
-                </DialogTitle>
-              </DialogHeader>
-              
-              <div className="space-y-6">
-                {/* QR Code Section */}
-                <div className="text-center">
-                  <h3 className="text-lg font-semibold mb-3">QR Code</h3>
-                  {qrCodeUrl && (
-                    <div className="bg-white p-4 rounded-lg border-2 border-gray-200 inline-block shadow-sm">
-                      <img src={qrCodeUrl} alt="QR Code for joining classroom" className="w-48 h-48" />
-                    </div>
-                  )}
-                  <p className="text-sm text-gray-600 mt-2 mb-3">
-                    Students can scan this QR code to join your classroom
-                  </p>
-                  <Button onClick={downloadQRCode} variant="outline" size="sm">
-                    <Download className="h-4 w-4 mr-2" />
-                    Download QR Code
-                  </Button>
-                </div>
-                
-                {/* Join Code Section */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-3">Join Code</h3>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Input
-                      value={joinCode}
-                      readOnly
-                      className="text-center font-mono text-xl tracking-wider bg-gray-50"
-                    />
-                    <Button onClick={copyJoinCode} variant="outline" size="icon">
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <p className="text-sm text-gray-600">
-                    Share this 6-character code with your students
-                  </p>
-                </div>
-                
-                {/* Join Link Section */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-3">Direct Link</h3>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Input
-                      value={`${window.location.origin}/join?code=${joinCode}`}
-                      readOnly
-                      className="text-sm bg-gray-50"
-                    />
-                    <Button onClick={copyJoinLink} variant="outline" size="icon">
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <p className="text-sm text-gray-600">
-                    Students can click this link to join directly
-                  </p>
-                </div>
-                
-                <div className="bg-blue-50 p-3 rounded-lg">
-                  <p className="text-blue-800 text-sm">
-                    <i className="fas fa-info-circle mr-2"></i>
-                    <strong>Tip:</strong> Share the QR code for easy mobile access, or send the join code for quick entry.
-                  </p>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-          
           <Dialog open={isAddStudentOpen} onOpenChange={setIsAddStudentOpen}>
             <DialogTrigger asChild>
               <Button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700" data-testid="button-add-student">
@@ -494,9 +427,10 @@ export default function RosterManagement({ classroomId, classroomName, joinCode 
                 <DialogTitle>Add Students to Classroom</DialogTitle>
               </DialogHeader>
               <Tabs defaultValue="individual" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="individual">Individual Student</TabsTrigger>
                   <TabsTrigger value="bulk">CSV Upload</TabsTrigger>
+                  <TabsTrigger value="share">Share Classroom</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="individual" className="space-y-4">
@@ -588,6 +522,85 @@ export default function RosterManagement({ classroomId, classroomName, joinCode 
                     </div>
                   </div>
                 </TabsContent>
+                
+                <TabsContent value="share" className="space-y-4">
+                  <div className="space-y-6">
+                    {/* Default Password Setting */}
+                    <div>
+                      <Label htmlFor="default-pin">Default Temporary PIN for New Students</Label>
+                      <Input
+                        id="default-pin"
+                        value={defaultTempPin}
+                        onChange={(e) => setDefaultTempPin(e.target.value)}
+                        placeholder="123456"
+                        maxLength={6}
+                        pattern="[0-9]*"
+                        className="mt-1 text-center font-mono text-lg"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Students will be prompted to change this on first login</p>
+                    </div>
+                    
+                    {/* QR Code Section */}
+                    <div className="text-center">
+                      <h3 className="text-lg font-semibold mb-3">QR Code</h3>
+                      {qrCodeUrl && (
+                        <div className="bg-white p-4 rounded-lg border-2 border-gray-200 inline-block shadow-sm">
+                          <img src={qrCodeUrl} alt="QR Code for joining classroom" className="w-40 h-40" />
+                        </div>
+                      )}
+                      <p className="text-sm text-gray-600 mt-2 mb-3">
+                        Students can scan this QR code to join your classroom
+                      </p>
+                      <Button onClick={downloadQRCode} variant="outline" size="sm">
+                        <Download className="h-4 w-4 mr-2" />
+                        Download QR Code
+                      </Button>
+                    </div>
+                    
+                    {/* Join Code Section */}
+                    <div>
+                      <h3 className="text-lg font-semibold mb-3">Join Code</h3>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Input
+                          value={joinCode}
+                          readOnly
+                          className="text-center font-mono text-xl tracking-wider bg-gray-50"
+                        />
+                        <Button onClick={copyJoinCode} variant="outline" size="icon">
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        Share this 6-character code with your students
+                      </p>
+                    </div>
+                    
+                    {/* Join Link Section */}
+                    <div>
+                      <h3 className="text-lg font-semibold mb-3">Direct Link</h3>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Input
+                          value={`${window.location.origin}/join?code=${joinCode}&pin=${defaultTempPin}`}
+                          readOnly
+                          className="text-sm bg-gray-50"
+                        />
+                        <Button onClick={() => copyJoinLinkWithPin(defaultTempPin)} variant="outline" size="icon">
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        Students can click this link to join with the default PIN
+                      </p>
+                    </div>
+                    
+                    <div className="bg-blue-50 p-3 rounded-lg">
+                      <p className="text-blue-800 text-sm">
+                        <i className="fas fa-info-circle mr-2"></i>
+                        <strong>Tip:</strong> The direct link includes your default PIN ({defaultTempPin}) for easy student access.
+                      </p>
+                    </div>
+                  </div>
+                </TabsContent>
               </Tabs>
             </DialogContent>
           </Dialog>
@@ -643,8 +656,8 @@ export default function RosterManagement({ classroomId, classroomName, joinCode 
                   variant="outline"
                   data-testid="button-share-join-code"
                 >
-                  <i className="fas fa-share mr-2"></i>
-                  Share Join Code
+                  <i className="fas fa-user-plus mr-2"></i>
+                  Add Students
                 </Button>
               </CardContent>
             </Card>
