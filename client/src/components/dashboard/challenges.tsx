@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 
 interface ChallengesProps {
   classroomId: string;
@@ -22,18 +24,19 @@ export default function Challenges({ classroomId }: ChallengesProps) {
       <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-800">Challenges</h3>
-          <Link href="/analytics">
-            <a className="text-blue-600 text-sm hover:underline">Manage</a>
+          <Link href="/challenges">
+            <span className="text-blue-600 text-sm hover:underline cursor-pointer">Manage</span>
           </Link>
         </div>
         <div className="text-center py-8">
-          <i className="fas fa-trophy text-4xl text-gray-300 mb-3"></i>
-          <p className="text-gray-500 text-sm">No challenges created yet</p>
-          <p className="text-gray-400 text-xs mt-1">
-            <Link href="/analytics">
-              <a className="text-blue-500 hover:underline">Create challenges</a>
-            </Link> to engage students
-          </p>
+          <i className="fas fa-trophy text-4xl text-gray-300 mb-4"></i>
+          <p className="text-gray-500 text-sm mb-6">No challenges created yet</p>
+          <Link href="/challenges">
+            <Button className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white" data-testid="button-create-challenges">
+              <Plus className="w-4 h-4 mr-2" />
+              Create Challenges
+            </Button>
+          </Link>
         </div>
       </div>
     );
@@ -43,8 +46,8 @@ export default function Challenges({ classroomId }: ChallengesProps) {
     <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-800">Challenges</h3>
-        <Link href="/analytics">
-          <a className="text-blue-600 text-sm hover:underline">Manage</a>
+        <Link href="/challenges">
+          <span className="text-blue-600 text-sm hover:underline cursor-pointer">Manage</span>
         </Link>
       </div>
       

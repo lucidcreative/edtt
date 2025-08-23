@@ -14,6 +14,8 @@ import Assignments from "@/pages/assignments";
 import Analytics from "@/pages/analytics";
 import Announcements from "@/pages/announcements";
 import TimeTracking from "@/pages/time-tracking";
+import Badges from "@/pages/badges";
+import Challenges from "@/pages/challenges";
 import Sidebar from "@/components/sidebar";
 import Header from "@/components/header";
 
@@ -33,6 +35,8 @@ function AuthenticatedApp() {
               <Route path="/assignments" component={Assignments} />
               <Route path="/time-tracking" component={TimeTracking} />
               <Route path="/analytics" component={Analytics} />
+              <Route path="/badges" component={Badges} />
+              <Route path="/challenges" component={Challenges} />
               <Route component={NotFound} />
             </Switch>
           </div>
