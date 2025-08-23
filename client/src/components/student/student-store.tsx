@@ -46,10 +46,19 @@ export default function StudentStore() {
   const [isPurchaseDialogOpen, setIsPurchaseDialogOpen] = useState(false);
 
   // Get available store items
-  const { data: storeItems = [], isLoading } = useQuery<StoreItem[]>({
+  const { data: storeItems = [], isLoading, error } = useQuery<StoreItem[]>({
     queryKey: ["/api/students", user?.id, "store-items"],
     enabled: !!user?.id && user?.role === 'student'
   });
+
+  // Debug log to check store items data
+  console.log('Store items data:', storeItems);
+  console.log('Store items error:', error);
+  
+  // Add debugging for error details
+  if (error) {
+    console.error('Store fetch error details:', error);
+  }
 
   // Get student's purchase history
   const { data: purchases = [] } = useQuery<Purchase[]>({

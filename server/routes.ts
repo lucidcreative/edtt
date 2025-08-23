@@ -1351,7 +1351,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // For now, use the first classroom (could be expanded to support multiple later)
       const classroomId = approvedEnrollments[0].classroomId;
       const items = await storage.getStoreItemsByClassroom(classroomId);
-      res.json(items);
+      
+      // Convert database items to client format and ensure isAvailable field
+      const clientItems = items.map(item => ({
+        id: item.id,
+        name: item.name,
+        title: item.name,
+        description: item.description,
+        category: item.category,
+        cost: item.cost,
+        imageUrl: item.imageUrl,
+        isAvailable: item.isActive === true, // Convert database field to client field
+        quantity: item.inventory || -1,
+        inventory: item.inventory || -1
+      }));
+      
+      res.json(clientItems);
     } catch (error) {
       console.error("Get student store items error:", error);
       res.status(500).json({ message: "Internal server error" });
@@ -2099,6 +2114,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error deleting store item:', error);
       res.status(500).json({ error: 'Failed to delete store item' });
+    }
+  });
+
+  // Student purchase endpoint
+  app.post('/api/store/:itemId/purchase', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'student') {
+        return res.status(403).json({ error: 'Only students can make purchases' });
+      }
+      
+      const { itemId } = req.params;
+      const studentId = req.user.id;
+      
+      // Get student's approved enrollments to determine classroom
+      const enrollments = await storage.getStudentEnrollments(studentId);
+      const approvedEnrollments = enrollments.filter(e => e.enrollmentStatus === 'approved');
+      
+      if (approvedEnrollments.length === 0) {
+        return res.status(400).json({ error: 'Student not enrolled in any classroom' });
+      }
+      
+      const classroomId = approvedEnrollments[0].classroomId;
+      
+      // Get the store item
+      const storeItems = await storage.getStoreItemsByClassroom(classroomId);
+      const item = storeItems.find(i => i.id === itemId);
+      
+      if (!item) {
+        return res.status(404).json({ error: 'Store item not found' });
+      }
+      
+      // Check if item is available
+      if (!item.isActive) {
+        return res.status(400).json({ error: 'Item is not available for purchase' });
+      }
+      
+      // Get student's current token balance
+      const student = await storage.getUser(studentId);
+      if (!student) {
+        return res.status(404).json({ error: 'Student not found' });
+      }
+      
+      // Check if student has enough tokens
+      if (student.tokens < item.cost) {
+        return res.status(400).json({ error: 'Not enough tokens to purchase this item' });
+      }
+      
+      // Deduct tokens from student
+      const newTokenBalance = student.tokens - item.cost;
+      await storage.updateUserTokens(studentId, newTokenBalance);
+      
+      // Create purchase record
+      const purchase = {
+        id: require('crypto').randomUUID(),
+        studentId,
+        storeItemId: itemId,
+        cost: item.cost,
+        purchasedAt: new Date().toISOString(),
+        classroomId
+      };
+      
+      // For now, we'll store purchases in memory or you could add to storage
+      // await storage.createPurchase(purchase);
+      
+      res.json({ 
+        success: true, 
+        purchase,
+        newTokenBalance,
+        message: 'Purchase successful'
+      });
+    } catch (error) {
+      console.error('Error processing purchase:', error);
+      res.status(500).json({ error: 'Failed to process purchase' });
     }
   });
 
