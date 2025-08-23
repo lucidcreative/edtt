@@ -11,13 +11,15 @@ import { apiRequest } from "@/lib/queryClient";
 
 interface StoreItem {
   id: string;
-  title: string;
+  name: string;
+  title?: string; // For backward compatibility
   description?: string;
   category: string;
   cost: number;
   imageUrl?: string;
   isAvailable: boolean;
   quantity?: number;
+  inventory?: number;
 }
 
 interface Purchase {
@@ -174,7 +176,7 @@ export default function StudentStore() {
 
       {/* Store Items Grid */}
       {filteredItems.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredItems.map((item, index) => {
             const categoryInfo = getCategoryInfo(item.category);
             const affordable = canAfford(item.cost);
@@ -186,120 +188,140 @@ export default function StudentStore() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
               >
-                <Card className={`hover:shadow-lg transition-all duration-200 group ${!affordable ? 'opacity-75' : ''}`}>
-                  <CardHeader className="pb-3">
-                    {item.imageUrl && (
-                      <div className="w-full h-32 bg-gray-200 rounded-lg mb-3 overflow-hidden">
-                        <img 
-                          src={item.imageUrl} 
-                          alt={item.title}
-                          className="w-full h-full object-cover"
-                        />
+                <Card className={`relative overflow-hidden hover:shadow-xl transition-all duration-300 group ${!affordable ? 'opacity-60' : ''} ${affordable ? 'hover:-translate-y-1' : ''}`}>
+                  {/* Category Badge */}
+                  <div className="absolute top-3 left-3 z-10">
+                    <Badge variant="outline" className={`${categoryInfo.color} border-0 shadow-sm`}>
+                      <i className={`${categoryInfo.icon} mr-1 text-xs`}></i>
+                      {categoryInfo.label}
+                    </Badge>
+                  </div>
+                  
+                  {/* Status Badge */}
+                  {!item.isAvailable && (
+                    <div className="absolute top-3 right-3 z-10">
+                      <Badge variant="destructive" className="shadow-sm">
+                        <i className="fas fa-times mr-1 text-xs"></i>
+                        Out of Stock
+                      </Badge>
+                    </div>
+                  )}
+                  
+                  {/* Image or Icon */}
+                  <div className="relative h-40 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center overflow-hidden">
+                    {item.imageUrl ? (
+                      <img 
+                        src={item.imageUrl} 
+                        alt={item.name || item.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="text-5xl text-gray-300 group-hover:scale-110 transition-transform duration-300">
+                        <i className={categoryInfo.icon}></i>
                       </div>
                     )}
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-2 flex-1">
-                        <CardTitle className="text-lg font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">
-                          {item.title}
-                        </CardTitle>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className={categoryInfo.color}>
-                            <i className={`${categoryInfo.icon} mr-1`}></i>
-                            {categoryInfo.label}
-                          </Badge>
-                          {!item.isAvailable && (
-                            <Badge variant="destructive">Out of Stock</Badge>
-                          )}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className={`text-xl font-bold flex items-center gap-1 ${affordable ? 'text-yellow-600' : 'text-red-500'}`}>
-                          <i className="fas fa-coins"></i>
-                          {item.cost}
-                        </div>
-                        {item.quantity && (
-                          <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
-                        )}
+                    
+                    {/* Price Overlay */}
+                    <div className="absolute bottom-0 right-0 bg-white/90 backdrop-blur-sm rounded-tl-xl px-3 py-2">
+                      <div className={`text-lg font-bold flex items-center gap-1 ${affordable ? 'text-yellow-600' : 'text-red-500'}`}>
+                        <i className="fas fa-coins text-sm"></i>
+                        {item.cost}
                       </div>
                     </div>
-                  </CardHeader>
+                  </div>
                   
-                  <CardContent className="pt-0">
-                    <div className="space-y-3">
-                      {item.description && (
-                        <p className="text-sm text-gray-600 line-clamp-2">{item.description}</p>
+                  <CardContent className="p-4 space-y-3">
+                    {/* Title */}
+                    <div>
+                      <h3 className="font-semibold text-lg text-gray-800 group-hover:text-blue-600 transition-colors leading-tight">
+                        {item.name || item.title}
+                      </h3>
+                      {(item.quantity || item.inventory) && item.inventory !== -1 && (
+                        <p className="text-xs text-gray-500 mt-1">Available: {item.quantity || item.inventory}</p>
                       )}
+                    </div>
+                    
+                    {/* Description */}
+                    {item.description && (
+                      <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
+                        {item.description}
+                      </p>
+                    )}
+                    
+                    {/* Action Buttons */}
+                    <div className="flex items-center gap-2 pt-2">
+                      <Button 
+                        className={`flex-1 font-medium ${!affordable || !item.isAvailable ? 'h-9' : 'h-10'}`}
+                        disabled={!affordable || !item.isAvailable}
+                        onClick={() => {
+                          setSelectedItem(item);
+                          setIsPurchaseDialogOpen(true);
+                        }}
+                        data-testid={`button-buy-${item.id}`}
+                        variant={affordable && item.isAvailable ? "default" : "secondary"}
+                      >
+                        {!affordable ? (
+                          <>
+                            <i className="fas fa-ban mr-2 text-xs"></i>
+                            <span className="text-xs">Not Enough Tokens</span>
+                          </>
+                        ) : !item.isAvailable ? (
+                          <>
+                            <i className="fas fa-times mr-2 text-xs"></i>
+                            <span className="text-xs">Out of Stock</span>
+                          </>
+                        ) : (
+                          <>
+                            <i className="fas fa-shopping-cart mr-2"></i>
+                            Buy Now
+                          </>
+                        )}
+                      </Button>
                       
-                      <div className="flex items-center gap-2 pt-2">
-                        <Button 
-                          className="flex-1"
-                          disabled={!affordable || !item.isAvailable}
-                          onClick={() => {
-                            setSelectedItem(item);
-                            setIsPurchaseDialogOpen(true);
-                          }}
-                          data-testid={`button-buy-${item.id}`}
-                        >
-                          {!affordable ? (
-                            <>
-                              <i className="fas fa-ban mr-2"></i>
-                              Not Enough Tokens
-                            </>
-                          ) : !item.isAvailable ? (
-                            <>
-                              <i className="fas fa-times mr-2"></i>
-                              Out of Stock
-                            </>
-                          ) : (
-                            <>
-                              <i className="fas fa-shopping-cart mr-2"></i>
-                              Buy Now
-                            </>
-                          )}
-                        </Button>
-                        
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button variant="outline" size="sm">
-                              <i className="fas fa-eye"></i>
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent className="max-w-2xl">
-                            <DialogHeader>
-                              <DialogTitle>{item.title}</DialogTitle>
-                            </DialogHeader>
-                            <div className="space-y-4">
-                              {item.imageUrl && (
-                                <div className="w-full h-48 bg-gray-200 rounded-lg overflow-hidden">
-                                  <img 
-                                    src={item.imageUrl} 
-                                    alt={item.title}
-                                    className="w-full h-full object-cover"
-                                  />
-                                </div>
-                              )}
-                              
-                              {item.description && (
-                                <div>
-                                  <h4 className="text-sm font-medium mb-2">Description</h4>
-                                  <p className="text-sm text-gray-600">{item.description}</p>
-                                </div>
-                              )}
-                              
-                              <div className="flex items-center justify-between pt-4 border-t">
-                                <Badge variant="outline" className={categoryInfo.color}>
-                                  <i className={`${categoryInfo.icon} mr-1`}></i>
-                                  {categoryInfo.label}
-                                </Badge>
-                                <div className="text-xl font-bold text-yellow-600 flex items-center gap-1">
-                                  <i className="fas fa-coins"></i>
-                                  {item.cost} tokens
-                                </div>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm" className="h-10 w-10 p-0">
+                            <i className="fas fa-eye text-sm"></i>
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl">
+                          <DialogHeader>
+                            <DialogTitle className="flex items-center gap-2">
+                              <i className={`${categoryInfo.icon} text-lg`}></i>
+                              {item.name || item.title}
+                            </DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            {item.imageUrl && (
+                              <div className="w-full h-48 bg-gray-200 rounded-lg overflow-hidden">
+                                <img 
+                                  src={item.imageUrl} 
+                                  alt={item.name || item.title}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                            )}
+                            
+                            {item.description && (
+                              <div>
+                                <h4 className="text-sm font-medium mb-2">Description</h4>
+                                <p className="text-sm text-gray-600 leading-relaxed">{item.description}</p>
+                              </div>
+                            )}
+                            
+                            <div className="flex items-center justify-between pt-4 border-t">
+                              <Badge variant="outline" className={categoryInfo.color}>
+                                <i className={`${categoryInfo.icon} mr-1`}></i>
+                                {categoryInfo.label}
+                              </Badge>
+                              <div className="text-xl font-bold text-yellow-600 flex items-center gap-1">
+                                <i className="fas fa-coins"></i>
+                                {item.cost} tokens
                               </div>
                             </div>
-                          </DialogContent>
-                        </Dialog>
-                      </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
                     </div>
                   </CardContent>
                 </Card>
@@ -378,7 +400,7 @@ export default function StudentStore() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <h4 className="font-medium text-gray-800 mb-2">{selectedItem?.title}</h4>
+              <h4 className="font-medium text-gray-800 mb-2">{selectedItem?.name || selectedItem?.title}</h4>
               <div className="text-2xl font-bold text-yellow-600 flex items-center justify-center gap-2">
                 <i className="fas fa-coins"></i>
                 {selectedItem?.cost} tokens
