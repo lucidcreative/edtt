@@ -916,7 +916,7 @@ export const assignmentSubmissions = pgTable("assignment_submissions", {
   validationCheckedAt: timestamp("validation_checked_at"),
   
   // Review and evaluation status
-  reviewStatus: varchar("review_status", { length: 20 }).default("pending"), // 'pending', 'reviewing', 'completed', 'needs_revision'
+  reviewStatus: varchar("review_status", { length: 20 }).default("pending").$type<'pending' | 'reviewing' | 'graded' | 'pending_approval' | 'completed' | 'needs_revision'>(), // Submission review workflow status
   reviewedAt: timestamp("reviewed_at"),
   reviewedBy: varchar("reviewed_by").references(() => users.id),
   

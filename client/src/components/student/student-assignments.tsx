@@ -18,7 +18,7 @@ interface Assignment {
   category: string;
   tokenReward: number;
   dueDate?: string;
-  status: 'assigned' | 'submitted' | 'graded' | 'completed';
+  status: 'assigned' | 'submitted' | 'graded' | 'pending_approval' | 'completed';
   submittedAt?: string;
   grade?: number;
   feedback?: string;
@@ -51,8 +51,10 @@ export default function StudentAssignments() {
   // Submit assignment mutation
   const submitAssignmentMutation = useMutation({
     mutationFn: async ({ assignmentId, submission }: { assignmentId: string; submission: string }) => {
-      const response = await apiRequest('POST', `/api/assignments/${assignmentId}/submit`, { submission });
-      return response.json();
+      return apiRequest(`/api/assignments/${assignmentId}/submit`, {
+        method: 'POST',
+        body: JSON.stringify({ submission })
+      });
     },
     onSuccess: () => {
       toast({ title: "Assignment Submitted", description: "Your assignment has been submitted successfully!" });
@@ -66,23 +68,24 @@ export default function StudentAssignments() {
     }
   });
 
-  // Complete assignment mutation (awards tokens)
-  const completeAssignmentMutation = useMutation({
+  // Request completion approval (no tokens awarded yet)
+  const requestCompletionMutation = useMutation({
     mutationFn: async (assignmentId: string) => {
-      const response = await apiRequest('POST', `/api/assignments/${assignmentId}/complete`, {});
-      return response.json();
+      return apiRequest(`/api/assignments/${assignmentId}/request-completion`, {
+        method: 'POST',
+        body: JSON.stringify({})
+      });
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       toast({ 
-        title: "Assignment Completed! 🎉", 
-        description: `You earned ${data.tokensAwarded} tokens! Your balance is now ${data.newBalance} tokens.`,
+        title: "Completion Requested! ✋", 
+        description: "Your teacher will review and approve your completion request.",
         duration: 5000
       });
       queryClient.invalidateQueries({ queryKey: ["/api/students", user?.id, "assignments"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] }); // Refresh user tokens
     },
     onError: () => {
-      toast({ title: "Error", description: "Failed to complete assignment. Please try again.", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to request completion. Please try again.", variant: "destructive" });
     }
   });
 
@@ -111,6 +114,8 @@ export default function StudentAssignments() {
         return <Badge variant="outline" className="bg-yellow-100 text-yellow-600 border-yellow-200">⏳ Under Review</Badge>;
       case 'graded':
         return <Badge variant="outline" className="bg-purple-100 text-purple-600 border-purple-200">✅ Ready to Complete</Badge>;
+      case 'pending_approval':
+        return <Badge variant="outline" className="bg-orange-100 text-orange-600 border-orange-200">⏳ Awaiting Approval</Badge>;
       case 'completed':
         return <Badge variant="outline" className="bg-green-100 text-green-600 border-green-200">🎉 Completed</Badge>;
       default:
@@ -126,6 +131,8 @@ export default function StudentAssignments() {
         return "fas fa-paper-plane";
       case 'graded':
         return "fas fa-star";
+      case 'pending_approval':
+        return "fas fa-clock";
       case 'completed':
         return "fas fa-check-circle";
       default:
@@ -201,7 +208,7 @@ export default function StudentAssignments() {
 
       {/* Assignments Grid */}
       {filteredAssignments.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {filteredAssignments.map((assignment, index) => {
             const categoryInfo = getCategoryInfo(assignment.category);
             
@@ -212,53 +219,67 @@ export default function StudentAssignments() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
               >
-                <Card className={`relative overflow-hidden hover:shadow-xl transition-all duration-300 group ${assignment.status === 'completed' ? 'border-green-500 bg-green-50' : ''}`}>
+                <Card className={`relative overflow-hidden hover:shadow-xl transition-all duration-300 group h-full flex flex-col ${
+                  assignment.status === 'completed' ? 'border-green-500 bg-green-50' : 
+                  assignment.status === 'pending_approval' ? 'border-orange-300 bg-orange-50' : ''
+                }`}>
                   <CardHeader className="pb-4">
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-3 flex-1">
-                        <div className="flex items-start gap-3">
-                          <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-white shadow-lg ${assignment.status === 'completed' ? 'bg-gradient-to-r from-green-500 to-emerald-600' : 'bg-gradient-to-r from-blue-500 to-purple-600'} group-hover:scale-105 transition-transform duration-300`}>
-                            <i className={`${getStatusIcon(assignment.status)} text-xl`}></i>
-                          </div>
-                          <div className="flex-1">
-                            <CardTitle className="text-lg font-semibold text-gray-800 group-hover:text-blue-600 transition-colors leading-tight">
-                              {assignment.title}
-                            </CardTitle>
-                            <div className="flex items-center gap-2 mt-2">
-                              {getStatusBadge(assignment.status)}
-                              <Badge variant="outline" className={categoryInfo.color}>
-                                <i className={`${categoryInfo.icon} mr-1`}></i>
-                                {categoryInfo.label}
-                              </Badge>
-                            </div>
-                          </div>
+                    <div className="space-y-4">
+                      {/* Status and Category Row */}
+                      <div className="flex items-center justify-between">
+                        {getStatusBadge(assignment.status)}
+                        <Badge variant="outline" className={categoryInfo.color}>
+                          <i className={`${categoryInfo.icon} mr-1`}></i>
+                          {categoryInfo.label}
+                        </Badge>
+                      </div>
+                      
+                      {/* Icon and Title Row */}
+                      <div className="flex items-start gap-4">
+                        <div className={`w-16 h-16 rounded-xl flex items-center justify-center text-white shadow-lg ${
+                          assignment.status === 'completed' ? 'bg-gradient-to-r from-green-500 to-emerald-600' : 
+                          assignment.status === 'pending_approval' ? 'bg-gradient-to-r from-orange-500 to-orange-600' :
+                          'bg-gradient-to-r from-blue-500 to-purple-600'
+                        } group-hover:scale-105 transition-transform duration-300`}>
+                          <i className={`${getStatusIcon(assignment.status)} text-xl`}></i>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <CardTitle className="text-lg font-semibold text-gray-800 group-hover:text-blue-600 transition-colors leading-tight mb-2">
+                            {assignment.title}
+                          </CardTitle>
+                          {assignment.description && (
+                            <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">{assignment.description}</p>
+                          )}
                         </div>
                       </div>
                     </div>
                   </CardHeader>
                   
-                  <CardContent className="pt-0">
-                    <div className="space-y-4">
-                      {assignment.description && (
-                        <p className="text-sm text-gray-600 line-clamp-3 leading-relaxed">{assignment.description}</p>
-                      )}
-                      
-                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
-                            <i className="fas fa-coins text-yellow-600 text-sm"></i>
+                  <CardContent className="pt-0 flex-1 flex flex-col">
+                    <div className="space-y-4 flex-1">
+                      {/* Reward and Due Date Info */}
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                          <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
+                            <i className="fas fa-coins text-yellow-600"></i>
                           </div>
-                          <div>
-                            <p className="font-semibold text-yellow-700">{assignment.tokenReward} tokens</p>
-                            <p className="text-xs text-gray-600">Reward for completion</p>
+                          <div className="flex-1">
+                            <p className="font-semibold text-yellow-800">{assignment.tokenReward} tokens</p>
+                            <p className="text-xs text-yellow-600">Reward for completion</p>
                           </div>
                         </div>
+                        
                         {assignment.dueDate && (
-                          <div className="text-right">
-                            <p className="text-sm font-medium text-gray-700">
-                              {new Date(assignment.dueDate).toLocaleDateString()}
-                            </p>
-                            <p className="text-xs text-gray-500">Due date</p>
+                          <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                              <i className="fas fa-calendar text-blue-600"></i>
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-semibold text-blue-800">
+                                {new Date(assignment.dueDate).toLocaleDateString()}
+                              </p>
+                              <p className="text-xs text-blue-600">Due date</p>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -267,12 +288,12 @@ export default function StudentAssignments() {
                         <div className="p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <i className="fas fa-star text-yellow-500"></i>
+                              <i className="fas fa-star text-green-600"></i>
                               <span className="font-semibold text-green-800">Grade: {assignment.grade}%</span>
                             </div>
                           </div>
                           {assignment.feedback && (
-                            <p className="text-sm text-green-700 mt-2 italic">"{assignment.feedback}"</p>
+                            <p className="text-sm text-green-700 mt-2">"{assignment.feedback}"</p>
                           )}
                         </div>
                       )}
@@ -285,8 +306,19 @@ export default function StudentAssignments() {
                           </div>
                         </div>
                       )}
+                      
+                      {assignment.status === 'pending_approval' && (
+                        <div className="p-3 bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg border border-orange-200">
+                          <div className="flex items-center gap-2">
+                            <i className="fas fa-clock text-orange-600"></i>
+                            <span className="font-semibold text-orange-800">Awaiting Teacher Approval</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
 
-                      <div className="flex items-center gap-2 pt-2">
+                    {/* Action Buttons - Fixed at bottom */}
+                    <div className="flex items-center gap-2 pt-4 mt-auto">
                         {assignment.status === 'assigned' ? (
                           <Button 
                             className="flex-1"
@@ -306,22 +338,27 @@ export default function StudentAssignments() {
                           </Button>
                         ) : assignment.status === 'graded' ? (
                           <Button 
-                            className="flex-1 bg-green-600 hover:bg-green-700"
-                            onClick={() => completeAssignmentMutation.mutate(assignment.id)}
-                            disabled={completeAssignmentMutation.isPending}
-                            data-testid={`button-complete-${assignment.id}`}
+                            className="flex-1 bg-purple-600 hover:bg-purple-700"
+                            onClick={() => requestCompletionMutation.mutate(assignment.id)}
+                            disabled={requestCompletionMutation.isPending}
+                            data-testid={`button-request-completion-${assignment.id}`}
                           >
-                            {completeAssignmentMutation.isPending ? (
+                            {requestCompletionMutation.isPending ? (
                               <>
                                 <i className="fas fa-spinner fa-spin mr-2"></i>
-                                Marking Complete...
+                                Requesting...
                               </>
                             ) : (
                               <>
-                                <i className="fas fa-check mr-2"></i>
-                                Mark as Complete
+                                <i className="fas fa-hand-paper mr-2"></i>
+                                Request Completion
                               </>
                             )}
+                          </Button>
+                        ) : assignment.status === 'pending_approval' ? (
+                          <Button variant="outline" className="flex-1 bg-orange-50 border-orange-200 text-orange-700" disabled>
+                            <i className="fas fa-clock mr-2"></i>
+                            Awaiting Approval
                           </Button>
                         ) : (
                           <Button variant="outline" className="flex-1 bg-green-50 border-green-200 text-green-700" disabled>
@@ -332,7 +369,7 @@ export default function StudentAssignments() {
                         
                         <Dialog>
                           <DialogTrigger asChild>
-                            <Button variant="outline" size="sm">
+                            <Button variant="outline" size="sm" data-testid={`button-view-${assignment.id}`}>
                               <i className="fas fa-eye"></i>
                             </Button>
                           </DialogTrigger>

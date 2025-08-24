@@ -1397,14 +1397,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Complete assignment and award tokens
-  app.post('/api/assignments/:assignmentId/complete', authenticate, async (req: any, res) => {
+  // Student requests completion approval (no tokens yet)
+  app.post('/api/assignments/:assignmentId/request-completion', authenticate, async (req: any, res) => {
     try {
       const { assignmentId } = req.params;
       const userId = req.user.id;
       
       if (req.user.role !== 'student') {
-        return res.status(403).json({ message: 'Only students can complete assignments' });
+        return res.status(403).json({ message: 'Only students can request completion' });
       }
       
       // Get assignment details
@@ -1413,14 +1413,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Assignment not found' });
       }
       
-      // Check if assignment is graded and ready for completion
-      if (assignment.status !== 'graded') {
-        return res.status(400).json({ message: 'Assignment must be graded before completion' });
+      // SECURITY: Verify student owns this assignment
+      if (assignment.studentId !== userId) {
+        return res.status(403).json({ message: 'You can only request completion for your own assignments' });
       }
       
-      // Check if already completed
-      if (assignment.status === 'completed') {
-        return res.status(400).json({ message: 'Assignment already completed' });
+      // Check if assignment is graded and ready for completion request
+      if (assignment.status !== 'graded') {
+        return res.status(400).json({ message: 'Assignment must be graded before requesting completion' });
       }
       
       // Verify student enrollment in this classroom
@@ -1434,33 +1434,105 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Access denied to this assignment' });
       }
       
-      // Mark assignment as completed
-      await storage.updateAssignment(assignmentId, { status: 'completed' });
-      
-      // Award tokens to the student
-      const result = await storage.awardTokens({
-        studentIds: [userId],
-        amount: assignment.tokenReward,
-        category: 'Assignment Completion',
-        description: `Completed assignment: ${assignment.title}`,
-        referenceType: 'assignment',
-        referenceId: assignmentId,
-        createdBy: userId, // Student completed it themselves
-        classroomId: assignment.classroomId
-      });
-      
-      // Get updated wallet balance
-      const wallet = await storage.getStudentWallet(userId, assignment.classroomId);
-      const newBalance = wallet ? parseFloat(wallet.currentBalance) : 0;
+      // Mark assignment as pending approval
+      await storage.updateAssignment(assignmentId, { status: 'pending_approval' });
       
       res.json({
-        message: 'Assignment completed successfully',
-        tokensAwarded: assignment.tokenReward,
-        newBalance: newBalance,
-        transaction: result.transactions[0]
+        message: 'Completion request submitted successfully'
       });
     } catch (error) {
-      console.error('Error completing assignment:', error);
+      console.error('Error requesting completion:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Teacher approves completion and awards tokens
+  app.post('/api/assignments/:assignmentId/approve-completion', authenticate, async (req: any, res) => {
+    try {
+      const { assignmentId } = req.params;
+      
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Only teachers can approve completions' });
+      }
+      
+      // Get assignment details
+      const assignment = await storage.getAssignment(assignmentId);
+      if (!assignment) {
+        return res.status(404).json({ message: 'Assignment not found' });
+      }
+      
+      // SECURITY: Verify teacher owns this classroom
+      const classroom = await storage.getClassroom(assignment.classroomId);
+      if (!classroom || classroom.teacherId !== req.user.id) {
+        return res.status(403).json({ message: 'You can only approve assignments from your own classroom' });
+      }
+      
+      // Check if assignment is pending approval
+      if (assignment.status !== 'pending_approval') {
+        return res.status(400).json({ message: 'Assignment is not pending approval' });
+      }
+      
+      // TRANSACTION: Atomic completion and token award
+      try {
+        // Mark assignment as completed with conditional update
+        const updateResult = await storage.updateAssignmentWithCondition(
+          assignmentId, 
+          { status: 'completed' },
+          { status: 'pending_approval' }
+        );
+        
+        if (!updateResult) {
+          return res.status(409).json({ message: 'Assignment has already been processed' });
+        }
+        
+        // Award tokens to the student
+        const result = await storage.awardTokens({
+          studentIds: [assignment.studentId],
+          amount: assignment.tokenReward,
+          category: 'Assignment Completion',
+          description: `Completed assignment: ${assignment.title}`,
+          referenceType: 'assignment',
+          referenceId: assignmentId,
+          createdBy: req.user.id, // Teacher approved it
+          classroomId: assignment.classroomId
+        });
+        
+        res.json({
+          message: 'Assignment completion approved and tokens awarded',
+          tokensAwarded: assignment.tokenReward,
+          transaction: result.transactions[0]
+        });
+      } catch (transactionError) {
+        console.error('Transaction error during approval:', transactionError);
+        res.status(500).json({ message: 'Failed to complete approval process' });
+      }
+    } catch (error) {
+      console.error('Error approving completion:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Get assignments pending approval for a classroom
+  app.get('/api/classrooms/:classroomId/assignments/pending-approval', authenticate, async (req: any, res) => {
+    try {
+      const { classroomId } = req.params;
+      
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Only teachers can view pending approvals' });
+      }
+      
+      // SECURITY: Verify teacher owns this classroom
+      const classroom = await storage.getClassroom(classroomId);
+      if (!classroom || classroom.teacherId !== req.user.id) {
+        return res.status(403).json({ message: 'You can only view pending approvals from your own classroom' });
+      }
+      
+      // Get all assignments for this classroom with pending_approval status, including student info
+      const assignments = await storage.getAssignmentsWithStudentInfo(classroomId, { status: 'pending_approval' });
+      
+      res.json(assignments);
+    } catch (error) {
+      console.error('Error getting pending approvals:', error);
       res.status(500).json({ message: 'Internal server error' });
     }
   });

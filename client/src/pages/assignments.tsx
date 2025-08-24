@@ -11,6 +11,7 @@ import { AssignmentFilters } from "@/components/assignments/AssignmentFilters";
 import { AssignmentGrid } from "@/components/assignments/AssignmentGrid";
 import { CreateAssignmentDialog } from "@/components/assignments/CreateAssignmentDialog";
 import { AssignmentCreator } from "@/components/teacher/assignment-creator";
+import { PendingApprovalsSection } from "@/components/teacher/pending-approvals-section";
 
 export default function Assignments() {
   const { user } = useAuth();
@@ -105,6 +106,9 @@ export default function Assignments() {
 
   return (
     <div className="container mx-auto px-4 py-6 space-y-6" data-testid="assignments-page">
+      {/* Pending Approvals Section */}
+      <PendingApprovalsSection classroomId={currentClassroom.id} />
+      
       <AssignmentFilters
         selectedCategory={selectedCategory}
         onCategoryChange={setSelectedCategory}

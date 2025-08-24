@@ -1401,16 +1401,83 @@ export class DatabaseStorage implements IStorage {
     category?: string;
     visibleToStudents?: boolean;
   }): Promise<any[]> {
-    let query = db
-      .select()
-      .from(assignments)
-      .where(eq(assignments.classroomId, classroomId));
+    const conditions = [eq(assignments.classroomId, classroomId)];
     
     if (filters?.category) {
-      query = query.where(eq(assignments.category, filters.category));
+      conditions.push(eq(assignments.category, filters.category));
     }
     
-    return await query.orderBy(desc(assignments.dueDate), desc(assignments.createdAt));
+    if (filters?.status) {
+      conditions.push(eq(assignments.status, filters.status));
+    }
+    
+    return await db
+      .select()
+      .from(assignments)
+      .where(and(...conditions))
+      .orderBy(desc(assignments.dueDate), desc(assignments.createdAt));
+  }
+
+  async getAssignmentsWithStudentInfo(classroomId: string, filters?: {
+    status?: string;
+    category?: string;
+    visibleToStudents?: boolean;
+  }): Promise<any[]> {
+    const conditions = [eq(assignments.classroomId, classroomId)];
+    
+    if (filters?.category) {
+      conditions.push(eq(assignments.category, filters.category));
+    }
+    
+    if (filters?.status) {
+      conditions.push(eq(assignments.status, filters.status));
+    }
+    
+    const result = await db
+      .select({
+        id: assignments.id,
+        title: assignments.title,
+        category: assignments.category,
+        tokenReward: assignments.tokenReward,
+        dueDate: assignments.dueDate,
+        submittedAt: assignments.submittedAt,
+        grade: assignments.grade,
+        status: assignments.status,
+        studentId: assignments.studentId,
+        studentName: users.name
+      })
+      .from(assignments)
+      .leftJoin(users, eq(users.id, assignments.studentId))
+      .where(and(...conditions))
+      .orderBy(desc(assignments.dueDate), desc(assignments.createdAt));
+      
+    return result;
+  }
+
+  async updateAssignmentWithCondition(assignmentId: string, updates: any, conditions: any): Promise<boolean> {
+    const basicUpdates: any = {};
+    if (updates.title) basicUpdates.title = updates.title;
+    if (updates.description) basicUpdates.description = updates.description;
+    if (updates.category) basicUpdates.category = updates.category;
+    if (updates.tokenReward !== undefined) basicUpdates.tokenReward = updates.tokenReward;
+    if (updates.dueDate !== undefined) basicUpdates.dueDate = updates.dueDate;
+    if (updates.status !== undefined) basicUpdates.status = updates.status;
+    if (updates.resources !== undefined) basicUpdates.resources = updates.resources;
+    if (updates.isActive !== undefined) basicUpdates.isActive = updates.isActive;
+    basicUpdates.updatedAt = new Date();
+    
+    const whereConditions = [eq(assignments.id, assignmentId)];
+    if (conditions.status) {
+      whereConditions.push(eq(assignments.status, conditions.status));
+    }
+    
+    const result = await db
+      .update(assignments)
+      .set(basicUpdates)
+      .where(and(...whereConditions))
+      .returning();
+    
+    return result.length > 0;
   }
 
   async getAssignment(assignmentId: string): Promise<any | undefined> {
