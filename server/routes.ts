@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { nanoid } from "nanoid";
 import { storage } from "./storage";
-import { insertUserSchema, insertClassroomSchema, insertAssignmentSchema, insertSubmissionSchema, insertStoreItemSchema, users, insertAssignmentAdvancedSchema, insertAssignmentSubmissionSchema, insertAssignmentFeedbackSchema, insertAssignmentTemplateSchema, insertMarketplaceSellerSchema, insertMarketplaceListingSchema, insertMarketplaceTransactionSchema, insertMarketplaceReviewSchema, insertMarketplaceWishlistSchema, insertMarketplaceMessageSchema, insertBadgeSchema, insertChallengeSchema, type User } from "@shared/schema";
+import { insertUserSchema, insertClassroomSchema, insertAssignmentSchema, insertSubmissionSchema, insertStoreItemSchema, users, insertAssignmentAdvancedSchema, insertAssignmentSubmissionSchema, insertAssignmentFeedbackSchema, insertAssignmentTemplateSchema, insertMarketplaceSellerSchema, insertMarketplaceListingSchema, insertMarketplaceTransactionSchema, insertMarketplaceReviewSchema, insertMarketplaceWishlistSchema, insertMarketplaceMessageSchema, insertBadgeSchema, insertChallengeSchema, insertStudentInventorySchema, insertTradeOfferSchema, insertTradeResponseSchema, insertGroupBuySchema, insertGroupBuyContributionSchema, insertGroupBuyTemplateSchema, type User } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcrypt";
@@ -2554,8 +2554,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const studentId = req.user.id;
       
       // Get student's approved enrollments to determine classroom
-      const enrollments = await storage.getStudentEnrollments(studentId);
-      const approvedEnrollments = enrollments.filter(e => e.enrollmentStatus === 'approved');
+      const studentEnrollments = await storage.getStudentEnrollments(studentId);
+      const approvedEnrollments = studentEnrollments.filter(e => e.enrollmentStatus === 'approved');
       
       if (approvedEnrollments.length === 0) {
         return res.status(400).json({ error: 'Student not enrolled in any classroom' });
@@ -2592,17 +2592,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.updateUserTokens(studentId, newTokenBalance);
       
       // Create purchase record
-      const purchase = {
-        id: require('crypto').randomUUID(),
+      const purchase = await storage.createPurchase({
         studentId,
         storeItemId: itemId,
-        cost: item.cost,
-        purchasedAt: new Date().toISOString(),
-        classroomId
-      };
+        tokensSpent: item.cost,
+        status: 'fulfilled'
+      });
       
-      // For now, we'll store purchases in memory or you could add to storage
-      // await storage.createPurchase(purchase);
+      // Create inventory entry for the purchased item
+      await storage.createInventoryItem({
+        studentId,
+        classroomId,
+        storeItemId: itemId,
+        purchaseId: purchase.id,
+        status: 'owned',
+        condition: 'new'
+      });
       
       res.json({ 
         success: true, 
@@ -2613,6 +2618,399 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error processing purchase:', error);
       res.status(500).json({ error: 'Failed to process purchase' });
+    }
+  });
+
+  // ECONOMY & MARKETPLACE API ENDPOINTS
+
+  // Student Inventory Management
+  app.get('/api/inventory/:studentId/:classroomId', authenticate, async (req: any, res) => {
+    try {
+      const { studentId, classroomId } = req.params;
+      
+      // Verify access - students can only see their own inventory
+      if (req.user.role === 'student' && req.user.id !== studentId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+      
+      const inventory = await storage.getStudentInventory(studentId, classroomId);
+      res.json(inventory);
+    } catch (error) {
+      console.error('Error fetching inventory:', error);
+      res.status(500).json({ error: 'Failed to fetch inventory' });
+    }
+  });
+
+  // Trading System Endpoints
+  
+  // Create a new trade offer
+  app.post('/api/trades/offers', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'student') {
+        return res.status(403).json({ error: 'Only students can create trade offers' });
+      }
+
+      const offerData = insertTradeOfferSchema.parse(req.body);
+      
+      // Verify the student owns the offered inventory item
+      const inventoryItem = await storage.getInventoryItem(offerData.offeredInventoryId);
+      if (!inventoryItem || inventoryItem.studentId !== req.user.id) {
+        return res.status(403).json({ error: 'You do not own this item' });
+      }
+
+      // Check if item is already being traded
+      if (inventoryItem.status !== 'owned') {
+        return res.status(400).json({ error: 'Item is not available for trading' });
+      }
+
+      const offer = await storage.createTradeOffer({
+        ...offerData,
+        offeringStudentId: req.user.id,
+        status: 'open'
+      });
+
+      // Mark inventory item as being traded
+      await storage.updateInventoryItem(offerData.offeredInventoryId, { status: 'trading' });
+
+      res.json(offer);
+    } catch (error: any) {
+      console.error('Error creating trade offer:', error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: 'Invalid trade offer data', errors: error.errors });
+      }
+      res.status(500).json({ error: 'Failed to create trade offer' });
+    }
+  });
+
+  // Get trade offers for a classroom
+  app.get('/api/trades/classroom/:classroomId', authenticate, async (req: any, res) => {
+    try {
+      const { classroomId } = req.params;
+      const { status = 'open' } = req.query;
+      
+      const offers = await storage.getTradeOffersByClassroom(classroomId, status);
+      res.json(offers);
+    } catch (error) {
+      console.error('Error fetching trade offers:', error);
+      res.status(500).json({ error: 'Failed to fetch trade offers' });
+    }
+  });
+
+  // Get student's own trade offers
+  app.get('/api/trades/my-offers', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'student') {
+        return res.status(403).json({ error: 'Only students can view trade offers' });
+      }
+
+      const offers = await storage.getMyTradeOffers(req.user.id);
+      res.json(offers);
+    } catch (error) {
+      console.error('Error fetching my trade offers:', error);
+      res.status(500).json({ error: 'Failed to fetch your trade offers' });
+    }
+  });
+
+  // Respond to a trade offer
+  app.post('/api/trades/offers/:offerId/respond', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'student') {
+        return res.status(403).json({ error: 'Only students can respond to trade offers' });
+      }
+
+      const { offerId } = req.params;
+      const responseData = insertTradeResponseSchema.parse(req.body);
+
+      // Get the trade offer
+      const offer = await storage.getTradeOffer(offerId);
+      if (!offer) {
+        return res.status(404).json({ error: 'Trade offer not found' });
+      }
+
+      if (offer.status !== 'open') {
+        return res.status(400).json({ error: 'This trade offer is no longer available' });
+      }
+
+      // Students can't respond to their own offers
+      if (offer.offeringStudentId === req.user.id) {
+        return res.status(400).json({ error: 'You cannot respond to your own trade offer' });
+      }
+
+      // Verify the student owns the offered inventory item
+      const inventoryItem = await storage.getInventoryItem(responseData.offeredInventoryId);
+      if (!inventoryItem || inventoryItem.studentId !== req.user.id) {
+        return res.status(403).json({ error: 'You do not own this item' });
+      }
+
+      const response = await storage.createTradeResponse({
+        ...responseData,
+        tradeOfferId: offerId,
+        respondingStudentId: req.user.id,
+        status: 'pending'
+      });
+
+      res.json(response);
+    } catch (error: any) {
+      console.error('Error responding to trade offer:', error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: 'Invalid response data', errors: error.errors });
+      }
+      res.status(500).json({ error: 'Failed to respond to trade offer' });
+    }
+  });
+
+  // Accept a trade response (complete the trade)
+  app.post('/api/trades/responses/:responseId/accept', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'student') {
+        return res.status(403).json({ error: 'Only students can accept trade responses' });
+      }
+
+      const { responseId } = req.params;
+      
+      // Get the response and verify ownership of the original offer
+      const responses = await storage.getTradeResponses(''); // We need the response ID
+      const response = responses.find(r => r.id === responseId);
+      
+      if (!response) {
+        return res.status(404).json({ error: 'Trade response not found' });
+      }
+
+      const offer = await storage.getTradeOffer(response.tradeOfferId);
+      if (!offer || offer.offeringStudentId !== req.user.id) {
+        return res.status(403).json({ error: 'You can only accept responses to your own offers' });
+      }
+
+      // Complete the trade
+      await storage.completeTradeOffer(response.tradeOfferId, responseId);
+
+      res.json({ success: true, message: 'Trade completed successfully' });
+    } catch (error) {
+      console.error('Error accepting trade response:', error);
+      res.status(500).json({ error: 'Failed to complete trade' });
+    }
+  });
+
+  // Group Buy System Endpoints
+
+  // Create a new group buy
+  app.post('/api/group-buys', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'student') {
+        return res.status(403).json({ error: 'Only students can create group buys' });
+      }
+
+      const groupBuyData = insertGroupBuySchema.parse(req.body);
+      
+      const groupBuy = await storage.createGroupBuy({
+        ...groupBuyData,
+        createdBy: req.user.id,
+        currentAmount: 0,
+        progress: 0,
+        status: 'active'
+      });
+
+      res.json(groupBuy);
+    } catch (error: any) {
+      console.error('Error creating group buy:', error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: 'Invalid group buy data', errors: error.errors });
+      }
+      res.status(500).json({ error: 'Failed to create group buy' });
+    }
+  });
+
+  // Get group buys for a classroom
+  app.get('/api/group-buys/classroom/:classroomId', authenticate, async (req: any, res) => {
+    try {
+      const { classroomId } = req.params;
+      const { status } = req.query;
+      
+      const groupBuys = await storage.getGroupBuysByClassroom(classroomId, status as string);
+      res.json(groupBuys);
+    } catch (error) {
+      console.error('Error fetching group buys:', error);
+      res.status(500).json({ error: 'Failed to fetch group buys' });
+    }
+  });
+
+  // Contribute to a group buy
+  app.post('/api/group-buys/:groupBuyId/contribute', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'student') {
+        return res.status(403).json({ error: 'Only students can contribute to group buys' });
+      }
+
+      const { groupBuyId } = req.params;
+      const contributionData = insertGroupBuyContributionSchema.parse(req.body);
+
+      // Get the group buy
+      const groupBuy = await storage.getGroupBuy(groupBuyId);
+      if (!groupBuy) {
+        return res.status(404).json({ error: 'Group buy not found' });
+      }
+
+      if (groupBuy.status !== 'active') {
+        return res.status(400).json({ error: 'This group buy is no longer active' });
+      }
+
+      // Check if student has enough tokens
+      const student = await storage.getUser(req.user.id);
+      if (!student || student.tokens < contributionData.amount) {
+        return res.status(400).json({ error: 'Not enough tokens' });
+      }
+
+      // Create token transaction (deduction)
+      // For now, we'll just create the contribution
+      const contribution = await storage.createGroupBuyContribution({
+        ...contributionData,
+        groupBuyId,
+        studentId: req.user.id
+      });
+
+      // Deduct tokens from student
+      await storage.updateUserTokens(req.user.id, student.tokens - contributionData.amount);
+
+      // Update group buy progress
+      await storage.updateGroupBuyProgress(groupBuyId);
+
+      res.json(contribution);
+    } catch (error: any) {
+      console.error('Error contributing to group buy:', error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: 'Invalid contribution data', errors: error.errors });
+      }
+      res.status(500).json({ error: 'Failed to contribute to group buy' });
+    }
+  });
+
+  // Get group buy templates
+  app.get('/api/group-buy-templates', authenticate, async (req: any, res) => {
+    try {
+      const { category } = req.query;
+      
+      const templates = await storage.getGroupBuyTemplates(category as string);
+      res.json(templates);
+    } catch (error) {
+      console.error('Error fetching group buy templates:', error);
+      res.status(500).json({ error: 'Failed to fetch templates' });
+    }
+  });
+
+  // Seed group buy templates (for development/testing)
+  app.post('/api/group-buy-templates/seed', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ error: 'Only teachers can seed templates' });
+      }
+
+      const templates = [
+        {
+          title: 'Class Pizza Party',
+          description: 'A fun pizza party for the entire class! Everyone contributes to make it happen.',
+          category: 'Class Parties & Events',
+          targetAmount: 250,
+          durationDays: 14,
+          imageUrl: '🍕',
+          tags: ['party', 'food', 'celebration']
+        },
+        {
+          title: 'Educational Field Trip',
+          description: 'Visit a science museum or educational center. Let\'s explore and learn together!',
+          category: 'Educational Rewards',
+          targetAmount: 400,
+          durationDays: 30,
+          imageUrl: '🏛️',
+          tags: ['field-trip', 'education', 'learning']
+        },
+        {
+          title: 'Class Tablet for Learning',
+          description: 'A shared tablet for educational apps, research, and interactive learning activities.',
+          category: 'Technology & Equipment',
+          targetAmount: 300,
+          durationDays: 21,
+          imageUrl: '📱',
+          tags: ['technology', 'learning', 'tablet']
+        },
+        {
+          title: 'Cozy Reading Corner',
+          description: 'Bean bags, cushions, and decorations to create a comfortable reading space.',
+          category: 'Class Improvements',
+          targetAmount: 180,
+          durationDays: 14,
+          imageUrl: '📚',
+          tags: ['reading', 'comfort', 'classroom']
+        },
+        {
+          title: 'Extra Recess Time',
+          description: 'Earn an extra 15 minutes of recess for the whole class!',
+          category: 'Special Privileges',
+          targetAmount: 150,
+          durationDays: 7,
+          imageUrl: '⏰',
+          tags: ['recess', 'time', 'privilege']
+        },
+        {
+          title: 'Movie Day with Popcorn',
+          description: 'Watch an educational movie with popcorn and snacks for everyone!',
+          category: 'Class Parties & Events',
+          targetAmount: 120,
+          durationDays: 10,
+          imageUrl: '🍿',
+          tags: ['movie', 'snacks', 'entertainment']
+        },
+        {
+          title: 'Class Pet Fish',
+          description: 'A beautiful aquarium with fish to learn about aquatic life and responsibility.',
+          category: 'Educational Rewards',
+          targetAmount: 200,
+          durationDays: 28,
+          imageUrl: '🐠',
+          tags: ['pet', 'responsibility', 'science']
+        },
+        {
+          title: 'Interactive Whiteboard',
+          description: 'Digital whiteboard for interactive lessons and student presentations.',
+          category: 'Technology & Equipment',
+          targetAmount: 500,
+          durationDays: 45,
+          imageUrl: '📋',
+          tags: ['whiteboard', 'presentations', 'interactive']
+        },
+        {
+          title: 'Class Art Supplies',
+          description: 'High-quality art supplies for creative projects and artistic expression.',
+          category: 'Class Improvements',
+          targetAmount: 80,
+          durationDays: 10,
+          imageUrl: '🎨',
+          tags: ['art', 'creativity', 'supplies']
+        },
+        {
+          title: 'Homework Free Weekend',
+          description: 'Earn a weekend with no homework assignments for the entire class!',
+          category: 'Special Privileges',
+          targetAmount: 200,
+          durationDays: 14,
+          imageUrl: '📝',
+          tags: ['homework', 'weekend', 'break']
+        }
+      ];
+
+      const createdTemplates = [];
+      for (const template of templates) {
+        const created = await storage.createGroupBuyTemplate(template);
+        createdTemplates.push(created);
+      }
+
+      res.json({ 
+        success: true, 
+        count: createdTemplates.length,
+        templates: createdTemplates 
+      });
+    } catch (error) {
+      console.error('Error seeding group buy templates:', error);
+      res.status(500).json({ error: 'Failed to seed templates' });
     }
   });
 

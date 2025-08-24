@@ -20,6 +20,7 @@ const studentNavigation = [
   { path: '/', name: 'Dashboard', icon: 'fas fa-home' },
   { path: '/earn', name: 'Earn', icon: 'fas fa-coins' },
   { path: '/store', name: 'Token Store', icon: 'fas fa-store' },
+  { path: '/economy', name: 'Economy', icon: 'fas fa-exchange-alt' },
   { path: '/announcements', name: 'Announcements', icon: 'fas fa-bullhorn' },
   { path: '/leaderboard', name: 'Leaderboard', icon: 'fas fa-trophy' },
 ];

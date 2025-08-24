@@ -25,6 +25,19 @@ import {
   storePurchases,
   studentWishlists,
   storeAnalytics,
+  // Economy & Marketplace Tables
+  studentInventory,
+  tradeOffers,
+  tradeResponses,
+  groupBuys,
+  groupBuyContributions,
+  groupBuyTemplates,
+  marketplaceSellers,
+  marketplaceListings,
+  marketplaceTransactions,
+  marketplaceReviews,
+  marketplaceWishlists,
+  marketplaceMessages,
   type User,
   type InsertUser,
   type Classroom,
@@ -53,6 +66,25 @@ import {
   type ChallengeProgressType,
   // Phase 1C Token Economy Types
   type StudentWallet,
+  // Economy & Marketplace Types
+  type StudentInventory,
+  type InsertStudentInventory,
+  type TradeOffer,
+  type InsertTradeOffer,
+  type TradeResponse,
+  type InsertTradeResponse,
+  type GroupBuy,
+  type InsertGroupBuy,
+  type GroupBuyContribution,
+  type InsertGroupBuyContribution,
+  type GroupBuyTemplate,
+  type InsertGroupBuyTemplate,
+  type MarketplaceSeller,
+  type InsertMarketplaceSeller,
+  type MarketplaceListing,
+  type InsertMarketplaceListing,
+  type MarketplaceTransaction,
+  type InsertMarketplaceTransaction,
   type InsertStudentWallet,
   type TokenTransaction,
   type InsertTokenTransaction,
@@ -421,6 +453,37 @@ export interface IStorage {
     topSellers: any[];
     transactionsByMonth: any[];
   }>;
+
+  // Economy & Marketplace System Methods
+  // Student Inventory Management
+  createInventoryItem(item: InsertStudentInventory): Promise<StudentInventory>;
+  getStudentInventory(studentId: string, classroomId: string): Promise<StudentInventory[]>;
+  getInventoryItem(inventoryId: string): Promise<StudentInventory | null>;
+  updateInventoryItem(inventoryId: string, updates: Partial<InsertStudentInventory>): Promise<StudentInventory>;
+  deleteInventoryItem(inventoryId: string): Promise<void>;
+
+  // Trading System Methods
+  createTradeOffer(offer: InsertTradeOffer): Promise<TradeOffer>;
+  getTradeOffer(offerId: string): Promise<TradeOffer | null>;
+  getTradeOffersByClassroom(classroomId: string, status?: string): Promise<TradeOffer[]>;
+  getMyTradeOffers(studentId: string): Promise<TradeOffer[]>;
+  updateTradeOffer(offerId: string, updates: Partial<InsertTradeOffer>): Promise<TradeOffer>;
+  createTradeResponse(response: InsertTradeResponse): Promise<TradeResponse>;
+  getTradeResponses(offerId: string): Promise<TradeResponse[]>;
+  updateTradeResponse(responseId: string, updates: Partial<InsertTradeResponse>): Promise<TradeResponse>;
+  completeTradeOffer(offerId: string, responseId: string): Promise<void>;
+
+  // Group Buy System Methods
+  createGroupBuy(groupBuy: InsertGroupBuy): Promise<GroupBuy>;
+  getGroupBuy(groupBuyId: string): Promise<GroupBuy | null>;
+  getGroupBuysByClassroom(classroomId: string, status?: string): Promise<GroupBuy[]>;
+  updateGroupBuy(groupBuyId: string, updates: Partial<InsertGroupBuy>): Promise<GroupBuy>;
+  createGroupBuyContribution(contribution: InsertGroupBuyContribution): Promise<GroupBuyContribution>;
+  getGroupBuyContributions(groupBuyId: string): Promise<GroupBuyContribution[]>;
+  getStudentContributions(studentId: string, groupBuyId: string): Promise<GroupBuyContribution[]>;
+  updateGroupBuyProgress(groupBuyId: string): Promise<void>;
+  getGroupBuyTemplates(category?: string): Promise<GroupBuyTemplate[]>;
+  createGroupBuyTemplate(template: InsertGroupBuyTemplate): Promise<GroupBuyTemplate>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2835,6 +2898,238 @@ export class DatabaseStorage implements IStorage {
       topSellers: [], // TODO: Implement top sellers query
       transactionsByMonth: [] // TODO: Implement transactions by month query
     };
+  }
+
+  // Economy & Marketplace System Implementation
+  // Student Inventory Management
+  async createInventoryItem(item: InsertStudentInventory): Promise<StudentInventory> {
+    const [newItem] = await db.insert(studentInventory).values(item).returning();
+    return newItem;
+  }
+
+  async getStudentInventory(studentId: string, classroomId: string): Promise<StudentInventory[]> {
+    return await db
+      .select()
+      .from(studentInventory)
+      .where(and(
+        eq(studentInventory.studentId, studentId),
+        eq(studentInventory.classroomId, classroomId)
+      ))
+      .orderBy(desc(studentInventory.acquiredAt));
+  }
+
+  async getInventoryItem(inventoryId: string): Promise<StudentInventory | null> {
+    const [item] = await db
+      .select()
+      .from(studentInventory)
+      .where(eq(studentInventory.id, inventoryId));
+    return item || null;
+  }
+
+  async updateInventoryItem(inventoryId: string, updates: Partial<InsertStudentInventory>): Promise<StudentInventory> {
+    const [updated] = await db
+      .update(studentInventory)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(studentInventory.id, inventoryId))
+      .returning();
+    return updated;
+  }
+
+  async deleteInventoryItem(inventoryId: string): Promise<void> {
+    await db.delete(studentInventory).where(eq(studentInventory.id, inventoryId));
+  }
+
+  // Trading System Methods
+  async createTradeOffer(offer: InsertTradeOffer): Promise<TradeOffer> {
+    const [newOffer] = await db.insert(tradeOffers).values(offer).returning();
+    return newOffer;
+  }
+
+  async getTradeOffer(offerId: string): Promise<TradeOffer | null> {
+    const [offer] = await db
+      .select()
+      .from(tradeOffers)
+      .where(eq(tradeOffers.id, offerId));
+    return offer || null;
+  }
+
+  async getTradeOffersByClassroom(classroomId: string, status?: string): Promise<TradeOffer[]> {
+    const conditions = [eq(tradeOffers.classroomId, classroomId)];
+    if (status) {
+      conditions.push(eq(tradeOffers.status, status));
+    }
+    
+    return await db
+      .select()
+      .from(tradeOffers)
+      .where(and(...conditions))
+      .orderBy(desc(tradeOffers.createdAt));
+  }
+
+  async getMyTradeOffers(studentId: string): Promise<TradeOffer[]> {
+    return await db
+      .select()
+      .from(tradeOffers)
+      .where(or(
+        eq(tradeOffers.offeringStudentId, studentId),
+        eq(tradeOffers.acceptingStudentId, studentId)
+      ))
+      .orderBy(desc(tradeOffers.createdAt));
+  }
+
+  async updateTradeOffer(offerId: string, updates: Partial<InsertTradeOffer>): Promise<TradeOffer> {
+    const [updated] = await db
+      .update(tradeOffers)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(tradeOffers.id, offerId))
+      .returning();
+    return updated;
+  }
+
+  async createTradeResponse(response: InsertTradeResponse): Promise<TradeResponse> {
+    const [newResponse] = await db.insert(tradeResponses).values(response).returning();
+    return newResponse;
+  }
+
+  async getTradeResponses(offerId: string): Promise<TradeResponse[]> {
+    return await db
+      .select()
+      .from(tradeResponses)
+      .where(eq(tradeResponses.tradeOfferId, offerId))
+      .orderBy(desc(tradeResponses.createdAt));
+  }
+
+  async updateTradeResponse(responseId: string, updates: Partial<InsertTradeResponse>): Promise<TradeResponse> {
+    const [updated] = await db
+      .update(tradeResponses)
+      .set(updates)
+      .where(eq(tradeResponses.id, responseId))
+      .returning();
+    return updated;
+  }
+
+  async completeTradeOffer(offerId: string, responseId: string): Promise<void> {
+    // Implementation would swap inventory items between students
+    // This is a complex transaction that needs proper atomic handling
+    await db.transaction(async (tx) => {
+      // Update trade offer status
+      await tx
+        .update(tradeOffers)
+        .set({ status: 'completed', completedAt: new Date() })
+        .where(eq(tradeOffers.id, offerId));
+
+      // Update response status
+      await tx
+        .update(tradeResponses)
+        .set({ status: 'accepted' })
+        .where(eq(tradeResponses.id, responseId));
+
+      // TODO: Implement inventory swapping logic
+    });
+  }
+
+  // Group Buy System Methods
+  async createGroupBuy(groupBuy: InsertGroupBuy): Promise<GroupBuy> {
+    const [newGroupBuy] = await db.insert(groupBuys).values(groupBuy).returning();
+    return newGroupBuy;
+  }
+
+  async getGroupBuy(groupBuyId: string): Promise<GroupBuy | null> {
+    const [groupBuy] = await db
+      .select()
+      .from(groupBuys)
+      .where(eq(groupBuys.id, groupBuyId));
+    return groupBuy || null;
+  }
+
+  async getGroupBuysByClassroom(classroomId: string, status?: string): Promise<GroupBuy[]> {
+    const conditions = [eq(groupBuys.classroomId, classroomId)];
+    if (status) {
+      conditions.push(eq(groupBuys.status, status));
+    }
+    
+    return await db
+      .select()
+      .from(groupBuys)
+      .where(and(...conditions))
+      .orderBy(desc(groupBuys.createdAt));
+  }
+
+  async updateGroupBuy(groupBuyId: string, updates: Partial<InsertGroupBuy>): Promise<GroupBuy> {
+    const [updated] = await db
+      .update(groupBuys)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(groupBuys.id, groupBuyId))
+      .returning();
+    return updated;
+  }
+
+  async createGroupBuyContribution(contribution: InsertGroupBuyContribution): Promise<GroupBuyContribution> {
+    const [newContribution] = await db.insert(groupBuyContributions).values(contribution).returning();
+    return newContribution;
+  }
+
+  async getGroupBuyContributions(groupBuyId: string): Promise<GroupBuyContribution[]> {
+    return await db
+      .select()
+      .from(groupBuyContributions)
+      .where(eq(groupBuyContributions.groupBuyId, groupBuyId))
+      .orderBy(desc(groupBuyContributions.contributedAt));
+  }
+
+  async getStudentContributions(studentId: string, groupBuyId: string): Promise<GroupBuyContribution[]> {
+    return await db
+      .select()
+      .from(groupBuyContributions)
+      .where(and(
+        eq(groupBuyContributions.studentId, studentId),
+        eq(groupBuyContributions.groupBuyId, groupBuyId)
+      ))
+      .orderBy(desc(groupBuyContributions.contributedAt));
+  }
+
+  async updateGroupBuyProgress(groupBuyId: string): Promise<void> {
+    // Calculate total contributions and update progress
+    const contributionsResult = await db
+      .select({
+        totalContributions: sql<number>`COALESCE(SUM(${groupBuyContributions.amount}), 0)`
+      })
+      .from(groupBuyContributions)
+      .where(eq(groupBuyContributions.groupBuyId, groupBuyId));
+
+    const totalContributions = contributionsResult[0]?.totalContributions || 0;
+    
+    // Get the group buy to check target amount
+    const groupBuy = await this.getGroupBuy(groupBuyId);
+    if (groupBuy) {
+      const progress = Math.min((totalContributions / groupBuy.targetAmount) * 100, 100);
+      
+      await db
+        .update(groupBuys)
+        .set({ 
+          currentAmount: totalContributions,
+          progress: Math.round(progress),
+          status: progress >= 100 ? 'completed' : 'active',
+          completedAt: progress >= 100 ? new Date() : null,
+          updatedAt: new Date()
+        })
+        .where(eq(groupBuys.id, groupBuyId));
+    }
+  }
+
+  async getGroupBuyTemplates(category?: string): Promise<GroupBuyTemplate[]> {
+    const conditions = category ? [eq(groupBuyTemplates.category, category)] : [];
+    
+    return await db
+      .select()
+      .from(groupBuyTemplates)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(asc(groupBuyTemplates.category), asc(groupBuyTemplates.title));
+  }
+
+  async createGroupBuyTemplate(template: InsertGroupBuyTemplate): Promise<GroupBuyTemplate> {
+    const [newTemplate] = await db.insert(groupBuyTemplates).values(template).returning();
+    return newTemplate;
   }
 }
 

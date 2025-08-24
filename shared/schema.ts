@@ -1334,6 +1334,179 @@ export const marketplaceMessagesRelations = relations(marketplaceMessages, ({ on
   })
 }));
 
+// STUDENT INVENTORY SYSTEM
+// Track items students own for trading and marketplace listing
+export const studentInventory = pgTable("student_inventory", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  studentId: uuid("student_id").references(() => users.id).notNull(),
+  classroomId: uuid("classroom_id").references(() => classrooms.id).notNull(),
+  storeItemId: uuid("store_item_id").references(() => storeItems.id).notNull(),
+  purchaseId: uuid("purchase_id").references(() => purchases.id).notNull(),
+  
+  // Current status of the item
+  status: varchar("status", { length: 20 }).notNull().$type<'owned' | 'listed_for_trade' | 'listed_for_sale' | 'in_trade' | 'sold'>().default('owned'),
+  
+  // Trading and marketplace tracking
+  currentTradeOfferId: uuid("current_trade_offer_id"),
+  currentMarketListingId: uuid("current_market_listing_id"),
+  
+  // Item condition and notes
+  condition: varchar("condition", { length: 20 }).$type<'new' | 'like_new' | 'good' | 'fair'>().default('new'),
+  studentNotes: text("student_notes"),
+  
+  acquiredAt: timestamp("acquired_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+}, (table) => ({
+  studentIdIdx: index("student_inventory_student_id_idx").on(table.studentId),
+  classroomIdIdx: index("student_inventory_classroom_id_idx").on(table.classroomId),
+  storeItemIdIdx: index("student_inventory_store_item_id_idx").on(table.storeItemId),
+  statusIdx: index("student_inventory_status_idx").on(table.status)
+}));
+
+// PEER-TO-PEER TRADING SYSTEM
+// Trade offers for item-for-item exchanges (no tokens involved)
+export const tradeOffers = pgTable("trade_offers", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  classroomId: uuid("classroom_id").references(() => classrooms.id).notNull(),
+  
+  // Offering student and their item
+  offeringStudentId: uuid("offering_student_id").references(() => users.id).notNull(),
+  offeredInventoryId: uuid("offered_inventory_id").references(() => studentInventory.id).notNull(),
+  
+  // What they want in return (optional - can be open offer)
+  wantedStoreItemId: uuid("wanted_store_item_id").references(() => storeItems.id),
+  wantedItemDescription: text("wanted_item_description"), // Flexible description of what they want
+  
+  // Trade completion
+  acceptingStudentId: uuid("accepting_student_id").references(() => users.id),
+  acceptedInventoryId: uuid("accepted_inventory_id").references(() => studentInventory.id),
+  
+  // Status and lifecycle
+  status: varchar("status", { length: 20 }).notNull().$type<'open' | 'pending_acceptance' | 'completed' | 'cancelled' | 'expired'>().default('open'),
+  
+  // Additional details
+  publicMessage: text("public_message"), // What the offering student says about the trade
+  privateNotes: text("private_notes"), // Private notes from offering student
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  expiresAt: timestamp("expires_at"), // Optional expiration
+  completedAt: timestamp("completed_at")
+}, (table) => ({
+  classroomIdIdx: index("trade_offers_classroom_id_idx").on(table.classroomId),
+  offeringStudentIdIdx: index("trade_offers_offering_student_id_idx").on(table.offeringStudentId),
+  acceptingStudentIdIdx: index("trade_offers_accepting_student_id_idx").on(table.acceptingStudentId),
+  statusIdx: index("trade_offers_status_idx").on(table.status),
+  createdAtIdx: index("trade_offers_created_at_idx").on(table.createdAt)
+}));
+
+// Trade responses/interest from other students
+export const tradeResponses = pgTable("trade_responses", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  tradeOfferId: uuid("trade_offer_id").references(() => tradeOffers.id).notNull(),
+  respondingStudentId: uuid("responding_student_id").references(() => users.id).notNull(),
+  offeredInventoryId: uuid("offered_inventory_id").references(() => studentInventory.id).notNull(),
+  
+  message: text("message"), // What the responding student offers/says
+  status: varchar("status", { length: 20 }).notNull().$type<'pending' | 'accepted' | 'declined' | 'withdrawn'>().default('pending'),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  respondedAt: timestamp("responded_at")
+}, (table) => ({
+  tradeOfferIdIdx: index("trade_responses_trade_offer_id_idx").on(table.tradeOfferId),
+  respondingStudentIdIdx: index("trade_responses_responding_student_id_idx").on(table.respondingStudentId),
+  statusIdx: index("trade_responses_status_idx").on(table.status)
+}));
+
+// GROUP BUY SYSTEM (GoFundMe-style collaborative purchases)
+export const groupBuys = pgTable("group_buys", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  classroomId: uuid("classroom_id").references(() => classrooms.id).notNull(),
+  createdBy: uuid("created_by").references(() => users.id).notNull(), // Teacher who created it
+  
+  // Group buy details
+  title: varchar("title", { length: 150 }).notNull(),
+  description: text("description").notNull(),
+  imageUrl: varchar("image_url", { length: 500 }),
+  
+  // Funding details
+  goalAmount: integer("goal_amount").notNull(), // Total tokens needed
+  currentAmount: integer("current_amount").default(0).notNull(), // Tokens pledged so far
+  minContribution: integer("min_contribution").default(1).notNull(),
+  maxContribution: integer("max_contribution"), // Optional maximum per student
+  
+  // Availability and status
+  status: varchar("status", { length: 20 }).notNull().$type<'active' | 'funded' | 'completed' | 'cancelled' | 'expired'>().default('active'),
+  isActive: boolean("is_active").default(true),
+  
+  // Timeline
+  startsAt: timestamp("starts_at").defaultNow(),
+  endsAt: timestamp("ends_at").notNull(), // Deadline for funding
+  completedAt: timestamp("completed_at"),
+  
+  // Templates and categories
+  isTemplate: boolean("is_template").default(false),
+  templateCategory: varchar("template_category", { length: 50 }),
+  
+  // Rewards and delivery
+  deliveryMethod: varchar("delivery_method", { length: 30 }).$type<'immediate' | 'scheduled' | 'teacher_managed'>().default('teacher_managed'),
+  deliveryNotes: text("delivery_notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+}, (table) => ({
+  classroomIdIdx: index("group_buys_classroom_id_idx").on(table.classroomId),
+  createdByIdx: index("group_buys_created_by_idx").on(table.createdBy),
+  statusIdx: index("group_buys_status_idx").on(table.status),
+  endsAtIdx: index("group_buys_ends_at_idx").on(table.endsAt),
+  templateCategoryIdx: index("group_buys_template_category_idx").on(table.templateCategory)
+}));
+
+// Individual contributions to group buys
+export const groupBuyContributions = pgTable("group_buy_contributions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  groupBuyId: uuid("group_buy_id").references(() => groupBuys.id).notNull(),
+  studentId: uuid("student_id").references(() => users.id).notNull(),
+  
+  amount: integer("amount").notNull(), // Tokens contributed
+  message: text("message"), // Optional message from student
+  isAnonymous: boolean("is_anonymous").default(false),
+  
+  // Transaction tracking
+  tokenTransactionId: uuid("token_transaction_id").references(() => tokenTransactions.id),
+  
+  contributedAt: timestamp("contributed_at").defaultNow()
+}, (table) => ({
+  groupBuyIdIdx: index("group_buy_contributions_group_buy_id_idx").on(table.groupBuyId),
+  studentIdIdx: index("group_buy_contributions_student_id_idx").on(table.studentId),
+  contributedAtIdx: index("group_buy_contributions_contributed_at_idx").on(table.contributedAt),
+  // Unique constraint to prevent duplicate contributions (students can contribute multiple times)
+  uniqueContribution: unique("unique_student_group_buy_contribution").on(table.groupBuyId, table.studentId, table.contributedAt)
+}));
+
+// Pre-built group buy templates for teachers
+export const groupBuyTemplates = pgTable("group_buy_templates", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  title: varchar("title", { length: 150 }).notNull(),
+  description: text("description").notNull(),
+  suggestedGoalAmount: integer("suggested_goal_amount").notNull(),
+  category: varchar("category", { length: 50 }).notNull(),
+  
+  imageUrl: varchar("image_url", { length: 500 }),
+  tags: text("tags").array().default([]),
+  
+  // Template metadata
+  isPopular: boolean("is_popular").default(false),
+  usageCount: integer("usage_count").default(0),
+  
+  createdAt: timestamp("created_at").defaultNow()
+}, (table) => ({
+  categoryIdx: index("group_buy_templates_category_idx").on(table.category),
+  isPopularIdx: index("group_buy_templates_is_popular_idx").on(table.isPopular)
+}));
+
 // Marketplace Insert Schemas
 export const insertMarketplaceSellerSchema = createInsertSchema(marketplaceSellers).omit({
   id: true,
@@ -1368,6 +1541,152 @@ export const insertMarketplaceMessageSchema = createInsertSchema(marketplaceMess
   id: true,
   createdAt: true
 });
+
+// Economy & Marketplace Insert Schemas
+export const insertStudentInventorySchema = createInsertSchema(studentInventory).omit({
+  id: true,
+  acquiredAt: true,
+  updatedAt: true
+});
+
+export const insertTradeOfferSchema = createInsertSchema(tradeOffers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  completedAt: true
+});
+
+export const insertTradeResponseSchema = createInsertSchema(tradeResponses).omit({
+  id: true,
+  createdAt: true,
+  respondedAt: true
+});
+
+export const insertGroupBuySchema = createInsertSchema(groupBuys).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  completedAt: true
+});
+
+export const insertGroupBuyContributionSchema = createInsertSchema(groupBuyContributions).omit({
+  id: true,
+  contributedAt: true
+});
+
+export const insertGroupBuyTemplateSchema = createInsertSchema(groupBuyTemplates).omit({
+  id: true,
+  createdAt: true
+});
+
+// Economy & Marketplace Relations
+export const studentInventoryRelations = relations(studentInventory, ({ one }) => ({
+  student: one(users, {
+    fields: [studentInventory.studentId],
+    references: [users.id]
+  }),
+  classroom: one(classrooms, {
+    fields: [studentInventory.classroomId],
+    references: [classrooms.id]
+  }),
+  storeItem: one(storeItems, {
+    fields: [studentInventory.storeItemId],
+    references: [storeItems.id]
+  }),
+  purchase: one(purchases, {
+    fields: [studentInventory.purchaseId],
+    references: [purchases.id]
+  })
+}));
+
+export const tradeOffersRelations = relations(tradeOffers, ({ one, many }) => ({
+  classroom: one(classrooms, {
+    fields: [tradeOffers.classroomId],
+    references: [classrooms.id]
+  }),
+  offeringStudent: one(users, {
+    fields: [tradeOffers.offeringStudentId],
+    references: [users.id]
+  }),
+  acceptingStudent: one(users, {
+    fields: [tradeOffers.acceptingStudentId],
+    references: [users.id]
+  }),
+  offeredInventory: one(studentInventory, {
+    fields: [tradeOffers.offeredInventoryId],
+    references: [studentInventory.id]
+  }),
+  acceptedInventory: one(studentInventory, {
+    fields: [tradeOffers.acceptedInventoryId],
+    references: [studentInventory.id]
+  }),
+  wantedStoreItem: one(storeItems, {
+    fields: [tradeOffers.wantedStoreItemId],
+    references: [storeItems.id]
+  }),
+  responses: many(tradeResponses)
+}));
+
+export const tradeResponsesRelations = relations(tradeResponses, ({ one }) => ({
+  tradeOffer: one(tradeOffers, {
+    fields: [tradeResponses.tradeOfferId],
+    references: [tradeOffers.id]
+  }),
+  respondingStudent: one(users, {
+    fields: [tradeResponses.respondingStudentId],
+    references: [users.id]
+  }),
+  offeredInventory: one(studentInventory, {
+    fields: [tradeResponses.offeredInventoryId],
+    references: [studentInventory.id]
+  })
+}));
+
+export const groupBuysRelations = relations(groupBuys, ({ one, many }) => ({
+  classroom: one(classrooms, {
+    fields: [groupBuys.classroomId],
+    references: [classrooms.id]
+  }),
+  creator: one(users, {
+    fields: [groupBuys.createdBy],
+    references: [users.id]
+  }),
+  contributions: many(groupBuyContributions)
+}));
+
+export const groupBuyContributionsRelations = relations(groupBuyContributions, ({ one }) => ({
+  groupBuy: one(groupBuys, {
+    fields: [groupBuyContributions.groupBuyId],
+    references: [groupBuys.id]
+  }),
+  student: one(users, {
+    fields: [groupBuyContributions.studentId],
+    references: [users.id]
+  }),
+  tokenTransaction: one(tokenTransactions, {
+    fields: [groupBuyContributions.tokenTransactionId],
+    references: [tokenTransactions.id]
+  })
+}));
+
+// Economy & Marketplace Types
+export type StudentInventory = typeof studentInventory.$inferSelect;
+export type InsertStudentInventory = z.infer<typeof insertStudentInventorySchema>;
+
+export type TradeOffer = typeof tradeOffers.$inferSelect;
+export type InsertTradeOffer = z.infer<typeof insertTradeOfferSchema>;
+
+export type TradeResponse = typeof tradeResponses.$inferSelect;
+export type InsertTradeResponse = z.infer<typeof insertTradeResponseSchema>;
+
+export type GroupBuy = typeof groupBuys.$inferSelect;
+export type InsertGroupBuy = z.infer<typeof insertGroupBuySchema>;
+
+export type GroupBuyContribution = typeof groupBuyContributions.$inferSelect;
+export type InsertGroupBuyContribution = z.infer<typeof insertGroupBuyContributionSchema>;
+
+export type GroupBuyTemplate = typeof groupBuyTemplates.$inferSelect;
+export type InsertGroupBuyTemplate = z.infer<typeof insertGroupBuyTemplateSchema>;
 
 // Marketplace Types
 export type MarketplaceSeller = typeof marketplaceSellers.$inferSelect;
