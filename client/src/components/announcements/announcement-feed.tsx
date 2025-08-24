@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
@@ -36,6 +37,7 @@ export default function AnnouncementFeed({
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [expandedAnnouncements, setExpandedAnnouncements] = useState<Set<string>>(new Set());
 
   // Fetch announcements
   const { data: announcements, isLoading } = useQuery<Announcement[]>({
@@ -136,6 +138,27 @@ export default function AnnouncementFeed({
     if (user?.role === 'student') {
       markAsReadMutation.mutate(announcementId);
     }
+  };
+
+  const toggleExpanded = (announcementId: string) => {
+    setExpandedAnnouncements(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(announcementId)) {
+        newSet.delete(announcementId);
+      } else {
+        newSet.add(announcementId);
+      }
+      return newSet;
+    });
+  };
+
+  const shouldTruncate = (content: string) => {
+    return content.length > 200;
+  };
+
+  const getTruncatedContent = (content: string, limit: number = 200) => {
+    if (content.length <= limit) return content;
+    return content.substring(0, limit) + '...';
   };
 
   if (isLoading) {
@@ -262,9 +285,37 @@ export default function AnnouncementFeed({
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-gray-700 whitespace-pre-wrap mb-4">
-                    {announcement.content}
-                  </p>
+                  <div className="mb-4">
+                    <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                      {expandedAnnouncements.has(announcement.id) || !shouldTruncate(announcement.content)
+                        ? announcement.content
+                        : getTruncatedContent(announcement.content)
+                      }
+                    </p>
+                    
+                    {shouldTruncate(announcement.content) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleExpanded(announcement.id)}
+                        className="mt-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 p-0 h-auto"
+                        data-testid={`button-toggle-expand-${announcement.id}`}
+                        aria-label={expandedAnnouncements.has(announcement.id) ? "Show less" : "Read more"}
+                      >
+                        {expandedAnnouncements.has(announcement.id) ? (
+                          <>
+                            <i className="fas fa-chevron-up mr-1"></i>
+                            Show Less
+                          </>
+                        ) : (
+                          <>
+                            <i className="fas fa-chevron-down mr-1"></i>
+                            Read More
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
                   
                   {user?.role === 'student' && announcement.isUnread && (
                     <div className="flex justify-end">
@@ -274,7 +325,7 @@ export default function AnnouncementFeed({
                         onClick={() => handleMarkAsRead(announcement.id)}
                         disabled={markAsReadMutation.isPending}
                         data-testid={`button-mark-read-${announcement.id}`}
-                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
+                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-950"
                       >
                         <i className="fas fa-check mr-1"></i>
                         Mark as Read

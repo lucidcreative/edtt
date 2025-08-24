@@ -1,0 +1,72 @@
+You’re enhancing several interactive features across your app’s UI—focusing on dark mode toggling, group buy permissions, marketplace/trading flow, and announcement expandability.
+
+Specifications
+1. Dark Mode: Text & Icon Behavior
+
+When the app is in dark mode, all text should switch to white for proper contrast.
+
+The toggle button should show a moon icon when switching to dark mode, and a sun icon when switching to light mode.
+
+Ensure icons switch appropriately and are accessible (e.g., with ARIA labels like aria-label="Switch to dark mode").
+
+2. Group Buy Permissions
+
+Only teachers can start a group buy.
+
+Students can only participate in group buys that are already active.
+
+Prevent students from creating group buy campaigns or opening creation UI.
+
+3. Marketplace & Trade Feature Fixes
+
+The "Initiate Trade" and "Buy Now" buttons are currently broken (no action on click).
+
+Implement proper onClick handlers for both:
+
+Trade: triggers a modal or form to propose a trade, records that offer.
+
+Marketplace Buy: verifies buyer has tokens, deducts tokens, credits seller, transfers item.
+
+Include client-side UI feedback (loading indicator, error handling, success confirmation).
+
+4. Announcements Expandability
+
+Inside the Announcements tab, announcements that are very long should not auto-expand and overwhelm the view.
+
+Instead, show a truncated preview (e.g., first 2–3 lines) with a “Read More” or expand/collapse control.
+
+When a user clicks, the announcement expands inline to reveal full text, then collapsible again.
+
+10 Sample User Stories (for clarity)
+
+Dark Mode: As a user, when I enable dark mode, I see white text and a moon icon displayed.
+
+Light Mode: When I switch back to light mode, the text turns normal (e.g. dark color) and the sun icon appears.
+
+Teacher Group Buy: As a teacher, I want access to “Start Group Buy” in the store.
+
+Student Group Buy Participation: As a student, I can see and contribute to group buys, but I cannot create them.
+
+Trade Button Fix: As a student, when I click “Initiate Trade”, a proposal form pops up, and I can submit a trade request.
+
+Marketplace Buy Fix: As a student, when I click “Buy Now” on a marketplace item, my tokens are deducted, seller credited, and I get the item in my inventory.
+
+Button Feedback: When trade or buy actions succeed or fail, I receive visual feedback (spinner, message).
+
+Announcement Truncate: As a student, I see only a short preview of announcements initially, with a “Read More” control.
+
+Announcement Expand: Clicking “Read More” expands the announcement inline, and “Show Less” collapses it again.
+
+Accessibility: All interactive elements remain keyboard navigable and include appropriate ARIA roles/labels.
+
+Suggested Deliverables
+
+Components/logic for text-color switching based on theme, and toggle icon change.
+
+Permissions logic/UI changes so only teachers can access group-buy creation UI.
+
+Correct click handlers for trade & marketplace actions, with token logic and UI feedback.
+
+Announcement UI with expand/collapse behavior.
+
+Tests: unit or integration tests for these behaviors (e.g., dark mode toggle, button click flow, announcement expand).

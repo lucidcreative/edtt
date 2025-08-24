@@ -16,6 +16,7 @@ import {
   Package,
   ExternalLink
 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 type TradeOffer = {
   id: string;
@@ -59,6 +60,7 @@ export default function EconomyPage() {
   const { currentClassroom } = useClassroom();
   const [activeTab, setActiveTab] = useState("trading");
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   // Fetch student inventory
   const { data: inventory = [], isLoading: inventoryLoading } = useQuery<InventoryItem[]>({
@@ -83,6 +85,38 @@ export default function EconomyPage() {
     queryKey: ['/api/group-buys/classroom', currentClassroom?.id],
     enabled: !!currentClassroom?.id,
   });
+
+  // Handle trade initiation
+  const handleInitiateTrade = (item: InventoryItem) => {
+    toast({
+      title: "Trade Feature",
+      description: "Trade creation modal will be implemented next. Item: " + (item.storeItem?.name || 'Unknown'),
+    });
+  };
+
+  // Handle trade response
+  const handleRespondToTrade = (offer: TradeOffer) => {
+    toast({
+      title: "Trade Response",
+      description: "Trade response modal will be implemented next. Offer: " + offer.title,
+    });
+  };
+
+  // Handle group buy contribution
+  const handleContributeToGroupBuy = (groupBuy: GroupBuy) => {
+    toast({
+      title: "Contribute to Group Buy",
+      description: "Contribution modal will be implemented next. Goal: " + groupBuy.title,
+    });
+  };
+
+  // Handle view group buy details
+  const handleViewGroupBuyDetails = (groupBuy: GroupBuy) => {
+    toast({
+      title: "Group Buy Details",
+      description: "Details modal will be implemented next. " + groupBuy.title,
+    });
+  };
 
   if (!currentClassroom) {
     return (
@@ -165,7 +199,13 @@ export default function EconomyPage() {
                           </div>
                         </div>
                         {item.status === 'owned' && (
-                          <Button size="sm" variant="outline">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleInitiateTrade(item)}
+                            data-testid={`button-trade-${item.id}`}
+                            aria-label={`Trade ${item.storeItem?.name || 'item'}`}
+                          >
                             Trade
                           </Button>
                         )}
@@ -215,8 +255,13 @@ export default function EconomyPage() {
                               {offer.status}
                             </Badge>
                           </div>
-                          {offer.status === 'open' && (
-                            <Button size="sm">
+                          {offer.status === 'open' && offer.offeringStudentId !== user?.id && (
+                            <Button 
+                              size="sm"
+                              onClick={() => handleRespondToTrade(offer)}
+                              data-testid={`button-respond-trade-${offer.id}`}
+                              aria-label={`Respond to trade offer: ${offer.title}`}
+                            >
                               Respond
                             </Button>
                           )}
@@ -331,10 +376,16 @@ export default function EconomyPage() {
                   <div className="text-center py-8">
                     <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                     <p className="text-muted-foreground">No active group buys in your classroom</p>
-                    <Button className="mt-4">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Start Group Buy
-                    </Button>
+                    {user?.role === 'teacher' ? (
+                      <Button className="mt-4">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Start Group Buy
+                      </Button>
+                    ) : (
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Ask your teacher to start a group buy!
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <div className="grid gap-4 md:grid-cols-2">
@@ -366,10 +417,22 @@ export default function EconomyPage() {
                         </div>
 
                         <div className="flex gap-2">
-                          <Button size="sm" className="flex-1">
+                          <Button 
+                            size="sm" 
+                            className="flex-1"
+                            onClick={() => handleContributeToGroupBuy(groupBuy)}
+                            data-testid={`button-contribute-${groupBuy.id}`}
+                            aria-label={`Contribute to ${groupBuy.title}`}
+                          >
                             Contribute
                           </Button>
-                          <Button size="sm" variant="outline">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleViewGroupBuyDetails(groupBuy)}
+                            data-testid={`button-details-${groupBuy.id}`}
+                            aria-label={`View details for ${groupBuy.title}`}
+                          >
                             Details
                           </Button>
                         </div>
