@@ -85,6 +85,12 @@ import {
   type InsertMarketplaceListing,
   type MarketplaceTransaction,
   type InsertMarketplaceTransaction,
+  type MarketplaceReview,
+  type InsertMarketplaceReview,
+  type MarketplaceWishlist,
+  type InsertMarketplaceWishlist,
+  type MarketplaceMessage,
+  type InsertMarketplaceMessage,
   type InsertStudentWallet,
   type TokenTransaction,
   type InsertTokenTransaction,
@@ -109,13 +115,7 @@ import {
   assignmentFeedback,
   assignmentTemplates,
   timeEntries,
-  // Phase 2B Marketplace Tables
-  marketplaceSellers,
-  marketplaceListings,
-  marketplaceTransactions,
-  marketplaceReviews,
-  marketplaceWishlists,
-  marketplaceMessages,
+  // Phase 2B Marketplace Tables (already imported above)
   type AssignmentAdvanced,
   type InsertAssignmentAdvanced,
   type AssignmentSubmission,
@@ -124,19 +124,7 @@ import {
   type InsertAssignmentFeedback,
   type AssignmentTemplate,
   type InsertAssignmentTemplate,
-  // Phase 2B Marketplace Types
-  type MarketplaceSeller,
-  type InsertMarketplaceSeller,
-  type MarketplaceListing,
-  type InsertMarketplaceListing,
-  type MarketplaceTransaction,
-  type InsertMarketplaceTransaction,
-  type MarketplaceReview,
-  type InsertMarketplaceReview,
-  type MarketplaceWishlist,
-  type InsertMarketplaceWishlist,
-  type MarketplaceMessage,
-  type InsertMarketplaceMessage
+  // Phase 2B Marketplace Types (already imported above)
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, and, or, ne, sql, count } from "drizzle-orm";

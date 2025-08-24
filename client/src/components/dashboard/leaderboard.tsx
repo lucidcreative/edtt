@@ -22,20 +22,20 @@ export default function Leaderboard({ students = [] }: LeaderboardProps) {
   // Only show leaderboard if there are real students
   if (topStudents.length === 0) {
     return (
-      <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Leaderboard</h3>
+      <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
+        <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Leaderboard</h3>
         <div className="text-center py-8">
-          <i className="fas fa-trophy text-4xl text-gray-300 mb-3"></i>
-          <p className="text-gray-500 text-sm">No students enrolled yet</p>
-          <p className="text-gray-400 text-xs mt-1">Leaderboard will appear once students join and earn tokens</p>
+          <i className="fas fa-trophy text-4xl text-gray-300 dark:text-gray-600 mb-3"></i>
+          <p className="text-gray-500 dark:text-gray-400 text-sm">No students enrolled yet</p>
+          <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">Leaderboard will appear once students join and earn tokens</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
-      <h3 className="text-lg font-semibold text-gray-800 mb-4">Leaderboard</h3>
+    <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
+      <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Leaderboard</h3>
       <div className="space-y-3">
         {topStudents.map((student, index) => (
           <motion.div
@@ -52,10 +52,10 @@ export default function Leaderboard({ students = [] }: LeaderboardProps) {
               data-testid={`leaderboard-avatar-${index}`}
             />
             <div className="flex-1">
-              <p className="font-medium text-gray-800" data-testid={`leaderboard-name-${index}`}>
+              <p className="font-medium text-gray-800 dark:text-white" data-testid={`leaderboard-name-${index}`}>
                 {student.nickname || `${student.firstName} ${student.lastName}`.trim()}
               </p>
-              <p className="text-sm text-gray-600" data-testid={`leaderboard-tokens-${index}`}>
+              <p className="text-sm text-gray-600 dark:text-gray-300" data-testid={`leaderboard-tokens-${index}`}>
                 {student.tokens.toLocaleString()}
               </p>
             </div>

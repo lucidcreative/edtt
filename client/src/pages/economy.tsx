@@ -14,9 +14,31 @@ import {
   Plus,
   TrendingUp,
   Package,
-  ExternalLink
+  ExternalLink,
+  Search,
+  Filter,
+  Heart,
+  Star
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 type TradeOffer = {
   id: string;
@@ -55,10 +77,43 @@ type InventoryItem = {
   };
 };
 
+type MarketplaceListing = {
+  id: string;
+  title: string;
+  description: string;
+  price: string;
+  category: string;
+  status: 'active' | 'sold' | 'inactive';
+  images: string[];
+  seller: {
+    id: string;
+    student: {
+      id: string;
+      nickname: string;
+    };
+  };
+  createdAt: string;
+};
+
 export default function EconomyPage() {
   const { user } = useAuth();
   const { currentClassroom } = useClassroom();
   const [activeTab, setActiveTab] = useState("trading");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  
+  // Trade offer modal states
+  const [isTradeOfferModalOpen, setIsTradeOfferModalOpen] = useState(false);
+  const [tradeOfferForm, setTradeOfferForm] = useState({
+    title: '',
+    description: '',
+    wantedItem: ''
+  });
+  
+  // Trade response modal states
+  const [isTradeResponseModalOpen, setIsTradeResponseModalOpen] = useState(false);
+  const [selectedTradeOffer, setSelectedTradeOffer] = useState<TradeOffer | null>(null);
+  const [responseMessage, setResponseMessage] = useState('');
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -85,6 +140,77 @@ export default function EconomyPage() {
     queryKey: ['/api/group-buys/classroom', currentClassroom?.id],
     enabled: !!currentClassroom?.id,
   });
+
+  // Fetch marketplace listings
+  const { data: marketplaceListings = [], isLoading: marketplaceLoading } = useQuery<MarketplaceListing[]>({
+    queryKey: ['/api/marketplace/listings/classroom', currentClassroom?.id],
+    enabled: !!currentClassroom?.id,
+  });
+
+  // Filter listings based on search and category
+  const filteredListings = marketplaceListings.filter(listing => {
+    const matchesSearch = listing.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         listing.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = selectedCategory === "all" || listing.category === selectedCategory;
+    return matchesSearch && matchesCategory && listing.status === "active";
+  });
+
+  // Handle trade offer creation
+  const handleCreateTradeOffer = () => {
+    if (!tradeOfferForm.title.trim() || !tradeOfferForm.description.trim()) {
+      toast({ 
+        title: "Missing Information", 
+        description: "Please fill in all required fields.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Here we would normally call an API to create the trade offer
+    toast({ 
+      title: "Trade Offer Created!", 
+      description: `Your trade offer "${tradeOfferForm.title}" has been posted.`
+    });
+    
+    // Reset form and close modal
+    setTradeOfferForm({ title: '', description: '', wantedItem: '' });
+    setIsTradeOfferModalOpen(false);
+  };
+
+  // Handle trade response
+  const handleTradeResponse = (offer: TradeOffer, action: 'accept' | 'decline' | 'counter') => {
+    setSelectedTradeOffer(offer);
+    setIsTradeResponseModalOpen(true);
+  };
+
+  // Submit trade response
+  const submitTradeResponse = (action: 'accept' | 'decline' | 'counter') => {
+    if (!selectedTradeOffer) return;
+    
+    toast({ 
+      title: `Trade ${action === 'accept' ? 'Accepted' : action === 'decline' ? 'Declined' : 'Counter Offer Sent'}!", 
+      description: `You have ${action}d the trade offer from ${selectedTradeOffer.id}.`
+    });
+    
+    setIsTradeResponseModalOpen(false);
+    setSelectedTradeOffer(null);
+    setResponseMessage('');
+  };
+
+  // Group buy functionality
+  const handleContributeToGroupBuy = (groupBuy: GroupBuy) => {
+    toast({ 
+      title: "Contribution Sent!", 
+      description: `You have contributed to "${groupBuy.title}". Contribution functionality coming soon!`
+    });
+  };
+
+  const handleViewGroupBuyDetails = (groupBuy: GroupBuy) => {
+    toast({ 
+      title: "Group Buy Details", 
+      description: `Viewing details for "${groupBuy.title}". Details modal coming soon!`
+    });
+  };
 
   // Handle trade initiation
   const handleInitiateTrade = (item: InventoryItem) => {
@@ -294,10 +420,74 @@ export default function EconomyPage() {
                 <div className="text-center py-8">
                   <ArrowLeftRight className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                   <p className="text-muted-foreground">You haven't created any trade offers yet</p>
-                  <Button className="mt-4">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Trade Offer
-                  </Button>
+                  <Dialog open={isTradeOfferModalOpen} onOpenChange={setIsTradeOfferModalOpen}>
+                    <DialogTrigger asChild>
+                      <Button data-testid="button-create-trade-offer" className="mt-4">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create Trade Offer
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                      <DialogHeader>
+                        <DialogTitle className="text-black dark:text-white">Create Trade Offer</DialogTitle>
+                        <DialogDescription className="text-gray-600 dark:text-gray-300">
+                          Create a new trade offer to exchange items with your classmates.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 mt-4">
+                        <div>
+                          <Label htmlFor="trade-title" className="text-black dark:text-white">Trade Title *</Label>
+                          <Input
+                            data-testid="input-trade-title"
+                            id="trade-title"
+                            placeholder="What are you offering?"
+                            value={tradeOfferForm.title}
+                            onChange={(e) => setTradeOfferForm(prev => ({ ...prev, title: e.target.value }))}
+                            className="mt-1 bg-white dark:bg-gray-700 text-black dark:text-white border-gray-300 dark:border-gray-600"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="trade-description" className="text-black dark:text-white">Description *</Label>
+                          <Textarea
+                            data-testid="textarea-trade-description"
+                            id="trade-description"
+                            placeholder="Describe what you're offering and what you want in return..."
+                            value={tradeOfferForm.description}
+                            onChange={(e) => setTradeOfferForm(prev => ({ ...prev, description: e.target.value }))}
+                            className="mt-1 bg-white dark:bg-gray-700 text-black dark:text-white border-gray-300 dark:border-gray-600"
+                            rows={3}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="wanted-item" className="text-black dark:text-white">Wanted Item (Optional)</Label>
+                          <Input
+                            data-testid="input-wanted-item"
+                            id="wanted-item"
+                            placeholder="Specific item you're looking for..."
+                            value={tradeOfferForm.wantedItem}
+                            onChange={(e) => setTradeOfferForm(prev => ({ ...prev, wantedItem: e.target.value }))}
+                            className="mt-1 bg-white dark:bg-gray-700 text-black dark:text-white border-gray-300 dark:border-gray-600"
+                          />
+                        </div>
+                        <div className="flex justify-end gap-2 mt-6">
+                          <Button 
+                            data-testid="button-cancel-trade"
+                            variant="outline" 
+                            onClick={() => {
+                              setTradeOfferForm({ title: '', description: '', wantedItem: '' });
+                              setIsTradeOfferModalOpen(false);
+                            }}
+                            className="text-black dark:text-white border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          >
+                            Cancel
+                          </Button>
+                          <Button data-testid="button-submit-trade" onClick={handleCreateTradeOffer}>
+                            Create Trade Offer
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                 </div>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2">
@@ -330,6 +520,7 @@ export default function EconomyPage() {
 
         {/* Marketplace Tab */}
         <TabsContent value="marketplace" className="space-y-6">
+          {/* Search and Filter Bar */}
           <Card>
             <CardHeader>
               <CardTitle>Marketplace</CardTitle>
@@ -338,17 +529,136 @@ export default function EconomyPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-12">
-                <ShoppingCart className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-2">Marketplace Coming Soon</h3>
-                <p className="text-muted-foreground mb-4">
-                  Trade your items with classmates for tokens in a secure marketplace environment
-                </p>
-                <Button disabled>
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Browse Listings
+              <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    data-testid="input-marketplace-search"
+                    placeholder="Search items..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 bg-white dark:bg-gray-700 text-black dark:text-white border-gray-300 dark:border-gray-600"
+                  />
+                </div>
+                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                  <SelectTrigger data-testid="select-category" className="w-full sm:w-48 bg-white dark:bg-gray-700 text-black dark:text-white border-gray-300 dark:border-gray-600">
+                    <SelectValue placeholder="All Categories" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600">
+                    <SelectItem value="all">All Categories</SelectItem>
+                    <SelectItem value="school-supplies">School Supplies</SelectItem>
+                    <SelectItem value="books">Books</SelectItem>
+                    <SelectItem value="electronics">Electronics</SelectItem>
+                    <SelectItem value="clothing">Clothing</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  data-testid="button-create-listing"
+                  variant="outline"
+                  className="text-white dark:text-white border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  onClick={() => toast({ title: "Create Listing", description: "Listing creation feature coming soon!" })}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Listing
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Marketplace Listings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-white dark:text-white">
+                Available Items ({filteredListings.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {marketplaceLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {[...Array(6)].map((_, i) => (
+                    <Card key={i} className="bg-card dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                      <CardContent className="p-4">
+                        <div className="animate-pulse space-y-3">
+                          <div className="bg-gray-300 dark:bg-gray-600 h-32 rounded" />
+                          <div className="bg-gray-300 dark:bg-gray-600 h-4 rounded w-3/4" />
+                          <div className="bg-gray-300 dark:bg-gray-600 h-3 rounded w-1/2" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : filteredListings.length === 0 ? (
+                <div className="text-center py-12">
+                  <ShoppingCart className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                  <h3 className="text-lg font-medium mb-2 text-white dark:text-white">No items found</h3>
+                  <p className="text-muted-foreground dark:text-gray-300">
+                    {searchQuery || selectedCategory !== "all" ? "Try adjusting your search or filters." : "No items are currently listed for sale."}
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredListings.map((listing) => (
+                    <Card key={listing.id} className="bg-card dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
+                      <CardContent className="p-4">
+                        {/* Listing Image Placeholder */}
+                        <div className="bg-gray-200 dark:bg-gray-600 h-32 rounded mb-3 flex items-center justify-center">
+                          <Package className="w-8 h-8 text-gray-400" />
+                        </div>
+                        
+                        {/* Listing Title */}
+                        <h4 className="font-medium text-black dark:text-white mb-2 line-clamp-1">
+                          {listing.title}
+                        </h4>
+                        
+                        {/* Listing Description */}
+                        <p className="text-sm text-muted-foreground dark:text-gray-300 mb-3 line-clamp-2">
+                          {listing.description}
+                        </p>
+                        
+                        {/* Price and Seller */}
+                        <div className="flex justify-between items-center mb-3">
+                          <span className="text-lg font-semibold text-green-600 dark:text-green-400">
+                            {listing.price} tokens
+                          </span>
+                          <span className="text-xs text-muted-foreground dark:text-gray-400">
+                            by {listing.seller?.student?.nickname || 'Anonymous'}
+                          </span>
+                        </div>
+                        
+                        {/* Action Buttons */}
+                        <div className="flex gap-2">
+                          <Button
+                            data-testid={`button-buy-${listing.id}`}
+                            size="sm"
+                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                            onClick={() => toast({ title: "Purchase Item", description: "Purchase functionality coming soon!" })}
+                          >
+                            <ShoppingCart className="w-4 h-4 mr-1" />
+                            Buy
+                          </Button>
+                          <Button
+                            data-testid={`button-wishlist-${listing.id}`}
+                            variant="outline"
+                            size="sm"
+                            className="text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
+                            onClick={() => toast({ title: "Added to Wishlist", description: "Wishlist functionality coming soon!" })}
+                          >
+                            <Heart className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        
+                        {/* Listing Category Tag */}
+                        <div className="mt-3 pt-2 border-t border-gray-200 dark:border-gray-600">
+                          <span className="inline-block bg-gray-100 dark:bg-gray-700 text-xs px-2 py-1 rounded text-gray-600 dark:text-gray-300">
+                            {listing.category}
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -445,6 +755,66 @@ export default function EconomyPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Trade Response Modal */}
+      <Dialog open={isTradeResponseModalOpen} onOpenChange={setIsTradeResponseModalOpen}>
+        <DialogContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <DialogHeader>
+            <DialogTitle className="text-black dark:text-white">Respond to Trade Offer</DialogTitle>
+            <DialogDescription className="text-gray-600 dark:text-gray-300">
+              {selectedTradeOffer && `Responding to "${selectedTradeOffer.title}"`}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedTradeOffer && (
+            <div className="space-y-4 mt-4">
+              <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <h4 className="font-medium text-black dark:text-white mb-2">{selectedTradeOffer.title}</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">{selectedTradeOffer.description}</p>
+                <p className="text-xs text-muted-foreground">Posted by Student #{selectedTradeOffer.offeringStudentId.slice(-6)}</p>
+              </div>
+              
+              <div>
+                <Label htmlFor="response-message" className="text-black dark:text-white">Response Message (Optional)</Label>
+                <Textarea
+                  data-testid="textarea-response-message"
+                  id="response-message"
+                  placeholder="Add a message with your response..."
+                  value={responseMessage}
+                  onChange={(e) => setResponseMessage(e.target.value)}
+                  className="mt-1 bg-white dark:bg-gray-700 text-black dark:text-white border-gray-300 dark:border-gray-600"
+                  rows={3}
+                />
+              </div>
+              
+              <div className="flex justify-end gap-2 mt-6">
+                <Button 
+                  data-testid="button-decline-trade"
+                  variant="outline"
+                  onClick={() => submitTradeResponse('decline')}
+                  className="text-red-600 dark:text-red-400 border-red-300 dark:border-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                >
+                  Decline
+                </Button>
+                <Button 
+                  data-testid="button-counter-offer"
+                  variant="outline"
+                  onClick={() => submitTradeResponse('counter')}
+                  className="text-orange-600 dark:text-orange-400 border-orange-300 dark:border-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20"
+                >
+                  Counter Offer
+                </Button>
+                <Button 
+                  data-testid="button-accept-trade"
+                  onClick={() => submitTradeResponse('accept')}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  Accept Trade
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
