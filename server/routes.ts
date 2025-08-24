@@ -1499,6 +1499,147 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // RFP PROPOSAL ROUTES
+  
+  // Create a new proposal for an RFP assignment
+  app.post('/api/proposals', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'student') {
+        return res.status(403).json({ message: 'Only students can submit proposals' });
+      }
+      
+      const { assignmentId, content } = req.body;
+      const studentId = req.user.id;
+      
+      if (!assignmentId || !content) {
+        return res.status(400).json({ message: 'Assignment ID and content are required' });
+      }
+      
+      // Verify assignment exists and is an RFP
+      const assignment = await storage.getAssignment(assignmentId);
+      if (!assignment) {
+        return res.status(404).json({ message: 'Assignment not found' });
+      }
+      
+      if (!assignment.isRFP) {
+        return res.status(400).json({ message: 'This assignment is not an RFP' });
+      }
+      
+      if (!assignment.isActive) {
+        return res.status(400).json({ message: 'Assignment is not active' });
+      }
+      
+      // Check if student is enrolled in the classroom
+      const enrollments = await storage.getStudentEnrollments(studentId);
+      const hasAccess = enrollments.some(e => 
+        e.classroomId === assignment.classroomId && 
+        e.enrollmentStatus === 'approved'
+      );
+      
+      if (!hasAccess) {
+        return res.status(403).json({ message: 'Access denied to this assignment' });
+      }
+      
+      // Create the proposal
+      const proposal = await storage.createProposal({
+        assignmentId,
+        studentId,
+        content
+      });
+      
+      res.json({ proposal });
+    } catch (error) {
+      console.error('Create proposal error:', error);
+      if (error.message && error.message.includes('duplicate')) {
+        res.status(400).json({ message: 'You have already submitted a proposal for this assignment' });
+      } else {
+        res.status(500).json({ message: 'Internal server error' });
+      }
+    }
+  });
+  
+  // Get all proposals for an assignment (teachers only)
+  app.get('/api/assignments/:assignmentId/proposals', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Only teachers can view assignment proposals' });
+      }
+      
+      const { assignmentId } = req.params;
+      
+      // Verify assignment exists and belongs to this teacher
+      const assignment = await storage.getAssignment(assignmentId);
+      if (!assignment) {
+        return res.status(404).json({ message: 'Assignment not found' });
+      }
+      
+      if (assignment.teacherId !== req.user.id) {
+        return res.status(403).json({ message: 'Access denied to this assignment' });
+      }
+      
+      const proposals = await storage.getProposalsByAssignment(assignmentId);
+      res.json({ proposals });
+    } catch (error) {
+      console.error('Get assignment proposals error:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+  
+  // Get proposals by student
+  app.get('/api/students/:studentId/proposals', authenticate, async (req: any, res) => {
+    try {
+      const { studentId } = req.params;
+      
+      // Students can only view their own proposals, teachers can view any student's proposals
+      if (req.user.role === 'student' && req.user.id !== studentId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
+      const proposals = await storage.getProposalsByStudent(studentId);
+      res.json({ proposals });
+    } catch (error) {
+      console.error('Get student proposals error:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+  
+  // Approve a proposal (teachers only)
+  app.post('/api/proposals/:proposalId/approve', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Only teachers can approve proposals' });
+      }
+      
+      const { proposalId } = req.params;
+      
+      // Get proposal and verify access
+      const proposals = await storage.getProposalsByStudent(''); // This will get all, we'll filter
+      const proposal = proposals.find(p => p.id === proposalId);
+      
+      if (!proposal) {
+        return res.status(404).json({ message: 'Proposal not found' });
+      }
+      
+      // Verify teacher owns the assignment
+      const assignment = await storage.getAssignment(proposal.assignmentId);
+      if (!assignment || assignment.teacherId !== req.user.id) {
+        return res.status(403).json({ message: 'Access denied to this proposal' });
+      }
+      
+      if (proposal.status !== 'pending') {
+        return res.status(400).json({ message: 'Proposal has already been reviewed' });
+      }
+      
+      // Approve the proposal (this will also mark others as not_selected)
+      await storage.approveProposal(proposalId);
+      
+      res.json({ message: 'Proposal approved successfully' });
+    } catch (error) {
+      console.error('Approve proposal error:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
   // Student requests completion approval (no tokens yet)
   app.post('/api/assignments/:assignmentId/request-completion', authenticate, async (req: any, res) => {
     try {
@@ -2576,7 +2717,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Assignment deadline has passed and late submissions are not allowed' });
       }
       
-      const submission = await storage.createSubmission({
+      const submission = await storage.createAdvancedSubmission({
         ...submissionData,
         studentId: req.user.id,
         isLateSubmission: isLate

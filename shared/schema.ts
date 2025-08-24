@@ -100,6 +100,7 @@ export const assignments = pgTable("assignments", {
   dueDate: timestamp("due_date"),
   resources: jsonb("resources").default([]), // Array of resource links
   isActive: boolean("is_active").default(true),
+  isRFP: boolean("is_rfp").default(false), // RFP (Request for Proposal) mode
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
 }, (table) => ({
@@ -109,7 +110,8 @@ export const assignments = pgTable("assignments", {
   dueDateIdx: index("assignments_due_date_idx").on(table.dueDate),
   createdAtIdx: index("assignments_created_at_idx").on(table.createdAt),
   isActiveIdx: index("assignments_is_active_idx").on(table.isActive),
-  categoryIdx: index("assignments_category_idx").on(table.category)
+  categoryIdx: index("assignments_category_idx").on(table.category),
+  isRFPIdx: index("assignments_is_rfp_idx").on(table.isRFP)
 }));
 
 // Assignment submissions
@@ -134,6 +136,25 @@ export const submissions = pgTable("submissions", {
   reviewedByIdx: index("submissions_reviewed_by_idx").on(table.reviewedBy),
   // Unique constraint to prevent duplicate submissions
   assignmentStudentUnique: unique("assignment_student_submission_unique").on(table.assignmentId, table.studentId)
+}));
+
+// Proposals table for RFP assignments
+export const proposals = pgTable("proposals", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  assignmentId: uuid("assignment_id").references(() => assignments.id).notNull(),
+  studentId: uuid("student_id").references(() => users.id).notNull(),
+  content: text("content").notNull(), // The proposal text/pitch
+  status: varchar("status", { length: 20 }).notNull().$type<'pending' | 'approved' | 'not_selected'>().default('pending'),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+}, (table) => ({
+  // Indexes for foreign keys and frequent queries
+  assignmentIdIdx: index("proposals_assignment_id_idx").on(table.assignmentId),
+  studentIdIdx: index("proposals_student_id_idx").on(table.studentId),
+  statusIdx: index("proposals_status_idx").on(table.status),
+  createdAtIdx: index("proposals_created_at_idx").on(table.createdAt),
+  // Unique constraint to prevent duplicate proposals per assignment
+  assignmentStudentProposalUnique: unique("assignment_student_proposal_unique").on(table.assignmentId, table.studentId)
 }));
 
 // Store items
@@ -706,6 +727,12 @@ export const insertSubmissionSchema = createInsertSchema(submissions).omit({
   reviewedAt: true
 });
 
+export const insertProposalSchema = createInsertSchema(proposals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
 export const insertStoreItemSchema = createInsertSchema(storeItems).omit({
   id: true,
   createdAt: true,
@@ -748,6 +775,8 @@ export type Assignment = typeof assignments.$inferSelect;
 export type InsertAssignment = z.infer<typeof insertAssignmentSchema>;
 export type Submission = typeof submissions.$inferSelect;
 export type InsertSubmission = z.infer<typeof insertSubmissionSchema>;
+export type Proposal = typeof proposals.$inferSelect;
+export type InsertProposal = z.infer<typeof insertProposalSchema>;
 export type StoreItem = typeof storeItems.$inferSelect;
 export type InsertStoreItem = z.infer<typeof insertStoreItemSchema>;
 export type Badge = typeof badges.$inferSelect;

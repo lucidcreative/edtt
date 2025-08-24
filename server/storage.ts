@@ -7,6 +7,7 @@ import {
   announcementReads,
   assignments,
   submissions,
+  proposals,
   storeItems,
   purchases,
   badges,
@@ -38,6 +39,8 @@ import {
   type InsertAssignment,
   type Submission,
   type InsertSubmission,
+  type Proposal,
+  type InsertProposal,
   type StoreItem,
   type InsertStoreItem,
   type Badge,
@@ -104,7 +107,7 @@ import {
   type InsertMarketplaceMessage
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, asc, and, or, sql, count } from "drizzle-orm";
+import { eq, desc, asc, and, or, ne, sql, count } from "drizzle-orm";
 
 export interface IStorage {
   // Time tracking methods
@@ -154,6 +157,13 @@ export interface IStorage {
   getSubmissionsByStudent(studentId: string): Promise<Submission[]>;
   createSubmission(submission: InsertSubmission): Promise<Submission>;
   updateSubmission(id: string, updates: Partial<InsertSubmission>): Promise<Submission>;
+  
+  // Proposal operations for RFP assignments
+  createProposal(proposal: InsertProposal): Promise<Proposal>;
+  getProposalsByAssignment(assignmentId: string): Promise<(Proposal & { student: Pick<User, 'id' | 'nickname' | 'firstName' | 'lastName'> })[]>;
+  getProposalsByStudent(studentId: string): Promise<Proposal[]>;
+  updateProposalStatus(proposalId: string, status: 'pending' | 'approved' | 'not_selected'): Promise<Proposal>;
+  approveProposal(proposalId: string): Promise<void>;
   
   // Store operations
   getStoreItem(id: string): Promise<StoreItem | undefined>;
@@ -321,7 +331,7 @@ export interface IStorage {
   getAssignments(classroomId: string, filters?: { status?: string; category?: string; visibleToStudents?: boolean; }): Promise<AssignmentAdvanced[]>;
   getAssignment(assignmentId: string): Promise<AssignmentAdvanced | undefined>;
   getStudentAssignments(studentId: string, classroomId: string): Promise<(AssignmentAdvanced & { submission?: AssignmentSubmission })[]>;
-  createSubmission(submission: InsertAssignmentSubmission): Promise<AssignmentSubmission>;
+  createAdvancedSubmission(submission: InsertAssignmentSubmission): Promise<AssignmentSubmission>;
   updateSubmission(submissionId: string, updates: Partial<InsertAssignmentSubmission>): Promise<AssignmentSubmission>;
   getSubmission(submissionId: string): Promise<AssignmentSubmission | undefined>;
   getAssignmentSubmissions(assignmentId: string): Promise<(AssignmentSubmission & { student: Pick<User, 'id' | 'nickname' | 'firstName' | 'lastName'> })[]>;
@@ -618,6 +628,75 @@ export class DatabaseStorage implements IStorage {
       .where(eq(submissions.id, id))
       .returning();
     return updatedSubmission;
+  }
+
+  // Proposal operations for RFP assignments
+  async createProposal(proposal: InsertProposal): Promise<Proposal> {
+    const [newProposal] = await db.insert(proposals).values([proposal]).returning();
+    return newProposal;
+  }
+
+  async getProposalsByAssignment(assignmentId: string): Promise<(Proposal & { student: Pick<User, 'id' | 'nickname' | 'firstName' | 'lastName'> })[]> {
+    const result = await db
+      .select({
+        proposal: proposals,
+        student: {
+          id: users.id,
+          nickname: users.nickname,
+          firstName: users.firstName,
+          lastName: users.lastName
+        }
+      })
+      .from(proposals)
+      .innerJoin(users, eq(proposals.studentId, users.id))
+      .where(eq(proposals.assignmentId, assignmentId))
+      .orderBy(desc(proposals.createdAt));
+    
+    return result.map(row => ({
+      ...row.proposal,
+      student: row.student
+    }));
+  }
+
+  async getProposalsByStudent(studentId: string): Promise<Proposal[]> {
+    return db
+      .select()
+      .from(proposals)
+      .where(eq(proposals.studentId, studentId))
+      .orderBy(desc(proposals.createdAt));
+  }
+
+  async updateProposalStatus(proposalId: string, status: 'pending' | 'approved' | 'not_selected'): Promise<Proposal> {
+    const [updatedProposal] = await db
+      .update(proposals)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(proposals.id, proposalId))
+      .returning();
+    return updatedProposal;
+  }
+
+  async approveProposal(proposalId: string): Promise<void> {
+    // Get the proposal to find the assignment
+    const [proposal] = await db.select().from(proposals).where(eq(proposals.id, proposalId));
+    if (!proposal) throw new Error('Proposal not found');
+    
+    // Start transaction to ensure atomicity
+    await db.transaction(async (tx) => {
+      // Approve the selected proposal
+      await tx
+        .update(proposals)
+        .set({ status: 'approved', updatedAt: new Date() })
+        .where(eq(proposals.id, proposalId));
+      
+      // Mark all other proposals for this assignment as "not_selected"
+      await tx
+        .update(proposals)
+        .set({ status: 'not_selected', updatedAt: new Date() })
+        .where(and(
+          eq(proposals.assignmentId, proposal.assignmentId),
+          ne(proposals.id, proposalId)
+        ));
+    });
   }
 
   // Store operations
@@ -1515,7 +1594,7 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async createSubmission(submission: InsertAssignmentSubmission): Promise<AssignmentSubmission> {
+  async createAdvancedSubmission(submission: InsertAssignmentSubmission): Promise<AssignmentSubmission> {
     const [newSubmission] = await db
       .insert(assignmentSubmissions)
       .values({

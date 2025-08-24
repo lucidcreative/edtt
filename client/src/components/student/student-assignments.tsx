@@ -23,6 +23,8 @@ interface Assignment {
   grade?: number;
   feedback?: string;
   resources?: { title: string; url: string; }[];
+  isRFP?: boolean;
+  proposalStatus?: 'pending' | 'approved' | 'not_selected';
 }
 
 const categories = [
@@ -83,12 +85,43 @@ export default function StudentAssignments() {
     }
   });
 
+  // Proposal submission mutation for RFP assignments
+  const submitProposalMutation = useMutation({
+    mutationFn: async ({ assignmentId, content }: { assignmentId: string; content: string }) => {
+      return apiRequest('POST', '/api/proposals', { assignmentId, content });
+    },
+    onSuccess: () => {
+      toast({ 
+        title: "Proposal Submitted! 💡", 
+        description: "Your proposal has been submitted and is now under review.",
+        duration: 5000
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/students", user?.id, "assignments"] });
+      setIsSubmitDialogOpen(false);
+      setSubmissionText("");
+      setSelectedAssignment(null);
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.message || "Failed to submit proposal. Please try again.";
+      toast({ title: "Error", description: message, variant: "destructive" });
+    }
+  });
+
   const handleSubmitAssignment = () => {
     if (!selectedAssignment || !submissionText.trim()) return;
     
     submitAssignmentMutation.mutate({
       assignmentId: selectedAssignment.id,
       submission: submissionText
+    });
+  };
+
+  const handleSubmitProposal = () => {
+    if (!selectedAssignment || !submissionText.trim()) return;
+    
+    submitProposalMutation.mutate({
+      assignmentId: selectedAssignment.id,
+      content: submissionText
     });
   };
 
@@ -305,35 +338,68 @@ export default function StudentAssignments() {
 
                     {/* Action Buttons - Fixed at bottom */}
                     <div className="flex items-center gap-2 pt-4 mt-auto">
-                        {assignment.status === 'assigned' ? (
-                          <Button 
-                            className="flex-1 bg-green-600 hover:bg-green-700"
-                            onClick={() => markCompleteMutation.mutate(assignment.id)}
-                            disabled={markCompleteMutation.isPending}
-                            data-testid={`button-mark-complete-${assignment.id}`}
-                          >
-                            {markCompleteMutation.isPending ? (
-                              <>
-                                <i className="fas fa-spinner fa-spin mr-2"></i>
-                                Marking Complete...
-                              </>
-                            ) : (
-                              <>
-                                <i className="fas fa-check mr-2"></i>
-                                Mark as Complete
-                              </>
-                            )}
-                          </Button>
-                        ) : assignment.status === 'pending_approval' ? (
-                          <Button variant="outline" className="flex-1 bg-orange-50 border-orange-200 text-orange-700" disabled>
-                            <i className="fas fa-clock mr-2"></i>
-                            Awaiting Approval
-                          </Button>
+                        {assignment.isRFP ? (
+                          // RFP Assignment Buttons
+                          assignment.proposalStatus === 'pending' ? (
+                            <Button variant="outline" className="flex-1 bg-blue-50 border-blue-200 text-blue-700" disabled>
+                              <i className="fas fa-clock mr-2"></i>
+                              Proposal Under Review
+                            </Button>
+                          ) : assignment.proposalStatus === 'approved' ? (
+                            <Button variant="outline" className="flex-1 bg-green-50 border-green-200 text-green-700" disabled>
+                              <i className="fas fa-trophy mr-2"></i>
+                              Proposal Approved
+                            </Button>
+                          ) : assignment.proposalStatus === 'not_selected' ? (
+                            <Button variant="outline" className="flex-1 bg-gray-50 border-gray-200 text-gray-600" disabled>
+                              <i className="fas fa-times mr-2"></i>
+                              Not Selected
+                            </Button>
+                          ) : (
+                            <Button 
+                              className="flex-1 bg-blue-600 hover:bg-blue-700"
+                              onClick={() => {
+                                setSelectedAssignment(assignment);
+                                setIsSubmitDialogOpen(true);
+                              }}
+                              data-testid={`button-submit-proposal-${assignment.id}`}
+                            >
+                              <i className="fas fa-lightbulb mr-2"></i>
+                              Submit Proposal
+                            </Button>
+                          )
                         ) : (
-                          <Button variant="outline" className="flex-1 bg-green-50 border-green-200 text-green-700" disabled>
-                            <i className="fas fa-check-circle mr-2"></i>
-                            Completed
-                          </Button>
+                          // Regular Assignment Buttons
+                          assignment.status === 'assigned' ? (
+                            <Button 
+                              className="flex-1 bg-green-600 hover:bg-green-700"
+                              onClick={() => markCompleteMutation.mutate(assignment.id)}
+                              disabled={markCompleteMutation.isPending}
+                              data-testid={`button-mark-complete-${assignment.id}`}
+                            >
+                              {markCompleteMutation.isPending ? (
+                                <>
+                                  <i className="fas fa-spinner fa-spin mr-2"></i>
+                                  Marking Complete...
+                                </>
+                              ) : (
+                                <>
+                                  <i className="fas fa-check mr-2"></i>
+                                  Mark as Complete
+                                </>
+                              )}
+                            </Button>
+                          ) : assignment.status === 'pending_approval' ? (
+                            <Button variant="outline" className="flex-1 bg-orange-50 border-orange-200 text-orange-700" disabled>
+                              <i className="fas fa-clock mr-2"></i>
+                              Awaiting Approval
+                            </Button>
+                          ) : (
+                            <Button variant="outline" className="flex-1 bg-green-50 border-green-200 text-green-700" disabled>
+                              <i className="fas fa-check-circle mr-2"></i>
+                              Completed
+                            </Button>
+                          )
                         )}
                         
                         <Dialog>
@@ -423,21 +489,32 @@ export default function StudentAssignments() {
       <Dialog open={isSubmitDialogOpen} onOpenChange={setIsSubmitDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Submit Assignment: {selectedAssignment?.title}</DialogTitle>
+            <DialogTitle>
+              {selectedAssignment?.isRFP ? 'Submit Proposal: ' : 'Submit Assignment: '}{selectedAssignment?.title}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="submission">Your Work</Label>
+              <Label htmlFor="submission">
+                {selectedAssignment?.isRFP ? 'Your Proposal' : 'Your Work'}
+              </Label>
               <Textarea
                 id="submission"
-                placeholder="Type your assignment response here, include links to any files or documents..."
+                placeholder={
+                  selectedAssignment?.isRFP 
+                    ? "Describe your approach, timeline, and how you plan to complete this assignment..."
+                    : "Type your assignment response here, include links to any files or documents..."
+                }
                 value={submissionText}
                 onChange={(e) => setSubmissionText(e.target.value)}
                 className="min-h-[200px] mt-2"
-                data-testid="textarea-assignment-submission"
+                data-testid={selectedAssignment?.isRFP ? "textarea-proposal" : "textarea-assignment-submission"}
               />
               <p className="text-xs text-gray-500 mt-1">
-                You can include text, links to documents, or describe your work. Make sure to include all required elements.
+                {selectedAssignment?.isRFP 
+                  ? "Explain your proposed solution, methodology, and timeline. Be specific about your approach."
+                  : "You can include text, links to documents, or describe your work. Make sure to include all required elements."
+                }
               </p>
             </div>
             
@@ -458,19 +535,22 @@ export default function StudentAssignments() {
                   Cancel
                 </Button>
                 <Button 
-                  onClick={handleSubmitAssignment}
-                  disabled={!submissionText.trim() || submitAssignmentMutation.isPending}
-                  data-testid="button-confirm-submit-assignment"
+                  onClick={selectedAssignment?.isRFP ? handleSubmitProposal : handleSubmitAssignment}
+                  disabled={
+                    !submissionText.trim() || 
+                    (selectedAssignment?.isRFP ? submitProposalMutation.isPending : submitAssignmentMutation.isPending)
+                  }
+                  data-testid={selectedAssignment?.isRFP ? "button-confirm-submit-proposal" : "button-confirm-submit-assignment"}
                 >
-                  {submitAssignmentMutation.isPending ? (
+                  {(selectedAssignment?.isRFP ? submitProposalMutation.isPending : submitAssignmentMutation.isPending) ? (
                     <>
                       <i className="fas fa-spinner fa-spin mr-2"></i>
-                      Submitting...
+                      {selectedAssignment?.isRFP ? 'Submitting Proposal...' : 'Submitting...'}
                     </>
                   ) : (
                     <>
-                      <i className="fas fa-paper-plane mr-2"></i>
-                      Submit Assignment
+                      <i className={selectedAssignment?.isRFP ? "fas fa-lightbulb mr-2" : "fas fa-paper-plane mr-2"}></i>
+                      {selectedAssignment?.isRFP ? 'Submit Proposal' : 'Submit Assignment'}
                     </>
                   )}
                 </Button>
