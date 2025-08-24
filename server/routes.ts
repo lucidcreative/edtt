@@ -1390,10 +1390,113 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // For now, use the first classroom
       const classroomId = approvedEnrollments[0].classroomId;
       const assignments = await storage.getAssignmentsByClassroom(classroomId);
-      res.json(assignments);
+      
+      // Get student's submissions for these assignments
+      const studentSubmissions = await storage.getSubmissionsByStudent(req.params.studentId);
+      
+      // Transform to simplified status workflow: assigned -> pending_approval -> completed
+      const clientAssignments = assignments.map(assignment => {
+        const submission = studentSubmissions.find(s => s.assignmentId === assignment.id);
+        
+        // Determine simple status based on submission
+        let status: 'assigned' | 'pending_approval' | 'completed';
+        if (!submission) {
+          status = 'assigned'; // No submission yet - student needs to mark as complete
+        } else if (submission.status === 'pending') {
+          status = 'pending_approval'; // Waiting for teacher approval
+        } else if (submission.status === 'approved') {
+          status = 'completed'; // Teacher approved and tokens awarded
+        } else {
+          status = 'assigned'; // Any other state - treat as incomplete
+        }
+        
+        return {
+          id: assignment.id,
+          title: assignment.title,
+          description: assignment.description,
+          category: assignment.category,
+          tokenReward: assignment.tokenReward || 0,
+          dueDate: assignment.dueDate?.toISOString(),
+          status,
+          resources: assignment.resources || [],
+          submittedAt: submission?.submittedAt?.toISOString(),
+          feedback: submission?.feedback
+        };
+      });
+      
+      res.json(clientAssignments);
     } catch (error) {
       console.error("Get student assignments error:", error);
       res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // SIMPLIFIED WORKFLOW: Student marks assignment as complete (no submission needed)
+  app.post('/api/assignments/:assignmentId/mark-complete', authenticate, async (req: any, res) => {
+    try {
+      const { assignmentId } = req.params;
+      const userId = req.user.id;
+      
+      if (req.user.role !== 'student') {
+        return res.status(403).json({ message: 'Only students can mark assignments as complete' });
+      }
+      
+      // Get assignment details using basic assignment table  
+      const assignment = await storage.getAssignment(assignmentId);
+      if (!assignment) {
+        return res.status(404).json({ message: 'Assignment not found' });
+      }
+      
+      // Verify student enrollment in this classroom
+      const enrollments = await storage.getStudentEnrollments(userId);
+      const hasAccess = enrollments.some(e => 
+        e.classroomId === assignment.classroomId && 
+        e.enrollmentStatus === 'approved'
+      );
+      
+      if (!hasAccess) {
+        return res.status(403).json({ message: 'Access denied to this assignment' });
+      }
+      
+      // Check if assignment is active
+      if (!assignment.isActive) {
+        return res.status(400).json({ message: 'Assignment not available for completion' });
+      }
+      
+      // Check if student already has a submission
+      const existingSubmissions = await storage.getSubmissionsByStudent(userId);
+      const existingSubmission = existingSubmissions.find(s => s.assignmentId === assignmentId);
+      
+      if (existingSubmission && existingSubmission.status === 'pending') {
+        return res.status(400).json({ message: 'Assignment is already awaiting teacher approval' });
+      }
+      
+      if (existingSubmission && existingSubmission.status === 'approved') {
+        return res.status(400).json({ message: 'Assignment is already completed' });
+      }
+      
+      // Create or update submission with pending status for teacher approval
+      if (existingSubmission) {
+        await storage.updateSubmission(existingSubmission.id, {
+          status: 'pending',
+          submissionText: 'Student marked assignment as complete',
+          submittedAt: new Date()
+        });
+      } else {
+        await storage.createSubmission({
+          assignmentId,
+          studentId: userId,
+          status: 'pending',
+          submissionText: 'Student marked assignment as complete'
+        });
+      }
+      
+      res.json({
+        message: 'Assignment marked as complete and sent to teacher for approval'
+      });
+    } catch (error) {
+      console.error('Error marking assignment complete:', error);
+      res.status(500).json({ message: 'Internal server error' });
     }
   });
 

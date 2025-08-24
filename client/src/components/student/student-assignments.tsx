@@ -65,21 +65,21 @@ export default function StudentAssignments() {
     }
   });
 
-  // Request completion approval (no tokens awarded yet)
-  const requestCompletionMutation = useMutation({
+  // SIMPLIFIED: Mark assignment as complete (no submission needed)
+  const markCompleteMutation = useMutation({
     mutationFn: async (assignmentId: string) => {
-      return apiRequest('POST', `/api/assignments/${assignmentId}/request-completion`, {});
+      return apiRequest('POST', `/api/assignments/${assignmentId}/mark-complete`, {});
     },
     onSuccess: () => {
       toast({ 
-        title: "Completion Requested! ✋", 
-        description: "Your teacher will review and approve your completion request.",
+        title: "Assignment Completed! ✅", 
+        description: "Your assignment has been sent to your teacher for approval.",
         duration: 5000
       });
       queryClient.invalidateQueries({ queryKey: ["/api/students", user?.id, "assignments"] });
     },
     onError: () => {
-      toast({ title: "Error", description: "Failed to request completion. Please try again.", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to mark assignment as complete. Please try again.", variant: "destructive" });
     }
   });
 
@@ -103,11 +103,7 @@ export default function StudentAssignments() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'assigned':
-        return <Badge variant="outline" className="bg-blue-100 text-blue-600 border-blue-200">📝 To Do</Badge>;
-      case 'submitted':
-        return <Badge variant="outline" className="bg-yellow-100 text-yellow-600 border-yellow-200">⏳ Under Review</Badge>;
-      case 'graded':
-        return <Badge variant="outline" className="bg-purple-100 text-purple-600 border-purple-200">✅ Ready to Complete</Badge>;
+        return <Badge variant="outline" className="bg-blue-100 text-blue-600 border-blue-200">📝 Incomplete</Badge>;
       case 'pending_approval':
         return <Badge variant="outline" className="bg-orange-100 text-orange-600 border-orange-200">⏳ Awaiting Approval</Badge>;
       case 'completed':
@@ -121,10 +117,6 @@ export default function StudentAssignments() {
     switch (status) {
       case 'assigned':
         return "fas fa-tasks";
-      case 'submitted':
-        return "fas fa-paper-plane";
-      case 'graded':
-        return "fas fa-star";
       case 'pending_approval':
         return "fas fa-clock";
       case 'completed':
@@ -315,37 +307,20 @@ export default function StudentAssignments() {
                     <div className="flex items-center gap-2 pt-4 mt-auto">
                         {assignment.status === 'assigned' ? (
                           <Button 
-                            className="flex-1"
-                            onClick={() => {
-                              setSelectedAssignment(assignment);
-                              setIsSubmitDialogOpen(true);
-                            }}
-                            data-testid={`button-submit-${assignment.id}`}
+                            className="flex-1 bg-green-600 hover:bg-green-700"
+                            onClick={() => markCompleteMutation.mutate(assignment.id)}
+                            disabled={markCompleteMutation.isPending}
+                            data-testid={`button-mark-complete-${assignment.id}`}
                           >
-                            <i className="fas fa-paper-plane mr-2"></i>
-                            Submit Work
-                          </Button>
-                        ) : assignment.status === 'submitted' ? (
-                          <Button variant="outline" className="flex-1" disabled>
-                            <i className="fas fa-clock mr-2"></i>
-                            Awaiting Grade
-                          </Button>
-                        ) : assignment.status === 'graded' ? (
-                          <Button 
-                            className="flex-1 bg-purple-600 hover:bg-purple-700"
-                            onClick={() => requestCompletionMutation.mutate(assignment.id)}
-                            disabled={requestCompletionMutation.isPending}
-                            data-testid={`button-request-completion-${assignment.id}`}
-                          >
-                            {requestCompletionMutation.isPending ? (
+                            {markCompleteMutation.isPending ? (
                               <>
                                 <i className="fas fa-spinner fa-spin mr-2"></i>
-                                Requesting...
+                                Marking Complete...
                               </>
                             ) : (
                               <>
-                                <i className="fas fa-hand-paper mr-2"></i>
-                                Request Completion
+                                <i className="fas fa-check mr-2"></i>
+                                Mark as Complete
                               </>
                             )}
                           </Button>
