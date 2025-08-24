@@ -1,0 +1,67 @@
+I want to expand the Assignments feature inside my app with a new optional mode called Request for Proposal (RFP).
+
+Requirements:
+
+Teacher Workflow:
+
+When creating an assignment, teachers should have the option to mark it as an RFP Assignment.
+
+For RFP Assignments, instead of students just submitting completed work, they must first submit a proposal.
+
+Teachers can view all submitted proposals in a dashboard/table format.
+
+Teachers can approve one proposal to officially award the "contract" (the assignment).
+
+Once a proposal is approved, the chosen student is assigned the work, and the other proposals are marked as “not selected.”
+
+Student Workflow:
+
+When viewing an RFP Assignment, students see a "Submit Proposal" button instead of a normal “Submit Work” option.
+
+Students can write a short pitch/plan and submit it.
+
+Once submitted, they should be able to see the status of their proposal: Pending / Approved / Not Selected.
+
+UI Features:
+
+In the Assignments tab, RFPs should be visually distinct (e.g., with a badge or icon).
+
+Teachers should have a simple Proposal Review Dashboard that lists all student proposals, sortable by student name, submission time, etc.
+
+Teachers should have a one-click way to approve a proposal (with confirmation).
+
+Database & Backend:
+
+Extend the existing assignment schema with an isRFP flag.
+
+Create a new Proposals model/table with fields like:
+
+id
+
+assignmentId (FK to Assignment)
+
+studentId
+
+content (proposal text)
+
+status (Pending, Approved, Not Selected)
+
+createdAt, updatedAt
+
+Ensure that approving one proposal automatically updates the others to “Not Selected.”
+
+Extra Features:
+
+Notifications: When a teacher approves a proposal, notify the selected student.
+
+History: Teachers can see which proposals were submitted for each RFP, even after one is selected.
+
+Deliverables:
+
+Frontend components for proposal submission, proposal review, and assignment creation with RFP toggle.
+
+Backend routes and controllers for creating proposals, fetching proposals, and approving a proposal.
+
+Database migrations/updates for new schema.
+
+Integration into the Assignments tab without breaking existing workflows.

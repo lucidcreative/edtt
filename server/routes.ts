@@ -1479,8 +1479,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (existingSubmission) {
         await storage.updateSubmission(existingSubmission.id, {
           status: 'pending',
-          submissionText: 'Student marked assignment as complete',
-          submittedAt: new Date()
+          submissionText: 'Student marked assignment as complete'
         });
       } else {
         await storage.createSubmission({
