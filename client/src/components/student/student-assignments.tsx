@@ -51,10 +51,7 @@ export default function StudentAssignments() {
   // Submit assignment mutation
   const submitAssignmentMutation = useMutation({
     mutationFn: async ({ assignmentId, submission }: { assignmentId: string; submission: string }) => {
-      return apiRequest(`/api/assignments/${assignmentId}/submit`, {
-        method: 'POST',
-        body: JSON.stringify({ submission })
-      });
+      return apiRequest('POST', `/api/assignments/${assignmentId}/submit`, { submission });
     },
     onSuccess: () => {
       toast({ title: "Assignment Submitted", description: "Your assignment has been submitted successfully!" });
@@ -71,10 +68,7 @@ export default function StudentAssignments() {
   // Request completion approval (no tokens awarded yet)
   const requestCompletionMutation = useMutation({
     mutationFn: async (assignmentId: string) => {
-      return apiRequest(`/api/assignments/${assignmentId}/request-completion`, {
-        method: 'POST',
-        body: JSON.stringify({})
-      });
+      return apiRequest('POST', `/api/assignments/${assignmentId}/request-completion`, {});
     },
     onSuccess: () => {
       toast({ 
@@ -423,7 +417,6 @@ export default function StudentAssignments() {
                             </div>
                           </DialogContent>
                         </Dialog>
-                      </div>
                     </div>
                   </CardContent>
                 </Card>
