@@ -35,16 +35,16 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="hidden lg:flex w-64 bg-white shadow-lg transition-all duration-300 flex-col">
+    <aside className="hidden lg:flex w-64 bg-white dark:bg-gray-900 shadow-lg transition-all duration-300 flex-col">
       {/* Logo */}
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
             BC
           </div>
           <div className="hidden lg:block">
-            <h1 className="font-bold text-gray-800">BizCoin</h1>
-            <p className="text-xs text-gray-500">Economy Platform</p>
+            <h1 className="font-bold text-gray-800 dark:text-gray-100">BizCoin</h1>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Economy Platform</p>
           </div>
         </div>
       </div>
@@ -62,8 +62,8 @@ export default function Sidebar() {
               onClick={() => setLocation(item.path)}
               className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-all duration-200 hover:scale-[1.02] hover:shadow-sm ${
                 location === item.path
-                  ? 'bg-blue-50 text-blue-600 shadow-sm scale-[1.01]'
-                  : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                  ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 shadow-sm scale-[1.01]'
+                  : 'text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800'
               }`}
               data-testid={`nav-${item.path.slice(1) || 'dashboard'}`}
             >
@@ -75,12 +75,12 @@ export default function Sidebar() {
       </nav>
 
       {/* User Profile */}
-      <div className="p-4 border-t border-gray-200">
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700">
         <button
           onClick={() => user?.role === 'student' ? setIsProfileDialogOpen(true) : undefined}
           className={`w-full flex items-center space-x-3 mb-3 p-2 rounded-lg transition-all duration-200 ${
             user?.role === 'student' 
-              ? 'hover:bg-gray-50 cursor-pointer group' 
+              ? 'hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer group' 
               : 'cursor-default'
           }`}
           data-testid="button-profile"
@@ -92,18 +92,18 @@ export default function Sidebar() {
             data-testid="img-profile-avatar"
           />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-800 truncate" data-testid="text-user-name">
+            <p className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate" data-testid="text-user-name">
               {user?.role === 'teacher' 
                 ? `${user?.firstName} ${user?.lastName}`.trim() || user?.email
                 : user?.nickname
               }
             </p>
-            <p className="text-xs text-gray-500 capitalize" data-testid="text-user-role">
+            <p className="text-xs text-gray-500 dark:text-gray-400 capitalize" data-testid="text-user-role">
               {user?.role}
             </p>
           </div>
           {user?.role === 'student' && (
-            <i className="fas fa-edit text-gray-400 group-hover:text-gray-600 text-sm"></i>
+            <i className="fas fa-edit text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300 text-sm"></i>
           )}
         </button>
         

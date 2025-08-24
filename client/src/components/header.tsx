@@ -1,6 +1,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
+import { useTheme } from "@/contexts/ThemeContext";
 import MobileMenu from "@/components/mobile-menu";
 
 const pageInfo = {
@@ -29,11 +30,12 @@ const pageInfo = {
 export default function Header() {
   const { user } = useAuth();
   const [location] = useLocation();
+  const { theme, toggleTheme } = useTheme();
   
   const currentPage = pageInfo[location as keyof typeof pageInfo] || pageInfo['/'];
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200 p-4 lg:p-6">
+    <header className="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-700 p-4 lg:p-6">
       <div className="flex items-center justify-between">
         {/* Mobile Menu Button */}
         <div className="lg:hidden">
@@ -45,10 +47,10 @@ export default function Header() {
           transition={{ duration: 0.3 }}
           className="flex-1 lg:flex-none text-center lg:text-left"
         >
-          <h1 className="text-xl lg:text-3xl font-bold text-gray-800" data-testid="text-page-title">
+          <h1 className="text-xl lg:text-3xl font-bold text-gray-800 dark:text-gray-100" data-testid="text-page-title">
             {currentPage.title}
           </h1>
-          <p className="text-sm lg:text-base text-gray-600 mt-1 hidden lg:block" data-testid="text-page-subtitle">
+          <p className="text-sm lg:text-base text-gray-600 dark:text-gray-300 mt-1 hidden lg:block" data-testid="text-page-subtitle">
             {currentPage.subtitle}
           </p>
         </motion.div>
@@ -77,11 +79,17 @@ export default function Header() {
             </>
           )}
           
-          <button className="relative p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">
-            <i className="fas fa-bell text-xl"></i>
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-              3
-            </span>
+          <button 
+            onClick={toggleTheme}
+            className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            aria-label="Toggle theme"
+            data-testid="button-theme-toggle"
+          >
+            {theme === 'light' ? (
+              <i className="fas fa-moon text-xl"></i>
+            ) : (
+              <i className="fas fa-sun text-xl"></i>
+            )}
           </button>
         </motion.div>
       </div>

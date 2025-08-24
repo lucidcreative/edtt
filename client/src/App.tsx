@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { ClassroomProvider } from "@/contexts/ClassroomContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import { Suspense, lazy } from "react";
 import Sidebar from "@/components/sidebar";
 import Header from "@/components/header";
@@ -40,7 +41,7 @@ function PageLoadingFallback() {
 function AuthenticatedApp() {
   return (
     <ClassroomProvider>
-      <div className="flex h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      <div className="flex h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-gray-900 dark:to-gray-800">
         <Sidebar />
         <main className="flex-1 flex flex-col overflow-hidden">
           <Header />
@@ -105,10 +106,12 @@ function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
+        <ThemeProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Router />
+          </TooltipProvider>
+        </ThemeProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );
