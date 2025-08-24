@@ -107,6 +107,24 @@ export default function StudentAssignments() {
     }
   });
 
+  // Unmark assignment as complete mutation
+  const unmarkCompleteMutation = useMutation({
+    mutationFn: async (assignmentId: string) => {
+      return apiRequest('POST', `/api/assignments/${assignmentId}/unmark-complete`, {});
+    },
+    onSuccess: () => {
+      toast({ 
+        title: "Assignment Unmarked ↩️", 
+        description: "You can now rework and resubmit this assignment.",
+        duration: 5000
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/students", user?.id, "assignments"] });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to unmark assignment. Please try again.", variant: "destructive" });
+    }
+  });
+
   const handleSubmitAssignment = () => {
     if (!selectedAssignment || !submissionText.trim()) return;
     
@@ -390,9 +408,24 @@ export default function StudentAssignments() {
                               )}
                             </Button>
                           ) : assignment.status === 'pending_approval' ? (
-                            <Button variant="outline" className="flex-1 bg-orange-50 border-orange-200 text-orange-700" disabled>
-                              <i className="fas fa-clock mr-2"></i>
-                              Awaiting Approval
+                            <Button 
+                              variant="outline" 
+                              className="flex-1 bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100"
+                              onClick={() => unmarkCompleteMutation.mutate(assignment.id)}
+                              disabled={unmarkCompleteMutation.isPending}
+                              data-testid={`button-unmark-complete-${assignment.id}`}
+                            >
+                              {unmarkCompleteMutation.isPending ? (
+                                <>
+                                  <i className="fas fa-spinner fa-spin mr-2"></i>
+                                  Unmarking...
+                                </>
+                              ) : (
+                                <>
+                                  <i className="fas fa-undo mr-2"></i>
+                                  Unmark as Complete
+                                </>
+                              )}
                             </Button>
                           ) : (
                             <Button variant="outline" className="flex-1 bg-green-50 border-green-200 text-green-700" disabled>
@@ -408,53 +441,195 @@ export default function StudentAssignments() {
                               <i className="fas fa-eye"></i>
                             </Button>
                           </DialogTrigger>
-                          <DialogContent className="max-w-2xl">
+                          <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
                             <DialogHeader>
-                              <DialogTitle>{assignment.title}</DialogTitle>
+                              <DialogTitle className="flex items-center gap-3">
+                                <div className={`w-12 h-12 rounded-lg flex items-center justify-center text-white ${
+                                  assignment.status === 'completed' ? 'bg-gradient-to-r from-green-500 to-emerald-600' : 
+                                  assignment.status === 'pending_approval' ? 'bg-gradient-to-r from-orange-500 to-orange-600' :
+                                  'bg-gradient-to-r from-blue-500 to-purple-600'
+                                }`}>
+                                  <i className={`${getStatusIcon(assignment.status)} text-lg`}></i>
+                                </div>
+                                <div>
+                                  <h2 className="text-xl font-bold">{assignment.title}</h2>
+                                  {getStatusBadge(assignment.status)}
+                                </div>
+                              </DialogTitle>
                             </DialogHeader>
-                            <div className="space-y-4">
+                            <div className="space-y-6">
+                              {/* Assignment Type and Category */}
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                                  <Label className="text-sm font-medium text-blue-800">Category</Label>
+                                  <p className="text-sm text-blue-600 mt-1 flex items-center gap-2">
+                                    <i className={getCategoryInfo(assignment.category).icon}></i>
+                                    {getCategoryInfo(assignment.category).label}
+                                  </p>
+                                </div>
+                                <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                                  <Label className="text-sm font-medium text-purple-800">Assignment Type</Label>
+                                  <p className="text-sm text-purple-600 mt-1 flex items-center gap-2">
+                                    <i className={assignment.isRFP ? "fas fa-lightbulb" : "fas fa-tasks"}></i>
+                                    {assignment.isRFP ? "RFP (Request for Proposal)" : "Regular Assignment"}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Description */}
                               {assignment.description && (
                                 <div>
                                   <Label className="text-sm font-medium">Description</Label>
-                                  <p className="text-sm text-gray-600 mt-1">{assignment.description}</p>
+                                  <div className="bg-gray-50 p-4 rounded-lg mt-2 border">
+                                    <p className="text-sm text-gray-700 leading-relaxed">{assignment.description}</p>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Reward and Due Date */}
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                                  <Label className="text-sm font-medium text-yellow-800">Token Reward</Label>
+                                  <div className="flex items-center gap-2 mt-2">
+                                    <i className="fas fa-coins text-yellow-600 text-lg"></i>
+                                    <span className="text-xl font-bold text-yellow-800">{assignment.tokenReward}</span>
+                                    <span className="text-sm text-yellow-600">tokens</span>
+                                  </div>
+                                </div>
+                                {assignment.dueDate && (
+                                  <div className="p-4 bg-red-50 rounded-lg border border-red-200">
+                                    <Label className="text-sm font-medium text-red-800">Due Date</Label>
+                                    <div className="flex items-center gap-2 mt-2">
+                                      <i className="fas fa-calendar text-red-600"></i>
+                                      <span className="text-sm font-semibold text-red-700">
+                                        {new Date(assignment.dueDate).toLocaleDateString('en-US', {
+                                          weekday: 'long',
+                                          year: 'numeric',
+                                          month: 'long',
+                                          day: 'numeric'
+                                        })}
+                                      </span>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Assignment Status Details */}
+                              <div className="p-4 rounded-lg border-2 border-dashed">
+                                <Label className="text-sm font-medium">Current Status</Label>
+                                <div className="mt-3">
+                                  {assignment.status === 'assigned' && (
+                                    <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
+                                      <i className="fas fa-play-circle text-blue-600 text-xl"></i>
+                                      <div>
+                                        <p className="font-semibold text-blue-800">Ready to Start</p>
+                                        <p className="text-xs text-blue-600">Click 'Mark as Complete' when you finish the work</p>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {assignment.status === 'pending_approval' && (
+                                    <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-lg">
+                                      <i className="fas fa-clock text-orange-600 text-xl"></i>
+                                      <div className="flex-1">
+                                        <p className="font-semibold text-orange-800">Waiting for Teacher Review</p>
+                                        <p className="text-xs text-orange-600">Your teacher will review and award tokens soon</p>
+                                      </div>
+                                      <Button 
+                                        size="sm"
+                                        variant="outline"
+                                        className="border-orange-300 text-orange-700 hover:bg-orange-100"
+                                        onClick={() => unmarkCompleteMutation.mutate(assignment.id)}
+                                        disabled={unmarkCompleteMutation.isPending}
+                                      >
+                                        {unmarkCompleteMutation.isPending ? 'Unmarking...' : 'Unmark'}
+                                      </Button>
+                                    </div>
+                                  )}
+                                  {assignment.status === 'completed' && (
+                                    <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
+                                      <i className="fas fa-trophy text-green-600 text-xl"></i>
+                                      <div>
+                                        <p className="font-semibold text-green-800">Completed Successfully!</p>
+                                        <p className="text-xs text-green-600">You've earned {assignment.tokenReward} tokens</p>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* RFP Status for RFP assignments */}
+                              {assignment.isRFP && (
+                                <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                                  <Label className="text-sm font-medium text-purple-800">Proposal Status</Label>
+                                  <div className="mt-2">
+                                    {!assignment.proposalStatus ? (
+                                      <p className="text-sm text-purple-600">No proposal submitted yet</p>
+                                    ) : assignment.proposalStatus === 'pending' ? (
+                                      <div className="flex items-center gap-2">
+                                        <i className="fas fa-hourglass-half text-blue-600"></i>
+                                        <span className="text-sm font-semibold text-blue-800">Under Review</span>
+                                      </div>
+                                    ) : assignment.proposalStatus === 'approved' ? (
+                                      <div className="flex items-center gap-2">
+                                        <i className="fas fa-check-circle text-green-600"></i>
+                                        <span className="text-sm font-semibold text-green-800">Proposal Approved!</span>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center gap-2">
+                                        <i className="fas fa-times-circle text-red-600"></i>
+                                        <span className="text-sm font-semibold text-red-800">Not Selected</span>
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               )}
                               
+                              {/* Resources */}
                               {assignment.resources && assignment.resources.length > 0 && (
                                 <div>
-                                  <Label className="text-sm font-medium">Resources</Label>
-                                  <div className="space-y-2 mt-1">
+                                  <Label className="text-sm font-medium">Resources & Links</Label>
+                                  <div className="space-y-2 mt-2">
                                     {assignment.resources.map((resource, idx) => (
                                       <a
                                         key={idx}
                                         href={resource.url}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
+                                        className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border"
                                       >
-                                        <i className="fas fa-external-link-alt"></i>
-                                        {resource.title}
+                                        <i className="fas fa-external-link-alt text-blue-600"></i>
+                                        <span className="text-sm font-medium text-gray-800">{resource.title}</span>
+                                        <i className="fas fa-arrow-right text-gray-400 ml-auto"></i>
                                       </a>
                                     ))}
                                   </div>
                                 </div>
                               )}
-                              
-                              <div className="flex items-center justify-between pt-4 border-t">
-                                <div className="flex items-center gap-4">
-                                  <span className="text-sm text-gray-600">
-                                    <i className="fas fa-coins text-yellow-500 mr-1"></i>
-                                    {assignment.tokenReward} tokens
-                                  </span>
-                                  {assignment.dueDate && (
-                                    <span className="text-sm text-gray-600">
-                                      <i className="fas fa-calendar text-blue-500 mr-1"></i>
-                                      Due: {new Date(assignment.dueDate).toLocaleDateString()}
-                                    </span>
-                                  )}
+
+                              {/* Submission History (if any) */}
+                              {assignment.submittedAt && (
+                                <div className="p-4 bg-gray-50 rounded-lg border">
+                                  <Label className="text-sm font-medium text-gray-800">Submission History</Label>
+                                  <div className="mt-2 space-y-2">
+                                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                                      <i className="fas fa-calendar-check"></i>
+                                      <span>Submitted: {new Date(assignment.submittedAt).toLocaleString()}</span>
+                                    </div>
+                                    {assignment.grade && (
+                                      <div className="flex items-center gap-2 text-sm text-green-700">
+                                        <i className="fas fa-star"></i>
+                                        <span>Grade: {assignment.grade}%</span>
+                                      </div>
+                                    )}
+                                    {assignment.feedback && (
+                                      <div className="p-2 bg-white rounded border">
+                                        <p className="text-xs font-medium text-gray-700">Teacher Feedback:</p>
+                                        <p className="text-sm text-gray-600 mt-1">"{assignment.feedback}"</p>
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
-                                {getStatusBadge(assignment.status)}
-                              </div>
+                              )}
                             </div>
                           </DialogContent>
                         </Dialog>

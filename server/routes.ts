@@ -1499,6 +1499,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // UNMARK ASSIGNMENT AS COMPLETE
+  app.post('/api/assignments/:assignmentId/unmark-complete', authenticate, async (req: any, res) => {
+    try {
+      const { assignmentId } = req.params;
+      const userId = req.user.id;
+      
+      if (req.user.role !== 'student') {
+        return res.status(403).json({ message: 'Only students can unmark assignments' });
+      }
+      
+      // Get assignment details
+      const assignment = await storage.getAssignment(assignmentId);
+      if (!assignment) {
+        return res.status(404).json({ message: 'Assignment not found' });
+      }
+      
+      // Verify student enrollment in this classroom
+      const enrollments = await storage.getStudentEnrollments(userId);
+      const hasAccess = enrollments.some(e => 
+        e.classroomId === assignment.classroomId && 
+        e.enrollmentStatus === 'approved'
+      );
+      
+      if (!hasAccess) {
+        return res.status(403).json({ message: 'Access denied to this assignment' });
+      }
+      
+      // Check if there's a pending submission to remove
+      const submissions = await storage.getSubmissionsByStudent(userId);
+      const existingSubmission = submissions.find(s => s.assignmentId === assignmentId && s.status === 'pending');
+      
+      if (existingSubmission) {
+        // Remove the pending submission
+        await storage.updateSubmission(existingSubmission.id, {
+          status: 'rejected' // Mark as rejected to remove from pending queue
+        });
+      }
+      
+      res.json({
+        message: 'Assignment unmarked successfully. You can now rework and resubmit.'
+      });
+    } catch (error) {
+      console.error('Error unmarking assignment:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
   // RFP PROPOSAL ROUTES
   
   // Create a new proposal for an RFP assignment
