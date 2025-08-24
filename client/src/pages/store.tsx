@@ -46,10 +46,7 @@ export default function Store() {
   // Create store item mutation
   const createItemMutation = useMutation({
     mutationFn: async (itemData: any) => {
-      return apiRequest("/api/store/items", {
-        method: "POST",
-        body: JSON.stringify({ ...itemData, classroomId: currentClassroom?.id })
-      });
+      return apiRequest("POST", "/api/store/items", { ...itemData, classroomId: currentClassroom?.id });
     },
     onSuccess: () => {
       toast({
@@ -72,10 +69,7 @@ export default function Store() {
   // Update store item mutation
   const updateItemMutation = useMutation({
     mutationFn: async (data: { itemId: string; updates: any }) => {
-      return apiRequest(`/api/store/items/${data.itemId}`, {
-        method: "PUT",
-        body: JSON.stringify(data.updates)
-      });
+      return apiRequest("PUT", `/api/store/items/${data.itemId}`, data.updates);
     },
     onSuccess: () => {
       toast({
@@ -99,9 +93,7 @@ export default function Store() {
   // Delete store item mutation
   const deleteItemMutation = useMutation({
     mutationFn: async (itemId: string) => {
-      return apiRequest(`/api/store/items/${itemId}`, {
-        method: "DELETE"
-      });
+      return apiRequest("DELETE", `/api/store/items/${itemId}`);
     },
     onSuccess: () => {
       toast({
@@ -339,32 +331,34 @@ export default function Store() {
                     
                     <div className="flex gap-2">
                       {user?.role === 'teacher' ? (
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => handleEditItem(item)}
-                          data-testid={`button-edit-item-${index}`}
-                          className={`mr-2 ${
-                            item.category === 'Rewards' 
-                              ? 'border-purple-300 text-purple-700 hover:bg-purple-50'
-                              : item.category === 'Supplies'
-                              ? 'border-blue-300 text-blue-700 hover:bg-blue-50'
-                              : 'border-green-300 text-green-700 hover:bg-green-50'
-                          }`}
-                        >
-                          <i className="fas fa-edit mr-1"></i>
-                          Edit
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => handleDeleteItem(item)}
-                          data-testid={`button-delete-item-${index}`}
-                          className="border-red-300 text-red-700 hover:bg-red-50"
-                        >
-                          <i className="fas fa-trash mr-1"></i>
-                          Delete
-                        </Button>
+                        <>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleEditItem(item)}
+                            data-testid={`button-edit-item-${index}`}
+                            className={`mr-2 ${
+                              item.category === 'Rewards' 
+                                ? 'border-purple-300 text-purple-700 hover:bg-purple-50'
+                                : item.category === 'Supplies'
+                                ? 'border-blue-300 text-blue-700 hover:bg-blue-50'
+                                : 'border-green-300 text-green-700 hover:bg-green-50'
+                            }`}
+                          >
+                            <i className="fas fa-edit mr-1"></i>
+                            Edit
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleDeleteItem(item)}
+                            data-testid={`button-delete-item-${index}`}
+                            className="border-red-300 text-red-700 hover:bg-red-50"
+                          >
+                            <i className="fas fa-trash mr-1"></i>
+                            Delete
+                          </Button>
+                        </>
                       ) : (
                         <Button 
                           size="sm"
