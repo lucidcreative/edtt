@@ -50,7 +50,7 @@ export default function Header() {
           <h1 className="text-xl lg:text-3xl font-bold text-gray-800 dark:text-gray-100" data-testid="text-page-title">
             {currentPage.title}
           </h1>
-          <p className="text-sm lg:text-base text-gray-600 dark:text-gray-300 mt-1 hidden lg:block" data-testid="text-page-subtitle">
+          <p className="text-sm lg:text-base text-gray-600 dark:text-gray-200 mt-1 hidden lg:block" data-testid="text-page-subtitle">
             {currentPage.subtitle}
           </p>
         </motion.div>
@@ -63,16 +63,16 @@ export default function Header() {
         >
           {user?.role === 'student' && (
             <>
-              <div className="flex items-center space-x-2 bg-blue-50 px-3 py-2 rounded-lg">
-                <i className="fas fa-coins text-blue-600"></i>
-                <span className="font-medium text-blue-800" data-testid="text-user-tokens">
+              <div className="flex items-center space-x-2 bg-blue-50 dark:bg-blue-900/40 px-3 py-2 rounded-lg">
+                <i className="fas fa-coins text-blue-600 dark:text-blue-400"></i>
+                <span className="font-medium text-blue-800 dark:text-blue-200" data-testid="text-user-tokens">
                   {user.tokens || 0}
                 </span>
               </div>
               
-              <div className="flex items-center space-x-2 bg-purple-50 px-3 py-2 rounded-lg">
-                <i className="fas fa-trophy text-purple-600"></i>
-                <span className="font-medium text-purple-800" data-testid="text-user-level">
+              <div className="flex items-center space-x-2 bg-purple-50 dark:bg-purple-900/40 px-3 py-2 rounded-lg">
+                <i className="fas fa-trophy text-purple-600 dark:text-purple-400"></i>
+                <span className="font-medium text-purple-800 dark:text-purple-200" data-testid="text-user-level">
                   Level {user.level || 1}
                 </span>
               </div>
@@ -81,7 +81,7 @@ export default function Header() {
           
           <button 
             onClick={toggleTheme}
-            className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 dark:text-gray-200 dark:hover:text-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
             aria-label="Toggle theme"
             data-testid="button-theme-toggle"
           >

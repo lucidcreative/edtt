@@ -41,7 +41,7 @@ function PageLoadingFallback() {
 function AuthenticatedApp() {
   return (
     <ClassroomProvider>
-      <div className="flex h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-gray-900 dark:to-gray-800">
+      <div className="flex h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-gray-900 dark:to-slate-800">
         <Sidebar />
         <main className="flex-1 flex flex-col overflow-hidden">
           <Header />

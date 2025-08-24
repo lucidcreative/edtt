@@ -1,0 +1,113 @@
+I want to expand my classroom app with a new Economy & Marketplace section. Please implement the following features in a modular, scalable way:
+
+1. Trading Tab (Peer-to-Peer Exchange)
+
+Add a new “Trading” tab in the student dashboard.
+
+Students can offer up any item they’ve bought from the Store.
+
+Other students in the same class can browse trade offers and propose a swap.
+
+Both students must confirm for the trade to be completed.
+
+No tokens are exchanged in this mode — only item-for-item trades.
+
+UI: Trading tab should have two sections:
+
+My Trade Offers (items I’ve listed for trade).
+
+Available Trades (items listed by classmates).
+
+2. Marketplace (Token-based, OfferUp style)
+
+Inside the same “Economy & Marketplace” tab, add a Marketplace section.
+
+Students can list items they’ve bought from the store.
+
+When listing an item:
+
+They can only set/edit the price (in tokens).
+
+They cannot edit the item name, description, or image (pulled directly from the store item).
+
+Buyers see a marketplace feed of available items with price, seller info, and a Buy Now button.
+
+When a buyer purchases:
+
+Tokens are withdrawn from buyer’s account.
+
+Tokens are deposited into seller’s account.
+
+The item is transferred to the buyer’s inventory.
+
+UI: Marketplace should look similar to OfferUp/Facebook Marketplace with item cards.
+
+3. Group Buy System (GoFundMe style inside Store)
+
+Teachers can mark certain store items as Group Buy Items.
+
+Group Buy Items display a progress bar showing how many tokens have been pledged vs. total needed.
+
+Students can contribute any amount of tokens toward the goal.
+
+When the goal is reached:
+
+The group buy item is “unlocked” for the class (e.g., pizza party, field trip, extra recess).
+
+Teacher gets notified that the group goal is complete.
+
+If goal isn’t reached, tokens remain pledged until teacher cancels or the deadline passes.
+
+UI: Group buy pages should resemble GoFundMe with a progress tracker, contributor list, and call-to-action button.
+
+Database Changes:
+
+Add TradeOffers table:
+
+id, classroomId, studentId, itemId, status (Open, Completed, Cancelled).
+
+Add MarketplaceListings table:
+
+id, itemId, sellerId, price, status (Active, Sold).
+
+Add GroupBuys table:
+
+id, itemId, teacherId, goalAmount, currentAmount, contributors[].
+
+Extra:
+
+Notifications:
+
+When someone accepts a trade offer.
+
+When an item is purchased in the marketplace.
+
+When a group buy goal is reached.
+
+Security:
+
+Prevent double-spending or multiple concurrent purchases of the same item.
+
+Ensure only students with enough tokens can buy/contribute.
+
+10 Example Group Buy Templates Teachers Can Use:
+
+Pizza Party 🍕 (Goal: 200 tokens)
+
+Extra Recess 🏀 (Goal: 150 tokens)
+
+Class Movie Day 🎬 (Goal: 250 tokens)
+
+Ice Cream Social 🍦 (Goal: 180 tokens)
+
+Pajama Day 😴 (Goal: 120 tokens)
+
+Field Trip Bus Snacks 🚌 (Goal: 300 tokens)
+
+Teacher Dress-Up Day 🤡 (Goal: 200 tokens)
+
+Homework Passes 📘 (Goal: 100 tokens)
+
+Class Game Tournament 🎮 (Goal: 220 tokens)
+
+Holiday Party 🎉 (Goal: 400 tokens)

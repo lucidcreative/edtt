@@ -63,7 +63,7 @@ export default function Sidebar() {
               className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-all duration-200 hover:scale-[1.02] hover:shadow-sm ${
                 location === item.path
                   ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 shadow-sm scale-[1.01]'
-                  : 'text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800'
+                  : 'text-gray-600 dark:text-gray-200 hover:text-gray-800 dark:hover:text-gray-50 hover:bg-gray-50 dark:hover:bg-gray-700'
               }`}
               data-testid={`nav-${item.path.slice(1) || 'dashboard'}`}
             >
@@ -98,7 +98,7 @@ export default function Sidebar() {
                 : user?.nickname
               }
             </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 capitalize" data-testid="text-user-role">
+            <p className="text-xs text-gray-500 dark:text-gray-300 capitalize" data-testid="text-user-role">
               {user?.role}
             </p>
           </div>
