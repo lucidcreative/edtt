@@ -55,7 +55,7 @@ export default function BadgeManagement({ classroomId }: { classroomId: string }
   const { data: badges = [] } = useQuery({
     queryKey: [`/api/classrooms/${classroomId}/badges`],
     enabled: !!classroomId
-  });
+  }) as { data: any[] };
 
   // Predefined badge templates
   const templates: BadgeTemplate[] = [
@@ -92,10 +92,37 @@ export default function BadgeManagement({ classroomId }: { classroomId: string }
     { id: 'early-bird', name: 'Early Bird', description: 'Always arrives on time', icon: 'fas fa-clock', color: '#f59e0b', category: 'attendance' }
   ];
 
+  // Form validation
+  const validateForm = () => {
+    if (!formData.name.trim()) {
+      toast({ title: "Validation Error", description: "Badge name is required", variant: "destructive" });
+      return false;
+    }
+    if (!formData.description.trim()) {
+      toast({ title: "Validation Error", description: "Badge description is required", variant: "destructive" });
+      return false;
+    }
+    if (!formData.icon) {
+      toast({ title: "Validation Error", description: "Please select an icon", variant: "destructive" });
+      return false;
+    }
+    if (!formData.color) {
+      toast({ title: "Validation Error", description: "Please select a color", variant: "destructive" });
+      return false;
+    }
+    return true;
+  };
+
   // Create badge mutation
   const createBadgeMutation = useMutation({
     mutationFn: async (data: any) => {
+      console.log('Creating badge with data:', data);
       const response = await apiRequest('POST', `/api/classrooms/${classroomId}/badges`, data);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        console.error('Badge creation failed:', errorData);
+        throw new Error(errorData.message || 'Failed to create badge');
+      }
       return await response.json();
     },
     onSuccess: () => {
@@ -105,7 +132,8 @@ export default function BadgeManagement({ classroomId }: { classroomId: string }
       resetForm();
     },
     onError: (error: any) => {
-      toast({ title: "Creation Failed", description: error.message, variant: "destructive" });
+      console.error('Badge creation error:', error);
+      toast({ title: "Creation Failed", description: error.message || 'Failed to create badge', variant: "destructive" });
     }
   });
 
@@ -165,6 +193,10 @@ export default function BadgeManagement({ classroomId }: { classroomId: string }
   };
 
   const handleSubmit = () => {
+    if (!validateForm()) {
+      return;
+    }
+    
     if (selectedBadge) {
       updateBadgeMutation.mutate({ id: selectedBadge.id, data: formData });
     } else {

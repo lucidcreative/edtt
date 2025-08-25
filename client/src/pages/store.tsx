@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { groupBuyTemplateData } from "@shared/schema";
 import { useClassroom } from "@/contexts/ClassroomContext";
 import StudentStore from "@/components/student/student-store";
 import { Button } from "@/components/ui/button";
@@ -36,11 +37,13 @@ export default function Store() {
   const [groupBuyForm, setGroupBuyForm] = useState({ 
     title: '', 
     description: '', 
-    goalAmount: 0, 
+    goalAmount: 100, 
     endsAt: '',
     minContribution: 1,
-    maxContribution: null
+    maxContribution: 50
   });
+  
+  const [selectedTemplate, setSelectedTemplate] = useState('');
 
   const { currentClassroom } = useClassroom();
 
@@ -167,14 +170,42 @@ export default function Store() {
     }
   };
 
+  // Form validation for group buys
+  const validateGroupBuyForm = () => {
+    if (!groupBuyForm.title.trim()) {
+      toast({ title: "Validation Error", description: "Group buy title is required", variant: "destructive" });
+      return false;
+    }
+    if (!groupBuyForm.description.trim()) {
+      toast({ title: "Validation Error", description: "Group buy description is required", variant: "destructive" });
+      return false;
+    }
+    if (groupBuyForm.goalAmount <= 0) {
+      toast({ title: "Validation Error", description: "Goal amount must be greater than 0", variant: "destructive" });
+      return false;
+    }
+    if (!groupBuyForm.endsAt) {
+      toast({ title: "Validation Error", description: "End date is required", variant: "destructive" });
+      return false;
+    }
+    return true;
+  };
+
   // Create group buy mutation
   const createGroupBuyMutation = useMutation({
     mutationFn: async (groupBuyData: any) => {
-      return apiRequest("POST", "/api/group-buys", { 
+      console.log('Creating group buy with data:', groupBuyData);
+      const response = await apiRequest("POST", "/api/group-buys", { 
         ...groupBuyData, 
         classroomId: currentClassroom?.id,
         endsAt: new Date(groupBuyData.endsAt).toISOString()
       });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        console.error('Group buy creation failed:', errorData);
+        throw new Error(errorData.message || 'Failed to create group buy');
+      }
+      return response.json();
     },
     onSuccess: () => {
       toast({
@@ -196,7 +227,29 @@ export default function Store() {
   });
 
   const handleCreateGroupBuy = () => {
+    if (!validateGroupBuyForm()) {
+      return;
+    }
     createGroupBuyMutation.mutate(groupBuyForm);
+  };
+  
+  const handleTemplateSelect = (templateId: string) => {
+    setSelectedTemplate(templateId);
+    if (templateId) {
+      const template = groupBuyTemplateData.find(t => t.id === templateId);
+      if (template) {
+        const endDate = new Date();
+        endDate.setDate(endDate.getDate() + template.durationDays);
+        setGroupBuyForm({
+          title: template.title,
+          description: template.description,
+          goalAmount: template.targetAmount,
+          endsAt: endDate.toISOString().split('T')[0],
+          minContribution: 1,
+          maxContribution: 50
+        });
+      }
+    }
   };
 
   const getItemIcon = (item: any) => {

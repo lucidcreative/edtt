@@ -1507,6 +1507,110 @@ export const groupBuyTemplates = pgTable("group_buy_templates", {
   isPopularIdx: index("group_buy_templates_is_popular_idx").on(table.isPopular)
 }));
 
+// Group Buy Templates - Predefined templates for teachers to use
+export const groupBuyTemplateData = [
+  { 
+    id: 'pizza-party', 
+    title: '🍕 Pizza Party', 
+    description: 'A fun pizza party for the entire class! Everyone contributes to make it happen.',
+    targetAmount: 200, 
+    category: 'Class Parties & Events',
+    durationDays: 14,
+    icon: '🍕',
+    tags: ['party', 'food', 'celebration']
+  },
+  { 
+    id: 'movie-night', 
+    title: '🎉 Movie Night', 
+    description: 'Watch a popular movie together as a class with popcorn and snacks.',
+    targetAmount: 150, 
+    category: 'Class Parties & Events',
+    durationDays: 10,
+    icon: '🎉',
+    tags: ['movie', 'entertainment', 'snacks']
+  },
+  { 
+    id: 'sports-equipment', 
+    title: '🏀 Sports Equipment', 
+    description: 'New sports equipment for physical education and recess activities.',
+    targetAmount: 500, 
+    category: 'Equipment & Supplies',
+    durationDays: 21,
+    icon: '🏀',
+    tags: ['sports', 'equipment', 'physical education']
+  },
+  { 
+    id: 'study-materials', 
+    title: '📚 Extra Study Materials', 
+    description: 'Additional books, workbooks, and learning resources for the classroom.',
+    targetAmount: 100, 
+    category: 'Educational Resources',
+    durationDays: 14,
+    icon: '📚',
+    tags: ['books', 'education', 'learning']
+  },
+  { 
+    id: 'birthday-celebration', 
+    title: '🎂 Birthday Celebration', 
+    description: 'Special birthday celebration supplies for class birthday parties.',
+    targetAmount: 120, 
+    category: 'Class Parties & Events',
+    durationDays: 7,
+    icon: '🎂',
+    tags: ['birthday', 'celebration', 'party']
+  },
+  { 
+    id: 'music-event', 
+    title: '🎶 Music Event', 
+    description: 'Musical instruments and supplies for a class music performance.',
+    targetAmount: 300, 
+    category: 'Arts & Music',
+    durationDays: 21,
+    icon: '🎶',
+    tags: ['music', 'instruments', 'performance']
+  },
+  { 
+    id: 'ice-cream-social', 
+    title: '🍦 Ice Cream Social', 
+    description: 'Ice cream party with various flavors and toppings for everyone.',
+    targetAmount: 180, 
+    category: 'Class Parties & Events',
+    durationDays: 10,
+    icon: '🍦',
+    tags: ['ice cream', 'dessert', 'social']
+  },
+  { 
+    id: 'art-supplies', 
+    title: '🖌️ Art Supplies', 
+    description: 'Premium art supplies for creative projects and art class activities.',
+    targetAmount: 220, 
+    category: 'Arts & Crafts',
+    durationDays: 14,
+    icon: '🖌️',
+    tags: ['art', 'supplies', 'creativity']
+  },
+  { 
+    id: 'game-day', 
+    title: '🎮 Game Day', 
+    description: 'Educational games and activities for a fun learning game day.',
+    targetAmount: 250, 
+    category: 'Educational Activities',
+    durationDays: 14,
+    icon: '🎮',
+    tags: ['games', 'learning', 'fun']
+  },
+  { 
+    id: 'talent-show', 
+    title: '🎤 Talent Show', 
+    description: 'Equipment and supplies for a class talent show event.',
+    targetAmount: 400, 
+    category: 'Performance & Events',
+    durationDays: 28,
+    icon: '🎤',
+    tags: ['talent', 'performance', 'show']
+  }
+];
+
 // Marketplace Insert Schemas
 export const insertMarketplaceSellerSchema = createInsertSchema(marketplaceSellers).omit({
   id: true,

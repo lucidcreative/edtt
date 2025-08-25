@@ -61,7 +61,7 @@ export default function ChallengeManagement({ classroomId }: { classroomId: stri
   const { data: challenges = [] } = useQuery({
     queryKey: [`/api/classrooms/${classroomId}/challenges`],
     enabled: !!classroomId
-  });
+  }) as { data: any[] };
 
   // Predefined challenge templates
   const templates: ChallengeTemplate[] = [
@@ -100,10 +100,37 @@ export default function ChallengeManagement({ classroomId }: { classroomId: stri
     { id: 'improvement-star', name: 'Improvement Star', description: 'Show improvement in 8 areas', icon: 'fas fa-chart-line', color: '#06b6d4', targetValue: 8, tokenReward: 110, category: 'achievement' }
   ];
 
+  // Form validation
+  const validateChallengeForm = () => {
+    if (!formData.name.trim()) {
+      toast({ title: "Validation Error", description: "Challenge name is required", variant: "destructive" });
+      return false;
+    }
+    if (!formData.description.trim()) {
+      toast({ title: "Validation Error", description: "Challenge description is required", variant: "destructive" });
+      return false;
+    }
+    if (formData.targetValue <= 0) {
+      toast({ title: "Validation Error", description: "Target value must be greater than 0", variant: "destructive" });
+      return false;
+    }
+    if (formData.tokenReward < 0) {
+      toast({ title: "Validation Error", description: "Token reward cannot be negative", variant: "destructive" });
+      return false;
+    }
+    return true;
+  };
+
   // Create challenge mutation
   const createChallengeMutation = useMutation({
     mutationFn: async (data: any) => {
+      console.log('Creating challenge with data:', data);
       const response = await apiRequest('POST', `/api/classrooms/${classroomId}/challenges`, data);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        console.error('Challenge creation failed:', errorData);
+        throw new Error(errorData.message || 'Failed to create challenge');
+      }
       return await response.json();
     },
     onSuccess: () => {
@@ -113,7 +140,8 @@ export default function ChallengeManagement({ classroomId }: { classroomId: stri
       resetForm();
     },
     onError: (error: any) => {
-      toast({ title: "Creation Failed", description: error.message, variant: "destructive" });
+      console.error('Challenge creation error:', error);
+      toast({ title: "Creation Failed", description: error.message || 'Failed to create challenge', variant: "destructive" });
     }
   });
 
@@ -179,6 +207,10 @@ export default function ChallengeManagement({ classroomId }: { classroomId: stri
   };
 
   const handleSubmit = () => {
+    if (!validateChallengeForm()) {
+      return;
+    }
+    
     const submitData = {
       ...formData,
       expiresAt: formData.expiresAt ? new Date(formData.expiresAt).toISOString() : null
