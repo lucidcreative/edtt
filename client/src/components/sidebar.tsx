@@ -9,6 +9,7 @@ import StudentProfileDialog from "@/components/student/student-profile-dialog";
 const teacherNavigation = [
   { path: '/', name: 'Dashboard', icon: 'fas fa-home' },
   { path: '/students', name: 'Students', icon: 'fas fa-users' },
+  { path: '/teacher-management', name: 'Teacher Management', icon: 'fas fa-clipboard-list' },
   { path: '/announcements', name: 'Announcements', icon: 'fas fa-bullhorn' },
   { path: '/earn', name: 'Earn', icon: 'fas fa-coins' },
   { path: '/store', name: 'Store', icon: 'fas fa-store' },
