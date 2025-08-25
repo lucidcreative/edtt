@@ -9,13 +9,10 @@ import { motion } from "framer-motion";
 const teacherNavigation = [
   { path: '/', name: 'Dashboard', icon: 'fas fa-home' },
   { path: '/students', name: 'Students', icon: 'fas fa-users' },
+  { path: '/teacher-management', name: 'Teacher Management', icon: 'fas fa-clipboard-list' },
   { path: '/announcements', name: 'Announcements', icon: 'fas fa-bullhorn' },
-  { path: '/assignments', name: 'Assignments', icon: 'fas fa-tasks' },
-  { path: '/time-tracking', name: 'Time Clock', icon: 'fas fa-clock' },
   { path: '/store', name: 'Store', icon: 'fas fa-store' },
-  { path: '/analytics', name: 'Analytics', icon: 'fas fa-chart-bar' },
-  { path: '/badges', name: 'Badges', icon: 'fas fa-award' },
-  { path: '/challenges', name: 'Challenges', icon: 'fas fa-trophy' },
+  { path: '/leaderboard', name: 'Leaderboard', icon: 'fas fa-trophy' },
 ];
 
 const studentNavigation = [

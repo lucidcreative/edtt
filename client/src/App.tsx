@@ -22,7 +22,6 @@ const Assignments = lazy(() => import("@/pages/assignments"));
 const Analytics = lazy(() => import("@/pages/analytics"));
 const Announcements = lazy(() => import("@/pages/announcements"));
 const TimeTracking = lazy(() => import("@/pages/time-tracking"));
-const Earn = lazy(() => import("@/pages/earn"));
 const Badges = lazy(() => import("@/pages/badges"));
 const Challenges = lazy(() => import("@/pages/challenges"));
 const Progress = lazy(() => import("@/pages/progress"));
@@ -30,6 +29,7 @@ const Leaderboard = lazy(() => import("@/pages/leaderboard"));
 const ChangePinPage = lazy(() => import("@/pages/change-pin"));
 const Economy = lazy(() => import("@/pages/economy"));
 const TeacherManagement = lazy(() => import("@/pages/teacher-management"));
+const Earn = lazy(() => import("@/pages/earn"));
 
 // Loading fallback component
 function PageLoadingFallback() {
@@ -57,7 +57,6 @@ function AuthenticatedApp() {
                 <Route path="/assignments" component={Assignments} />
                 <Route path="/time-tracking" component={TimeTracking} />
                 <Route path="/earn" component={Earn} />
-                <Route path="/analytics" component={Analytics} />
                 <Route path="/badges" component={Badges} />
                 <Route path="/challenges" component={Challenges} />
                 <Route path="/progress" component={Progress} />

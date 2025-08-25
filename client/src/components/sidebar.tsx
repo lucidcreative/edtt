@@ -11,9 +11,7 @@ const teacherNavigation = [
   { path: '/students', name: 'Students', icon: 'fas fa-users' },
   { path: '/teacher-management', name: 'Teacher Management', icon: 'fas fa-clipboard-list' },
   { path: '/announcements', name: 'Announcements', icon: 'fas fa-bullhorn' },
-  { path: '/earn', name: 'Earn', icon: 'fas fa-coins' },
   { path: '/store', name: 'Store', icon: 'fas fa-store' },
-  { path: '/analytics', name: 'Analytics', icon: 'fas fa-chart-bar' },
   { path: '/leaderboard', name: 'Leaderboard', icon: 'fas fa-trophy' },
 ];
 
