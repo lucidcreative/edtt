@@ -54,7 +54,7 @@ export default function TemplateSelector({ templates, onSubmit, isLoading, class
   });
 
   // Filter templates
-  const categories = ["all", ...Array.from(new Set(templates.map(t => t.category)))];
+  const categories = ["all", ...Array.from(new Set(templates.map(t => t.category).filter(Boolean)))];
   const filteredTemplates = templates.filter(template => {
     const matchesSearch = template.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          template.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
