@@ -41,17 +41,17 @@ function setupAnalyticsCron() {
 
 // Session cleanup cron
 function setupSessionCleanupCron() {
-  // Run every 10 minutes to clean up abandoned sessions
-  cron.schedule('*/10 * * * *', async () => {
-    try {
-      const cleaned = await timeTrackingService.cleanupAbandonedSessions();
-      if (cleaned > 0) {
-        console.log(`Cleaned up ${cleaned} abandoned time tracking sessions`);
-      }
-    } catch (error) {
-      console.error('Failed to cleanup sessions:', error);
-    }
-  });
+  // Temporarily disabled until time_sessions table is created
+  // cron.schedule('*/10 * * * *', async () => {
+  //   try {
+  //     const cleaned = await timeTrackingService.cleanupAbandonedSessions();
+  //     if (cleaned > 0) {
+  //       console.log(`Cleaned up ${cleaned} abandoned time tracking sessions`);
+  //     }
+  //   } catch (error) {
+  //     console.error('Failed to cleanup sessions:', error);
+  //   }
+  // });
 }
 
 // Weekly analytics aggregation

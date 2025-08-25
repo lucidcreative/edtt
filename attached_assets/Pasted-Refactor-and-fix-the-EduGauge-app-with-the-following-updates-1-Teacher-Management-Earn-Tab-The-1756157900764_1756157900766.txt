@@ -1,0 +1,69 @@
+Refactor and fix the EduGauge app with the following updates:
+
+1. Teacher Management / Earn Tab
+
+The Teacher Management features need to be merged into the Earn tab.
+
+Option A: Keep the Earn tab and place all teacher management functionality inside it.
+
+Option B: Remove the Earn tab completely and retitle the Teacher Management tab to “Earn.”
+
+Ensure the tab title, routes, and icons are updated consistently across the app.
+
+2. Data Consistency Across Tabs
+
+Fix issues where switching between tabs shows inconsistent classroom data.
+
+Example: The Announcement page shows one classroom while the Dashboard shows another.
+
+Ensure that the active classroom context is synced across all tabs, pulling from the same source (likely a ClassroomContext or useUser state).
+
+3. Assignment Management (Teacher User)
+
+The Assignment Management tab inside the teacher view is currently just loading and not rendering data.
+
+Fix the query or API call so assignments load correctly.
+
+Add proper loading states (spinner, skeleton UI) instead of infinite loading.
+
+Ensure teachers can add/edit/delete assignments without errors.
+
+4. Analytics Integration
+
+Move the Analytics tab into the Leaderboard tab.
+
+The Leaderboard tab should now have:
+
+Leaderboard section (ranking students by performance, badges, tokens, etc).
+
+Analytics section with detailed breakdowns:
+
+Student login duration vs clocked-in time
+
+Time spent on assignments
+
+Participation in challenges/group buys
+
+Overall classroom usage metrics
+
+Add toggle or sub-tabs inside Leaderboard to switch between "Leaderboard" and "Analytics."
+
+5. Feature Integrity / Error Handling
+
+Ensure every button and feature works as expected.
+
+Currently, adding a student manually to a classroom throws an error. Fix the API route and schema validation for student creation.
+
+Add front-end validation for forms (e.g., required fields, invalid input).
+
+Display clear error messages to teachers/students when something fails (not just generic errors).
+
+Confirm that Marketplace, Trade, Announcements, Assignments, Badges, Challenges, Group Buys all execute their actions without silent failure.
+
+6. Testing & Reliability
+
+Add integration tests to confirm that switching tabs always displays the correct data context.
+
+Add seed data for assignments, announcements, badges, and students to test interactions faster.
+
+Ensure error logs in console give descriptive messages (e.g., "Add student failed: missing email field").
