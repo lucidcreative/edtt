@@ -971,6 +971,40 @@ export const assignmentSubmissions = pgTable("assignment_submissions", {
   updatedAt: timestamp("updated_at").defaultNow()
 });
 
+// Assignment resources and links management
+export const assignmentResources = pgTable("assignment_resources", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  assignmentId: varchar("assignment_id").references(() => assignmentsAdvanced.id, { onDelete: "cascade" }),
+  classroomId: varchar("classroom_id").references(() => classrooms.id, { onDelete: "cascade" }),
+  createdBy: varchar("created_by").references(() => users.id),
+  
+  // Resource identification
+  title: varchar("title", { length: 200 }).notNull(),
+  description: text("description"),
+  resourceUrl: text("resource_url").notNull(),
+  
+  // Resource type and platform
+  resourceType: varchar("resource_type", { length: 50 }).notNull(), // 'google_drive', 'youtube', 'padlet', 'website', 'document'
+  platform: varchar("platform", { length: 50 }), // Platform-specific identifier
+  isRequired: boolean("is_required").default(false),
+  
+  // Access and permissions
+  requiredPermissions: varchar("required_permissions", { length: 50 }), // 'view', 'comment', 'edit'
+  accessInstructions: text("access_instructions"),
+  
+  // Organization and display
+  displayOrder: integer("display_order").default(0),
+  category: varchar("category", { length: 50 }), // 'reference', 'template', 'submission_guide', 'example'
+  
+  // Metadata
+  isActive: boolean("is_active").default(true),
+  clickCount: integer("click_count").default(0),
+  lastAccessedAt: timestamp("last_accessed_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
 // Assignment feedback and communication tracking
 export const assignmentFeedback = pgTable("assignment_feedback", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1044,6 +1078,12 @@ export const insertAssignmentTemplateSchema = createInsertSchema(assignmentTempl
   updatedAt: true
 });
 
+export const insertAssignmentResourceSchema = createInsertSchema(assignmentResources).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
 // Phase 2A Assignment Management Types
 export type AssignmentAdvanced = typeof assignmentsAdvanced.$inferSelect;
 export type InsertAssignmentAdvanced = z.infer<typeof insertAssignmentAdvancedSchema>;
@@ -1056,6 +1096,9 @@ export type InsertAssignmentFeedback = z.infer<typeof insertAssignmentFeedbackSc
 
 export type AssignmentTemplate = typeof assignmentTemplates.$inferSelect;
 export type InsertAssignmentTemplate = z.infer<typeof insertAssignmentTemplateSchema>;
+
+export type AssignmentResource = typeof assignmentResources.$inferSelect;
+export type InsertAssignmentResource = z.infer<typeof insertAssignmentResourceSchema>;
 
 // PHASE 2B: STUDENT MARKETPLACE & PEER-TO-PEER COMMERCE
 

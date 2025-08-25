@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { nanoid } from "nanoid";
 import { storage } from "./storage";
-import { insertUserSchema, insertClassroomSchema, insertAssignmentSchema, insertSubmissionSchema, insertStoreItemSchema, users, insertAssignmentAdvancedSchema, insertAssignmentSubmissionSchema, insertAssignmentFeedbackSchema, insertAssignmentTemplateSchema, insertMarketplaceSellerSchema, insertMarketplaceListingSchema, insertMarketplaceTransactionSchema, insertMarketplaceReviewSchema, insertMarketplaceWishlistSchema, insertMarketplaceMessageSchema, insertBadgeSchema, insertChallengeSchema, insertStudentInventorySchema, insertTradeOfferSchema, insertTradeResponseSchema, insertGroupBuySchema, insertGroupBuyContributionSchema, insertGroupBuyTemplateSchema, type User } from "@shared/schema";
+import { insertUserSchema, insertClassroomSchema, insertAssignmentSchema, insertSubmissionSchema, insertStoreItemSchema, users, insertAssignmentAdvancedSchema, insertAssignmentSubmissionSchema, insertAssignmentFeedbackSchema, insertAssignmentTemplateSchema, insertAssignmentResourceSchema, insertMarketplaceSellerSchema, insertMarketplaceListingSchema, insertMarketplaceTransactionSchema, insertMarketplaceReviewSchema, insertMarketplaceWishlistSchema, insertMarketplaceMessageSchema, insertBadgeSchema, insertChallengeSchema, insertStudentInventorySchema, insertTradeOfferSchema, insertTradeResponseSchema, insertGroupBuySchema, insertGroupBuyContributionSchema, insertGroupBuyTemplateSchema, type User } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcrypt";
@@ -694,6 +694,163 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(assignment);
     } catch (error) {
       console.error("Create assignment error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Assignment Resource Management Routes
+  
+  // Get all resources for an assignment
+  app.get('/api/assignments/:assignmentId/resources', authenticate, async (req: any, res) => {
+    try {
+      const { assignmentId } = req.params;
+      
+      // Verify assignment exists and user has access
+      const assignment = await storage.getAssignment(assignmentId);
+      if (!assignment) {
+        return res.status(404).json({ message: "Assignment not found" });
+      }
+      
+      // Check access based on role
+      if (req.user.role === 'teacher' && assignment.teacherId !== req.user.id) {
+        return res.status(403).json({ message: "Access denied" });
+      } else if (req.user.role === 'student') {
+        // Verify student is enrolled in the classroom
+        const enrollments = await storage.getStudentEnrollments(req.user.id);
+        const hasAccess = enrollments.some(e => 
+          e.classroomId === assignment.classroomId && 
+          e.enrollmentStatus === 'approved'
+        );
+        if (!hasAccess) {
+          return res.status(403).json({ message: "Access denied" });
+        }
+      }
+      
+      const resources = await storage.getAssignmentResources(assignmentId);
+      res.json(resources);
+    } catch (error) {
+      console.error("Get assignment resources error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Create a new resource for an assignment
+  app.post('/api/assignments/:assignmentId/resources', authenticate, async (req: any, res) => {
+    try {
+      const { assignmentId } = req.params;
+      
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ message: "Only teachers can add assignment resources" });
+      }
+      
+      // Verify assignment exists and teacher owns it
+      const assignment = await storage.getAssignment(assignmentId);
+      if (!assignment) {
+        return res.status(404).json({ message: "Assignment not found" });
+      }
+      
+      if (assignment.teacherId !== req.user.id) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const resourceData = insertAssignmentResourceSchema.parse({
+        ...req.body,
+        assignmentId,
+        classroomId: assignment.classroomId,
+        createdBy: req.user.id
+      });
+      
+      const resource = await storage.createAssignmentResource(resourceData);
+      res.status(201).json(resource);
+    } catch (error) {
+      console.error("Create assignment resource error:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Invalid resource data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Update an assignment resource
+  app.put('/api/assignment-resources/:resourceId', authenticate, async (req: any, res) => {
+    try {
+      const { resourceId } = req.params;
+      
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ message: "Only teachers can update assignment resources" });
+      }
+      
+      // Verify resource exists and teacher owns it
+      const resource = await storage.getAssignmentResource(resourceId);
+      if (!resource) {
+        return res.status(404).json({ message: "Resource not found" });
+      }
+      
+      if (resource.createdBy !== req.user.id) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const updatedResource = await storage.updateAssignmentResource(resourceId, req.body);
+      res.json(updatedResource);
+    } catch (error) {
+      console.error("Update assignment resource error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Delete an assignment resource
+  app.delete('/api/assignment-resources/:resourceId', authenticate, async (req: any, res) => {
+    try {
+      const { resourceId } = req.params;
+      
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ message: "Only teachers can delete assignment resources" });
+      }
+      
+      // Verify resource exists and teacher owns it
+      const resource = await storage.getAssignmentResource(resourceId);
+      if (!resource) {
+        return res.status(404).json({ message: "Resource not found" });
+      }
+      
+      if (resource.createdBy !== req.user.id) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      await storage.deleteAssignmentResource(resourceId);
+      res.json({ message: "Resource deleted successfully" });
+    } catch (error) {
+      console.error("Delete assignment resource error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Update resource display order (for drag-and-drop reordering)
+  app.put('/api/assignment-resources/reorder', authenticate, async (req: any, res) => {
+    try {
+      const { resources } = req.body; // Array of { id, displayOrder }
+      
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ message: "Only teachers can reorder assignment resources" });
+      }
+      
+      // Verify all resources belong to teacher
+      for (const resourceUpdate of resources) {
+        const resource = await storage.getAssignmentResource(resourceUpdate.id);
+        if (!resource || resource.createdBy !== req.user.id) {
+          return res.status(403).json({ message: "Access denied to one or more resources" });
+        }
+      }
+      
+      // Update display orders
+      const promises = resources.map(update => 
+        storage.updateAssignmentResource(update.id, { displayOrder: update.displayOrder })
+      );
+      
+      await Promise.all(promises);
+      res.json({ message: "Resource order updated successfully" });
+    } catch (error) {
+      console.error("Reorder assignment resources error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });

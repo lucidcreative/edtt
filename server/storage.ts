@@ -114,6 +114,7 @@ import {
   assignmentSubmissions,
   assignmentFeedback,
   assignmentTemplates,
+  assignmentResources,
   timeEntries,
   // Phase 2B Marketplace Tables (already imported above)
   type AssignmentAdvanced,
@@ -124,6 +125,8 @@ import {
   type InsertAssignmentFeedback,
   type AssignmentTemplate,
   type InsertAssignmentTemplate,
+  type AssignmentResource,
+  type InsertAssignmentResource,
   // Phase 2B Marketplace Types (already imported above)
 } from "@shared/schema";
 import { db } from "./db";
@@ -170,6 +173,13 @@ export interface IStorage {
   getAssignmentsByClassroom(classroomId: string): Promise<Assignment[]>;
   createAssignment(assignment: InsertAssignment): Promise<Assignment>;
   updateAssignment(id: string, updates: Partial<InsertAssignment>): Promise<Assignment>;
+  
+  // Assignment Resource operations
+  getAssignmentResources(assignmentId: string): Promise<AssignmentResource[]>;
+  getAssignmentResource(resourceId: string): Promise<AssignmentResource | undefined>;
+  createAssignmentResource(resource: InsertAssignmentResource): Promise<AssignmentResource>;
+  updateAssignmentResource(resourceId: string, updates: Partial<InsertAssignmentResource>): Promise<AssignmentResource>;
+  deleteAssignmentResource(resourceId: string): Promise<void>;
   
   // Submission operations
   getSubmission(id: string): Promise<Submission | undefined>;
@@ -643,6 +653,46 @@ export class DatabaseStorage implements IStorage {
       .where(eq(assignments.id, id))
       .returning();
     return updatedAssignment;
+  }
+
+  // Assignment Resource operations
+  async getAssignmentResources(assignmentId: string): Promise<AssignmentResource[]> {
+    return db
+      .select()
+      .from(assignmentResources)
+      .where(eq(assignmentResources.assignmentId, assignmentId))
+      .orderBy(asc(assignmentResources.displayOrder), desc(assignmentResources.createdAt));
+  }
+
+  async getAssignmentResource(resourceId: string): Promise<AssignmentResource | undefined> {
+    const [resource] = await db
+      .select()
+      .from(assignmentResources)
+      .where(eq(assignmentResources.id, resourceId));
+    return resource;
+  }
+
+  async createAssignmentResource(resource: InsertAssignmentResource): Promise<AssignmentResource> {
+    const [newResource] = await db
+      .insert(assignmentResources)
+      .values(resource)
+      .returning();
+    return newResource;
+  }
+
+  async updateAssignmentResource(resourceId: string, updates: Partial<InsertAssignmentResource>): Promise<AssignmentResource> {
+    const [updatedResource] = await db
+      .update(assignmentResources)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(assignmentResources.id, resourceId))
+      .returning();
+    return updatedResource;
+  }
+
+  async deleteAssignmentResource(resourceId: string): Promise<void> {
+    await db
+      .delete(assignmentResources)
+      .where(eq(assignmentResources.id, resourceId));
   }
 
   // Submission operations

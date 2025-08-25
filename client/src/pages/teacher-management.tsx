@@ -30,9 +30,11 @@ import {
   Download,
   Eye,
   Edit,
-  Trash2
+  Trash2,
+  Link as LinkIcon
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { AssignmentResourceManager } from "@/components/assignment/assignment-resource-manager";
 
 export default function TeacherManagement() {
   const { user } = useAuth();
@@ -43,6 +45,7 @@ export default function TeacherManagement() {
   // State management
   const [activeTab, setActiveTab] = useState("assignments");
   const [isCreateAssignmentOpen, setIsCreateAssignmentOpen] = useState(false);
+  const [expandedAssignment, setExpandedAssignment] = useState<string | null>(null);
   const [selectedDateRange, setSelectedDateRange] = useState("7");
   const [selectedStudent, setSelectedStudent] = useState("all");
   const [assignmentForm, setAssignmentForm] = useState({
@@ -399,6 +402,15 @@ export default function TeacherManagement() {
                               </div>
                             </div>
                             <div className="flex gap-1">
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                className="p-2" 
+                                onClick={() => setExpandedAssignment(expandedAssignment === assignment.id ? null : assignment.id)}
+                                data-testid={`button-manage-resources-${index}`}
+                              >
+                                <LinkIcon className="w-4 h-4 text-purple-600" />
+                              </Button>
                               <Button size="sm" variant="ghost" className="p-2" data-testid={`button-view-assignment-${index}`}>
                                 <Eye className="w-4 h-4 text-blue-600" />
                               </Button>
@@ -451,6 +463,16 @@ export default function TeacherManagement() {
                             )}
                           </div>
                         </CardContent>
+                        
+                        {/* Assignment Resource Manager - Expandable Section */}
+                        {expandedAssignment === assignment.id && (
+                          <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-slate-900/50 p-6">
+                            <AssignmentResourceManager 
+                              assignmentId={assignment.id} 
+                              classroomId={currentClassroom.id} 
+                            />
+                          </div>
+                        )}
                       </Card>
                     </motion.div>
                   );
