@@ -6,12 +6,8 @@ import {
   submissions, 
   users, 
   studentClassrooms,
-  tokenTransactions,
-  studentWallets,
   timeEntries,
-  announcementReads,
-  analyticsSnapshots,
-  auditLogs
+  announcementReads
 } from '../shared/schema';
 
 // Real analytics computation functions

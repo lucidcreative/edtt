@@ -29,6 +29,7 @@ const Leaderboard = lazy(() => import("@/pages/leaderboard"));
 const ChangePinPage = lazy(() => import("@/pages/change-pin"));
 const Economy = lazy(() => import("@/pages/economy"));
 const TeacherManagement = lazy(() => import("@/pages/teacher-management"));
+const ProposalsPortal = lazy(() => import("@/pages/proposals-portal"));
 const Earn = lazy(() => import("@/pages/earn"));
 
 // Loading fallback component
@@ -55,6 +56,7 @@ function AuthenticatedApp() {
                 <Route path="/announcements" component={Announcements} />
                 <Route path="/store" component={Store} />
                 <Route path="/assignments" component={Assignments} />
+                <Route path="/proposals" component={ProposalsPortal} />
                 <Route path="/time-tracking" component={TimeTracking} />
                 <Route path="/earn" component={Earn} />
                 <Route path="/badges" component={Badges} />

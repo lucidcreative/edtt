@@ -1,6 +1,6 @@
 import { db } from './db';
 import { eq, and, sql, desc, count, gte } from 'drizzle-orm';
-import { timeSessions, sessionHeartbeats, users, auditLogs } from '../shared/schema';
+import { timeEntries, users } from '../shared/schema';
 import crypto from 'crypto';
 
 export class TimeTrackingService {

@@ -10,6 +10,7 @@ const teacherNavigation = [
   { path: '/', name: 'Dashboard', icon: 'fas fa-home' },
   { path: '/students', name: 'Students', icon: 'fas fa-users' },
   { path: '/teacher-management', name: 'Teacher Management', icon: 'fas fa-clipboard-list' },
+  { path: '/proposals', name: 'Proposals Portal', icon: 'fas fa-lightbulb' },
   { path: '/announcements', name: 'Announcements', icon: 'fas fa-bullhorn' },
   { path: '/store', name: 'Store', icon: 'fas fa-store' },
   { path: '/leaderboard', name: 'Leaderboard', icon: 'fas fa-trophy' },
@@ -18,6 +19,7 @@ const teacherNavigation = [
 const studentNavigation = [
   { path: '/', name: 'Dashboard', icon: 'fas fa-home' },
   { path: '/earn', name: 'Earn', icon: 'fas fa-coins' },
+  { path: '/proposals', name: 'Special Projects', icon: 'fas fa-lightbulb' },
   { path: '/store', name: 'Token Store', icon: 'fas fa-store' },
   { path: '/economy', name: 'Economy', icon: 'fas fa-exchange-alt' },
   { path: '/announcements', name: 'Announcements', icon: 'fas fa-bullhorn' },

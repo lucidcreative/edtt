@@ -2,7 +2,19 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { nanoid } from "nanoid";
 import { storage } from "./storage";
-import { insertUserSchema, insertClassroomSchema, insertAssignmentSchema, insertSubmissionSchema, insertStoreItemSchema, users, insertAssignmentAdvancedSchema, insertAssignmentSubmissionSchema, insertAssignmentFeedbackSchema, insertAssignmentTemplateSchema, insertAssignmentResourceSchema, insertMarketplaceSellerSchema, insertMarketplaceListingSchema, insertMarketplaceTransactionSchema, insertMarketplaceReviewSchema, insertMarketplaceWishlistSchema, insertMarketplaceMessageSchema, insertBadgeSchema, insertChallengeSchema, insertStudentInventorySchema, insertTradeOfferSchema, insertTradeResponseSchema, insertGroupBuySchema, insertGroupBuyContributionSchema, insertGroupBuyTemplateSchema, type User } from "@shared/schema";
+import { 
+  insertUserSchema, 
+  insertClassroomSchema, 
+  insertAssignmentSchema, 
+  insertSubmissionSchema, 
+  insertStoreItemSchema, 
+  insertAssignmentResourceSchema,
+  insertProposalSchema,
+  insertProposalFeedbackSchema,
+  insertProposalNotificationSchema,
+  users, 
+  type User 
+} from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcrypt";
@@ -1700,6 +1712,163 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error unmarking assignment:', error);
       res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Enhanced Proposals Portal Routes - Comprehensive Special Projects Management
+  
+  // Get all proposals for a classroom (Teacher dashboard)
+  app.get("/api/proposals/classroom/:classroomId", authenticate, requireClassroomAccess, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { classroomId } = req.params;
+      const { status, priority } = req.query;
+      
+      let proposals = await storage.getProposalsByClassroom(classroomId);
+      
+      // Filter by status if provided
+      if (status && typeof status === 'string') {
+        proposals = proposals.filter(p => p.status === status);
+      }
+      
+      // Filter by priority if provided
+      if (priority && typeof priority === 'string') {
+        proposals = proposals.filter(p => p.priority === priority);
+      }
+      
+      res.json(proposals);
+    } catch (error) {
+      console.error('Error fetching classroom proposals:', error);
+      res.status(500).json({ message: "Failed to fetch proposals" });
+    }
+  });
+  
+  // Get detailed proposal with feedback and notifications
+  app.get("/api/proposals/:proposalId/details", authenticate, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { proposalId } = req.params;
+      
+      const [proposal, feedback, notifications] = await Promise.all([
+        storage.getProposal(proposalId),
+        storage.getProposalFeedback(proposalId),
+        storage.getProposalNotifications(req.user.id)
+      ]);
+      
+      if (!proposal) {
+        return res.status(404).json({ message: "Proposal not found" });
+      }
+      
+      // Check access permissions
+      const canAccess = req.user.role === 'teacher' || proposal.studentId === req.user.id;
+      if (!canAccess) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      res.json({
+        proposal,
+        feedback,
+        notifications: notifications.filter(n => n.proposalId === proposalId)
+      });
+    } catch (error) {
+      console.error('Error fetching proposal details:', error);
+      res.status(500).json({ message: "Failed to fetch proposal details" });
+    }
+  });
+  
+  // Teacher review actions (Approve, Reject, Request Revision)
+  app.post("/api/proposals/:proposalId/review", authenticate, requireRole('teacher'), async (req: AuthenticatedRequest, res) => {
+    try {
+      const { proposalId } = req.params;
+      const { action, feedback, internalNotes } = req.body;
+      
+      const proposal = await storage.getProposal(proposalId);
+      if (!proposal) {
+        return res.status(404).json({ message: "Proposal not found" });
+      }
+      
+      let updatedProposal;
+      
+      switch (action) {
+        case 'approve':
+          updatedProposal = await storage.updateProposalStatus(proposalId, 'approved', { teacherFeedback: feedback, internalNotes });
+          break;
+        case 'reject':
+          updatedProposal = await storage.updateProposalStatus(proposalId, 'rejected', { teacherFeedback: feedback, internalNotes });
+          break;
+        case 'request_revision':
+          updatedProposal = await storage.updateProposalStatus(proposalId, 'needs_revision', { teacherFeedback: feedback, internalNotes });
+          break;
+        default:
+          return res.status(400).json({ message: "Invalid action" });
+      }
+      
+      // Create feedback entry
+      if (feedback) {
+        await storage.createProposalFeedback({
+          proposalId: proposal.id,
+          fromUserId: req.user.id,
+          toUserId: proposal.studentId,
+          feedbackType: action === 'approve' ? 'approval' : action === 'reject' ? 'rejection' : 'revision_request',
+          feedbackContent: feedback,
+          isPublic: true
+        });
+      }
+      
+      res.json(updatedProposal);
+    } catch (error) {
+      console.error('Error reviewing proposal:', error);
+      res.status(500).json({ message: "Failed to review proposal" });
+    }
+  });
+
+  // Update proposal progress (For approved/in-progress proposals)
+  app.patch("/api/proposals/:proposalId/progress", authenticate, requireRole('student'), async (req: AuthenticatedRequest, res) => {
+    try {
+      const { proposalId } = req.params;
+      const { progressPercentage, completedMilestones } = req.body;
+      
+      const proposal = await storage.getProposal(proposalId);
+      if (!proposal) {
+        return res.status(404).json({ message: "Proposal not found" });
+      }
+      
+      if (proposal.studentId !== req.user.id) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      if (!['approved', 'in_progress'].includes(proposal.status)) {
+        return res.status(400).json({ message: "Can only update progress for approved proposals" });
+      }
+      
+      const updatedProposal = await storage.updateProposalProgress(proposalId, progressPercentage, completedMilestones);
+      
+      res.json(updatedProposal);
+    } catch (error) {
+      console.error('Error updating proposal progress:', error);
+      res.status(500).json({ message: "Failed to update proposal progress" });
+    }
+  });
+
+  // Get user notifications
+  app.get("/api/notifications", authenticate, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { unreadOnly } = req.query;
+      const notifications = await storage.getProposalNotifications(req.user.id, unreadOnly === 'true');
+      res.json(notifications);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+  
+  // Mark notification as read
+  app.patch("/api/notifications/:notificationId/read", authenticate, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { notificationId } = req.params;
+      await storage.markNotificationAsRead(notificationId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      res.status(500).json({ message: "Failed to mark notification as read" });
     }
   });
 
