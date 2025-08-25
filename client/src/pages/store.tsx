@@ -383,54 +383,80 @@ export default function Store() {
                       transition={{ duration: 0.3, delay: Math.min(index * 0.02, 0.3) }}
                       data-testid={`store-item-${index}`}
                     >
-                      <Card className="overflow-hidden bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-white/20 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-                        <CardContent className="p-6">
+                      <Card className="overflow-hidden bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-white/20 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 h-full">
+                        <CardContent className="p-6 h-full flex flex-col">
+                          {/* Header Section */}
                           <div className="flex items-start justify-between mb-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-12 h-12 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900 rounded-xl flex items-center justify-center">
+                            <div className="flex items-start gap-3 flex-1">
+                              <div className="w-14 h-14 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900 rounded-xl flex items-center justify-center flex-shrink-0">
                                 <span className="text-2xl">{itemIcon}</span>
                               </div>
-                              <div>
-                                <h3 className="font-bold text-gray-900 dark:text-gray-100">{item.name}</h3>
-                                <Badge variant="outline" className="mt-1">
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-bold text-gray-900 dark:text-gray-100 text-lg leading-tight mb-2">{item.name}</h3>
+                                <Badge variant="outline" className="text-xs">
                                   {item.category}
                                 </Badge>
                               </div>
                             </div>
                             {user?.role === 'teacher' && (
-                              <div className="flex gap-1">
-                                <Button size="sm" variant="ghost" onClick={() => handleEditItem(item)} className="p-2">
-                                  <i className="fas fa-edit text-blue-600"></i>
+                              <div className="flex gap-1 flex-shrink-0 ml-2">
+                                <Button size="sm" variant="ghost" onClick={() => handleEditItem(item)} className="p-2 h-8 w-8">
+                                  <i className="fas fa-edit text-blue-600 text-sm"></i>
                                 </Button>
-                                <Button size="sm" variant="ghost" onClick={() => handleDeleteItem(item)} className="p-2">
-                                  <i className="fas fa-trash text-red-600"></i>
+                                <Button size="sm" variant="ghost" onClick={() => handleDeleteItem(item)} className="p-2 h-8 w-8">
+                                  <i className="fas fa-trash text-red-600 text-sm"></i>
                                 </Button>
                               </div>
                             )}
                           </div>
                           
-                          <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">{item.description}</p>
-                          
-                          <div className="flex items-center justify-between">
-                            <span className="text-xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
-                              {item.cost} tokens
-                            </span>
-                            {user?.role !== 'teacher' && (
-                              <Button 
-                                size="sm"
-                                disabled={!isActive || (user?.tokens || 0) < item.cost}
-                                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white"
-                              >
-                                {(user?.tokens || 0) >= item.cost ? 'Buy' : 'Not enough tokens'}
-                              </Button>
-                            )}
+                          {/* Description Section */}
+                          <div className="mb-6 flex-1">
+                            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed line-clamp-3">
+                              {item.description}
+                            </p>
                           </div>
                           
-                          {!isActive && (
-                            <Badge variant="secondary" className="mt-2 bg-red-100 text-red-800">
-                              Inactive
-                            </Badge>
-                          )}
+                          {/* Price and Action Section */}
+                          <div className="mt-auto space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex flex-col">
+                                <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Price</span>
+                                <span className="text-xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
+                                  {item.cost} tokens
+                                </span>
+                              </div>
+                              {user?.role !== 'teacher' && (
+                                <Button 
+                                  size="sm"
+                                  disabled={!isActive || (user?.tokens || 0) < item.cost}
+                                  className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-4 py-2"
+                                >
+                                  {(user?.tokens || 0) >= item.cost ? 'Buy Now' : 'Insufficient Tokens'}
+                                </Button>
+                              )}
+                            </div>
+                            
+                            {/* Status Indicators */}
+                            <div className="flex items-center justify-between">
+                              {!isActive ? (
+                                <Badge variant="secondary" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                                  <i className="fas fa-pause mr-1 text-xs"></i>
+                                  Inactive
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                  <i className="fas fa-check mr-1 text-xs"></i>
+                                  Available
+                                </Badge>
+                              )}
+                              {user?.role !== 'teacher' && (
+                                <span className="text-xs text-gray-500 dark:text-gray-400">
+                                  Your balance: {user?.tokens || 0} tokens
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </CardContent>
                       </Card>
                     </motion.div>
