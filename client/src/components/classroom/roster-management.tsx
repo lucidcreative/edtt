@@ -162,12 +162,17 @@ export default function RosterManagement({ classroomId, classroomName, joinCode 
     const tempPin = formData.get('tempPin') as string;
 
     try {
-      await apiRequest('POST', `/api/classrooms/${classroomId}/students`, {
+      const response = await apiRequest('POST', `/api/classrooms/${classroomId}/students`, {
         username,
         name,
         tempPin,
         requiresPinChange: true
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to add student' }));
+        throw new Error(errorData.message || 'Failed to add student');
+      }
 
       toast({
         title: "Student Added",
@@ -218,9 +223,14 @@ export default function RosterManagement({ classroomId, classroomName, joinCode 
         return { username, name, tempPin, requiresPinChange: true };
       });
 
-      await apiRequest('POST', `/api/classrooms/${classroomId}/students/bulk`, {
+      const response = await apiRequest('POST', `/api/classrooms/${classroomId}/students/bulk`, {
         students
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to upload students' }));
+        throw new Error(errorData.message || 'Failed to upload students');
+      }
 
       toast({
         title: "Students Added",

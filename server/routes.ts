@@ -1100,6 +1100,105 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Award badge to students
+  app.post('/api/badges/:id/award', authenticate, requireRole('teacher'), async (req: AuthenticatedRequest, res) => {
+    try {
+      const badgeId = req.params.id;
+      const { studentIds } = req.body;
+      
+      if (!studentIds || !Array.isArray(studentIds) || studentIds.length === 0) {
+        return res.status(400).json({ message: "Student IDs are required" });
+      }
+      
+      // Verify badge exists
+      const badge = await storage.getBadge(badgeId);
+      if (!badge) {
+        return res.status(404).json({ message: "Badge not found" });
+      }
+      
+      // Award badges to students
+      const results = await Promise.all(
+        studentIds.map(studentId => 
+          storage.awardBadgeToStudent(badgeId, studentId, req.user.id)
+        )
+      );
+      
+      res.json({ success: true, awarded: results.length });
+    } catch (error) {
+      console.error('Error awarding badge:', error);
+      res.status(500).json({ message: "Failed to award badge" });
+    }
+  });
+
+  // Get badge analytics for classroom
+  app.get('/api/classrooms/:id/badge-analytics', authenticate, requireClassroomAccess, async (req: AuthenticatedRequest, res) => {
+    try {
+      const classroomId = req.params.id;
+      const analytics = await storage.getBadgeAnalytics(classroomId);
+      res.json(analytics);
+    } catch (error) {
+      console.error('Error fetching badge analytics:', error);
+      res.status(500).json({ message: "Failed to fetch badge analytics" });
+    }
+  });
+
+  // Challenge management routes
+  app.get('/api/classrooms/:id/challenges', authenticate, requireClassroomAccess, async (req: AuthenticatedRequest, res) => {
+    try {
+      const classroomId = req.params.id;
+      const challenges = await storage.getChallengesByClassroom(classroomId);
+      res.json(challenges);
+    } catch (error) {
+      console.error('Error fetching challenges:', error);
+      res.status(500).json({ message: "Failed to fetch challenges" });
+    }
+  });
+
+  app.post('/api/classrooms/:id/challenges', authenticate, requireRole('teacher'), async (req: AuthenticatedRequest, res) => {
+    try {
+      const classroomId = req.params.id;
+      const classroom = await storage.getClassroom(classroomId);
+      
+      if (!classroom) {
+        return res.status(404).json({ message: "Classroom not found" });
+      }
+      
+      if (classroom.teacherId !== req.user.id) {
+        return res.status(403).json({ message: "Only classroom teachers can create challenges" });
+      }
+      
+      const challenge = await storage.createChallenge({ ...req.body, classroomId });
+      res.status(201).json(challenge);
+    } catch (error) {
+      console.error('Error creating challenge:', error);
+      res.status(500).json({ message: "Failed to create challenge" });
+    }
+  });
+
+  app.patch('/api/challenges/:id/toggle', authenticate, requireRole('teacher'), async (req: AuthenticatedRequest, res) => {
+    try {
+      const challengeId = req.params.id;
+      const { isActive } = req.body;
+      
+      const challenge = await storage.updateChallenge(challengeId, { isActive });
+      res.json(challenge);
+    } catch (error) {
+      console.error('Error toggling challenge:', error);
+      res.status(500).json({ message: "Failed to toggle challenge" });
+    }
+  });
+
+  app.get('/api/classrooms/:id/challenge-analytics', authenticate, requireClassroomAccess, async (req: AuthenticatedRequest, res) => {
+    try {
+      const classroomId = req.params.id;
+      const analytics = await storage.getChallengeAnalytics(classroomId);
+      res.json(analytics);
+    } catch (error) {
+      console.error('Error fetching challenge analytics:', error);
+      res.status(500).json({ message: "Failed to fetch challenge analytics" });
+    }
+  });
+
   app.put('/api/badges/:id', authenticate, async (req: AuthenticatedRequest, res) => {
     try {
       const badgeId = req.params.id;

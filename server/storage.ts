@@ -121,6 +121,12 @@ export interface IStorage {
   createProposalNotification(notification: InsertProposalNotification): Promise<ProposalNotification>;
   getProposalNotifications(userId: string, unreadOnly?: boolean): Promise<ProposalNotification[]>;
   markNotificationAsRead(notificationId: string): Promise<void>;
+
+  // Challenge operations
+  getChallengesByClassroom(classroomId: string): Promise<Challenge[]>;
+  createChallenge(challenge: InsertChallenge): Promise<Challenge>;
+  updateChallenge(id: string, updates: Partial<InsertChallenge>): Promise<Challenge>;
+  getChallengeAnalytics(classroomId: string): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -513,6 +519,70 @@ export class DatabaseStorage implements IStorage {
       .update(proposalNotifications)
       .set({ isRead: true, readAt: new Date() })
       .where(eq(proposalNotifications.id, notificationId));
+  }
+
+  // Challenge operations
+  async getChallengesByClassroom(classroomId: string): Promise<Challenge[]> {
+    return db
+      .select()
+      .from(challenges)
+      .where(eq(challenges.classroomId, classroomId))
+      .orderBy(desc(challenges.createdAt));
+  }
+
+  async createChallenge(challenge: InsertChallenge): Promise<Challenge> {
+    const [newChallenge] = await db.insert(challenges).values([challenge]).returning();
+    return newChallenge;
+  }
+
+  async updateChallenge(id: string, updates: Partial<InsertChallenge>): Promise<Challenge> {
+    const [updatedChallenge] = await db
+      .update(challenges)
+      .set(updates)
+      .where(eq(challenges.id, id))
+      .returning();
+    return updatedChallenge;
+  }
+
+  async getChallengeAnalytics(classroomId: string): Promise<any> {
+    // Get basic challenge counts and completion rates
+    const challengesInClassroom = await this.getChallengesByClassroom(classroomId);
+    const totalChallenges = challengesInClassroom.length;
+    const activeChallenges = challengesInClassroom.filter(c => c.isActive).length;
+    const completedChallenges = challengesInClassroom.filter(c => !c.isActive).length;
+
+    // Calculate completion rates by type (simplified for now)
+    const individualChallenges = challengesInClassroom.filter(c => c.type === 'individual');
+    const teamChallenges = challengesInClassroom.filter(c => c.type === 'team');
+    const classroomChallenges = challengesInClassroom.filter(c => c.type === 'classroom');
+
+    const individualCompletion = individualChallenges.length > 0 
+      ? (individualChallenges.filter(c => !c.isActive).length / individualChallenges.length) * 100 
+      : 0;
+    const teamCompletion = teamChallenges.length > 0 
+      ? (teamChallenges.filter(c => !c.isActive).length / teamChallenges.length) * 100 
+      : 0;
+    const classroomCompletion = classroomChallenges.length > 0 
+      ? (classroomChallenges.filter(c => !c.isActive).length / classroomChallenges.length) * 100 
+      : 0;
+
+    // Get total participants (students in classroom)
+    const students = await this.getClassroomStudents(classroomId);
+    const totalParticipants = students.length;
+
+    // Calculate overall completion rate
+    const completionRate = totalChallenges > 0 ? (completedChallenges / totalChallenges) * 100 : 0;
+
+    return {
+      totalChallenges,
+      activeChallenges,
+      completedChallenges,
+      totalParticipants,
+      completionRate: Math.round(completionRate),
+      individualCompletion: Math.round(individualCompletion),
+      teamCompletion: Math.round(teamCompletion),
+      classroomCompletion: Math.round(classroomCompletion)
+    };
   }
 }
 
