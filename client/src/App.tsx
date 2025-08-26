@@ -28,7 +28,6 @@ const Progress = lazy(() => import("@/pages/progress"));
 const Leaderboard = lazy(() => import("@/pages/leaderboard"));
 const ChangePinPage = lazy(() => import("@/pages/change-pin"));
 const Economy = lazy(() => import("@/pages/economy"));
-const TeacherManagement = lazy(() => import("@/pages/teacher-management"));
 const ProposalsPortal = lazy(() => import("@/pages/proposals-portal"));
 const Earn = lazy(() => import("@/pages/earn"));
 
@@ -64,7 +63,6 @@ function AuthenticatedApp() {
                 <Route path="/progress" component={Progress} />
                 <Route path="/leaderboard" component={Leaderboard} />
                 <Route path="/economy" component={Economy} />
-                <Route path="/teacher-management" component={TeacherManagement} />
                 <Route path="/change-pin" component={ChangePinPage} />
                 <Route component={NotFound} />
               </Switch>
