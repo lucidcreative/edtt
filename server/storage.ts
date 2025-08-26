@@ -10,6 +10,8 @@ import {
   proposals,
   proposalFeedback,
   proposalNotifications,
+  escrowTransactions,
+  paymentSchedules,
   storeItems,
   purchases,
   timeEntries,
@@ -37,6 +39,10 @@ import {
   type InsertProposalFeedback,
   type ProposalNotification,
   type InsertProposalNotification,
+  type EscrowTransaction,
+  type InsertEscrowTransaction,
+  type PaymentSchedule,
+  type InsertPaymentSchedule,
   type StoreItem,
   type InsertStoreItem,
   type Purchase,
@@ -172,14 +178,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(user: InsertUser): Promise<User> {
-    const [newUser] = await db.insert(users).values([user]).returning();
+    const [newUser] = await db.insert(users).values(user).returning();
     return newUser;
   }
 
   async updateUser(id: string, updates: Partial<InsertUser>): Promise<User> {
+    const updateData: any = { ...updates, updatedAt: new Date() };
     const [updatedUser] = await db
       .update(users)
-      .set({ ...updates, updatedAt: new Date() })
+      .set(updateData)
       .where(eq(users.id, id))
       .returning();
     return updatedUser;
@@ -285,14 +292,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createAssignmentResource(resource: InsertAssignmentResource): Promise<AssignmentResource> {
-    const [newResource] = await db.insert(assignmentResources).values([resource]).returning();
+    const [newResource] = await db.insert(assignmentResources).values(resource).returning();
     return newResource;
   }
 
   async updateAssignmentResource(id: string, updates: Partial<InsertAssignmentResource>): Promise<AssignmentResource> {
+    const updateData: any = { ...updates, updatedAt: new Date() };
     const [updatedResource] = await db
       .update(assignmentResources)
-      .set({ ...updates, updatedAt: new Date() })
+      .set(updateData)
       .where(eq(assignmentResources.id, id))
       .returning();
     return updatedResource;
@@ -328,7 +336,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createSubmission(submission: InsertSubmission): Promise<Submission> {
-    const [newSubmission] = await db.insert(submissions).values([submission]).returning();
+    const [newSubmission] = await db.insert(submissions).values(submission).returning();
     return newSubmission;
   }
 
@@ -343,7 +351,7 @@ export class DatabaseStorage implements IStorage {
 
   // Enhanced Proposal operations for comprehensive special projects management
   async createProposal(proposal: InsertProposal): Promise<Proposal> {
-    const [newProposal] = await db.insert(proposals).values([proposal]).returning();
+    const [newProposal] = await db.insert(proposals).values(proposal).returning();
     return newProposal;
   }
 
@@ -478,7 +486,7 @@ export class DatabaseStorage implements IStorage {
 
   // Proposal Feedback operations
   async createProposalFeedback(feedback: InsertProposalFeedback): Promise<ProposalFeedback> {
-    const [newFeedback] = await db.insert(proposalFeedback).values([feedback]).returning();
+    const [newFeedback] = await db.insert(proposalFeedback).values(feedback).returning();
     return newFeedback;
   }
 
@@ -506,21 +514,157 @@ export class DatabaseStorage implements IStorage {
 
   // Proposal Notifications operations
   async createProposalNotification(notification: InsertProposalNotification): Promise<ProposalNotification> {
-    const [newNotification] = await db.insert(proposalNotifications).values([notification]).returning();
+    const [newNotification] = await db.insert(proposalNotifications).values(notification).returning();
     return newNotification;
   }
 
   async getProposalNotifications(userId: string, unreadOnly: boolean = false): Promise<ProposalNotification[]> {
-    let query = db
-      .select()
-      .from(proposalNotifications)
-      .where(eq(proposalNotifications.userId, userId));
-
+    const conditions = [eq(proposalNotifications.userId, userId)];
+    
     if (unreadOnly) {
-      query = query.where(eq(proposalNotifications.isRead, false));
+      conditions.push(eq(proposalNotifications.isRead, false));
     }
 
-    return query.orderBy(desc(proposalNotifications.createdAt));
+    return db
+      .select()
+      .from(proposalNotifications)
+      .where(and(...conditions))
+      .orderBy(desc(proposalNotifications.createdAt));
+  }
+
+  // Enhanced Winner Selection and Payment Management
+  async selectProposalWinner(proposalId: string, teacherId: string, budget: number, paymentType: 'full_payment' | 'split_payment'): Promise<Proposal> {
+    const [updatedProposal] = await db
+      .update(proposals)
+      .set({
+        status: 'winner_selected',
+        isWinner: true,
+        selectedAt: new Date(),
+        selectedBy: teacherId,
+        projectBudget: budget,
+        paymentType,
+        escrowStatus: 'pending',
+        updatedAt: new Date()
+      })
+      .where(eq(proposals.id, proposalId))
+      .returning();
+    return updatedProposal;
+  }
+
+  // Escrow Transaction Operations
+  async createEscrowTransaction(transaction: InsertEscrowTransaction): Promise<EscrowTransaction> {
+    const [newTransaction] = await db.insert(escrowTransactions).values(transaction).returning();
+    return newTransaction;
+  }
+
+  async getEscrowTransactionsByProposal(proposalId: string): Promise<EscrowTransaction[]> {
+    return db
+      .select()
+      .from(escrowTransactions)
+      .where(eq(escrowTransactions.proposalId, proposalId))
+      .orderBy(desc(escrowTransactions.createdAt));
+  }
+
+  async updateEscrowTransactionStatus(transactionId: string, status: 'pending' | 'in_escrow' | 'released' | 'refunded' | 'disputed', notes?: string): Promise<EscrowTransaction> {
+    const updateData: any = { status, updatedAt: new Date() };
+    if (notes) updateData.releaseNotes = notes;
+    if (status === 'released') updateData.releasedAt = new Date();
+
+    const [updatedTransaction] = await db
+      .update(escrowTransactions)
+      .set(updateData)
+      .where(eq(escrowTransactions.id, transactionId))
+      .returning();
+    return updatedTransaction;
+  }
+
+  async approveEscrowRelease(transactionId: string, approverId: string, notes?: string): Promise<EscrowTransaction> {
+    const [approvedTransaction] = await db
+      .update(escrowTransactions)
+      .set({
+        status: 'released',
+        approvedBy: approverId,
+        approvedAt: new Date(),
+        releasedAt: new Date(),
+        releaseNotes: notes,
+        updatedAt: new Date()
+      })
+      .where(eq(escrowTransactions.id, transactionId))
+      .returning();
+    return approvedTransaction;
+  }
+
+  // Payment Schedule Operations
+  async createPaymentSchedule(schedule: InsertPaymentSchedule): Promise<PaymentSchedule> {
+    const [newSchedule] = await db.insert(paymentSchedules).values(schedule).returning();
+    return newSchedule;
+  }
+
+  async getPaymentSchedulesByProposal(proposalId: string): Promise<PaymentSchedule[]> {
+    return db
+      .select()
+      .from(paymentSchedules)
+      .where(eq(paymentSchedules.proposalId, proposalId))
+      .orderBy(paymentSchedules.sequenceOrder);
+  }
+
+  async updatePaymentScheduleStatus(scheduleId: string, status: 'pending' | 'in_progress' | 'ready_for_payment' | 'paid' | 'overdue'): Promise<PaymentSchedule> {
+    const updateData: any = { status, updatedAt: new Date() };
+    if (status === 'paid') {
+      updateData.isCompleted = true;
+      updateData.completedAt = new Date();
+    }
+
+    const [updatedSchedule] = await db
+      .update(paymentSchedules)
+      .set(updateData)
+      .where(eq(paymentSchedules.id, scheduleId))
+      .returning();
+    return updatedSchedule;
+  }
+
+  async submitMilestoneForReview(scheduleId: string): Promise<PaymentSchedule> {
+    const [updatedSchedule] = await db
+      .update(paymentSchedules)
+      .set({
+        submittedForReview: true,
+        submittedAt: new Date(),
+        status: 'ready_for_payment',
+        updatedAt: new Date()
+      })
+      .where(eq(paymentSchedules.id, scheduleId))
+      .returning();
+    return updatedSchedule;
+  }
+
+  async reviewMilestone(scheduleId: string, reviewerId: string, approved: boolean, notes?: string): Promise<PaymentSchedule> {
+    const status = approved ? 'ready_for_payment' : 'in_progress';
+    const [reviewedSchedule] = await db
+      .update(paymentSchedules)
+      .set({
+        reviewedBy: reviewerId,
+        reviewedAt: new Date(),
+        reviewNotes: notes,
+        status,
+        updatedAt: new Date()
+      })
+      .where(eq(paymentSchedules.id, scheduleId))
+      .returning();
+    return reviewedSchedule;
+  }
+
+  async createPaymentSchedulesForProposal(proposalId: string, budget: number, schedules: Array<{title: string, description?: string, percentage: number, dueDate?: Date}>): Promise<PaymentSchedule[]> {
+    const paymentScheduleData = schedules.map((schedule, index) => ({
+      proposalId,
+      milestoneTitle: schedule.title,
+      milestoneDescription: schedule.description,
+      paymentPercentage: schedule.percentage,
+      amount: Math.round((budget * schedule.percentage) / 100),
+      dueDate: schedule.dueDate,
+      sequenceOrder: index + 1
+    }));
+
+    return db.insert(paymentSchedules).values(paymentScheduleData).returning();
   }
 
   async markNotificationAsRead(notificationId: string): Promise<void> {

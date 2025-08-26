@@ -189,8 +189,17 @@ export const proposals = pgTable("proposals", {
   estimatedCompletionTime: varchar("estimated_completion_time", { length: 50 }), // Timeline estimate
   
   // Status and workflow management
-  status: varchar("status", { length: 20 }).notNull().$type<'draft' | 'submitted' | 'pending' | 'under_review' | 'needs_revision' | 'approved' | 'rejected' | 'in_progress' | 'completed'>().default('draft'),
+  status: varchar("status", { length: 20 }).notNull().$type<'draft' | 'submitted' | 'pending' | 'under_review' | 'needs_revision' | 'approved' | 'rejected' | 'in_progress' | 'completed' | 'winner_selected'>().default('draft'),
   priority: varchar("priority", { length: 10 }).$type<'low' | 'medium' | 'high' | 'urgent'>().default('medium'),
+  
+  // Winner selection and payment management
+  isWinner: boolean("is_winner").default(false),
+  selectedAt: timestamp("selected_at"),
+  selectedBy: uuid("selected_by").references(() => users.id), // Teacher who selected winner
+  projectBudget: integer("project_budget"), // Total token budget for the project
+  paymentType: varchar("payment_type", { length: 20 }).$type<'full_payment' | 'split_payment'>(),
+  paymentSchedule: jsonb("payment_schedule"), // For split payments: [{ percentage: 50, milestone: "Phase 1", dueDate: "2024-01-15" }]
+  escrowStatus: varchar("escrow_status", { length: 20 }).$type<'pending' | 'in_escrow' | 'partially_released' | 'fully_released' | 'disputed'>().default('pending'),
   
   // Project tracking
   progressPercentage: integer("progress_percentage").default(0),
@@ -268,6 +277,81 @@ export const proposalNotifications = pgTable("proposal_notifications", {
   userIdIdx: index("proposal_notifications_user_id_idx").on(table.userId),
   notificationTypeIdx: index("proposal_notifications_type_idx").on(table.notificationType),
   isReadIdx: index("proposal_notifications_is_read_idx").on(table.isRead)
+}));
+
+// Escrow transactions for secure payment management
+export const escrowTransactions = pgTable("escrow_transactions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  proposalId: uuid("proposal_id").references(() => proposals.id, { onDelete: "cascade" }).notNull(),
+  fromUserId: uuid("from_user_id").references(() => users.id).notNull(), // Usually teacher
+  toUserId: uuid("to_user_id").references(() => users.id).notNull(), // Usually student
+  
+  // Transaction details
+  amount: integer("amount").notNull(), // Amount in tokens
+  transactionType: varchar("transaction_type", { length: 30 }).notNull().$type<'escrow_deposit' | 'escrow_release' | 'escrow_refund' | 'milestone_payment' | 'completion_payment'>(),
+  status: varchar("status", { length: 20 }).notNull().$type<'pending' | 'in_escrow' | 'released' | 'refunded' | 'disputed'>().default('pending'),
+  
+  // Payment schedule tracking
+  milestoneTitle: varchar("milestone_title", { length: 200 }), // Which milestone this payment is for
+  paymentPercentage: integer("payment_percentage"), // Percentage of total budget
+  isAutoRelease: boolean("is_auto_release").default(false), // Auto-release on milestone completion
+  
+  // Approval and release management
+  requiresApproval: boolean("requires_approval").default(true),
+  approvedBy: uuid("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  releasedAt: timestamp("released_at"),
+  
+  // Notes and communication
+  description: text("description"),
+  releaseNotes: text("release_notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+}, (table) => ({
+  proposalIdIdx: index("escrow_transactions_proposal_id_idx").on(table.proposalId),
+  fromUserIdIdx: index("escrow_transactions_from_user_id_idx").on(table.fromUserId),
+  toUserIdIdx: index("escrow_transactions_to_user_id_idx").on(table.toUserId),
+  statusIdx: index("escrow_transactions_status_idx").on(table.status),
+  transactionTypeIdx: index("escrow_transactions_type_idx").on(table.transactionType),
+  createdAtIdx: index("escrow_transactions_created_at_idx").on(table.createdAt)
+}));
+
+// Payment schedules for split payments
+export const paymentSchedules = pgTable("payment_schedules", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  proposalId: uuid("proposal_id").references(() => proposals.id, { onDelete: "cascade" }).notNull(),
+  
+  // Schedule details
+  milestoneTitle: varchar("milestone_title", { length: 200 }).notNull(),
+  milestoneDescription: text("milestone_description"),
+  paymentPercentage: integer("payment_percentage").notNull(), // Percentage of total budget
+  amount: integer("amount").notNull(), // Calculated amount in tokens
+  
+  // Timeline and status
+  dueDate: timestamp("due_date"),
+  isCompleted: boolean("is_completed").default(false),
+  completedAt: timestamp("completed_at"),
+  status: varchar("status", { length: 20 }).notNull().$type<'pending' | 'in_progress' | 'ready_for_payment' | 'paid' | 'overdue'>().default('pending'),
+  
+  // Approval workflow
+  submittedForReview: boolean("submitted_for_review").default(false),
+  submittedAt: timestamp("submitted_at"),
+  reviewedBy: uuid("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNotes: text("review_notes"),
+  
+  // Order and display
+  sequenceOrder: integer("sequence_order").notNull(),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+}, (table) => ({
+  proposalIdIdx: index("payment_schedules_proposal_id_idx").on(table.proposalId),
+  statusIdx: index("payment_schedules_status_idx").on(table.status),
+  dueDateIdx: index("payment_schedules_due_date_idx").on(table.dueDate),
+  sequenceOrderIdx: index("payment_schedules_sequence_order_idx").on(table.sequenceOrder),
+  uniqueProposalSequence: unique("unique_proposal_sequence").on(table.proposalId, table.sequenceOrder)
 }));
 
 // Store items
@@ -527,6 +611,39 @@ export type InsertProposalFeedback = z.infer<typeof insertProposalFeedbackSchema
 export type ProposalNotification = typeof proposalNotifications.$inferSelect;
 export type InsertProposalNotification = z.infer<typeof insertProposalNotificationSchema>;
 
+export type StoreItem = typeof storeItems.$inferSelect;
+export type InsertStoreItem = typeof storeItems.$inferInsert;
+
+export type Purchase = typeof purchases.$inferSelect;
+export type InsertPurchase = typeof purchases.$inferInsert;
+
+export type TimeEntry = typeof timeEntries.$inferSelect;
+export type InsertTimeEntry = typeof timeEntries.$inferInsert;
+
+export type Badge = typeof badges.$inferSelect;
+export type InsertBadge = typeof badges.$inferInsert;
+
+export type StudentBadge = typeof studentBadges.$inferSelect;
+export type InsertStudentBadge = typeof studentBadges.$inferInsert;
+
+export type Challenge = typeof challenges.$inferSelect;
+export type InsertChallenge = typeof challenges.$inferInsert;
+
+export type ChallengeProgress = typeof challengeProgress.$inferSelect;
+export type InsertChallengeProgress = typeof challengeProgress.$inferInsert;
+
+export type Announcement = typeof announcements.$inferSelect;
+export type InsertAnnouncement = typeof announcements.$inferInsert;
+
+export type AnnouncementRead = typeof announcementReads.$inferSelect;
+export type InsertAnnouncementRead = typeof announcementReads.$inferInsert;
+
+export type EscrowTransaction = typeof escrowTransactions.$inferSelect;
+export type InsertEscrowTransaction = typeof escrowTransactions.$inferInsert;
+
+export type PaymentSchedule = typeof paymentSchedules.$inferSelect;
+export type InsertPaymentSchedule = typeof paymentSchedules.$inferInsert;
+
 // Relations
 export const usersRelations = relations(users, ({ many, one }) => ({
   teacherClassrooms: many(classrooms),
@@ -559,7 +676,9 @@ export const proposalsRelations = relations(proposals, ({ one, many }) => ({
     references: [classrooms.id]
   }),
   feedback: many(proposalFeedback),
-  notifications: many(proposalNotifications)
+  notifications: many(proposalNotifications),
+  escrowTransactions: many(escrowTransactions),
+  paymentSchedules: many(paymentSchedules)
 }));
 
 export const proposalFeedbackRelations = relations(proposalFeedback, ({ one }) => ({
@@ -599,6 +718,36 @@ export const assignmentResourcesRelations = relations(assignmentResources, ({ on
   }),
   creator: one(users, {
     fields: [assignmentResources.createdBy],
+    references: [users.id]
+  })
+}));
+
+export const escrowTransactionsRelations = relations(escrowTransactions, ({ one }) => ({
+  proposal: one(proposals, {
+    fields: [escrowTransactions.proposalId],
+    references: [proposals.id]
+  }),
+  fromUser: one(users, {
+    fields: [escrowTransactions.fromUserId],
+    references: [users.id]
+  }),
+  toUser: one(users, {
+    fields: [escrowTransactions.toUserId],
+    references: [users.id]
+  }),
+  approver: one(users, {
+    fields: [escrowTransactions.approvedBy],
+    references: [users.id]
+  })
+}));
+
+export const paymentSchedulesRelations = relations(paymentSchedules, ({ one }) => ({
+  proposal: one(proposals, {
+    fields: [paymentSchedules.proposalId],
+    references: [proposals.id]
+  }),
+  reviewer: one(users, {
+    fields: [paymentSchedules.reviewedBy],
     references: [users.id]
   })
 }));
