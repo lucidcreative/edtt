@@ -188,7 +188,7 @@ export default function EconomyPage() {
     if (!selectedTradeOffer) return;
     
     toast({ 
-      title: `Trade ${action === 'accept' ? 'Accepted' : action === 'decline' ? 'Declined' : 'Counter Offer Sent'}!", 
+      title: `Trade ${action === 'accept' ? 'Accepted' : action === 'decline' ? 'Declined' : 'Counter Offer Sent'}!`, 
       description: `You have ${action}d the trade offer from ${selectedTradeOffer.id}.`
     });
     
@@ -228,21 +228,6 @@ export default function EconomyPage() {
     });
   };
 
-  // Handle group buy contribution
-  const handleContributeToGroupBuy = (groupBuy: GroupBuy) => {
-    toast({
-      title: "Contribute to Group Buy",
-      description: "Contribution modal will be implemented next. Goal: " + groupBuy.title,
-    });
-  };
-
-  // Handle view group buy details
-  const handleViewGroupBuyDetails = (groupBuy: GroupBuy) => {
-    toast({
-      title: "Group Buy Details",
-      description: "Details modal will be implemented next. " + groupBuy.title,
-    });
-  };
 
   if (!currentClassroom) {
     return (
