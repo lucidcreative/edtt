@@ -127,6 +127,15 @@ export interface IStorage {
   createChallenge(challenge: InsertChallenge): Promise<Challenge>;
   updateChallenge(id: string, updates: Partial<InsertChallenge>): Promise<Challenge>;
   getChallengeAnalytics(classroomId: string): Promise<any>;
+
+  // Additional operations
+  getLeaderboard(classroomId: string, limit?: number): Promise<any[]>;
+  getClassroomStats(classroomId: string): Promise<any>;
+  getAnnouncementsByClassroom(classroomId: string): Promise<Announcement[]>;
+  getBadgesByClassroom(classroomId: string): Promise<Badge[]>;
+  getBadgeAnalytics(classroomId: string): Promise<any>;
+  getBadge(id: string): Promise<Badge | undefined>;
+  awardBadgeToStudent(data: { studentId: string; badgeId: string; awardedBy: string; reason?: string }): Promise<StudentBadge>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -583,6 +592,120 @@ export class DatabaseStorage implements IStorage {
       teamCompletion: Math.round(teamCompletion),
       classroomCompletion: Math.round(classroomCompletion)
     };
+  }
+
+  // Additional storage methods
+  async getLeaderboard(classroomId: string, limit: number = 10): Promise<any[]> {
+    const result = await db
+      .select({
+        student: {
+          id: users.id,
+          nickname: users.nickname,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          tokens: users.tokens,
+          level: users.level,
+          totalEarned: users.totalEarnings
+        }
+      })
+      .from(users)
+      .innerJoin(studentClassrooms, eq(users.id, studentClassrooms.studentId))
+      .where(
+        and(
+          eq(studentClassrooms.classroomId, classroomId),
+          eq(users.role, 'student')
+        )
+      )
+      .orderBy(desc(users.tokens), desc(users.totalEarnings))
+      .limit(limit);
+
+    return result.map((row, index) => ({
+      ...row.student,
+      rank: index + 1
+    }));
+  }
+
+  async getClassroomStats(classroomId: string): Promise<any> {
+    const students = await this.getClassroomStudents(classroomId);
+    const totalStudents = students.length;
+    const totalTokens = students.reduce((sum, student) => sum + (student.tokens || 0), 0);
+    const avgTokens = totalStudents > 0 ? Math.round(totalTokens / totalStudents) : 0;
+    
+    // Get badges count
+    const badges = await this.getBadgesByClassroom(classroomId);
+    const totalBadges = badges.length;
+    
+    // Get challenges count
+    const challenges = await this.getChallengesByClassroom(classroomId);
+    const totalChallenges = challenges.length;
+    const activeChallenges = challenges.filter(c => c.isActive).length;
+
+    return {
+      totalStudents,
+      totalTokens,
+      avgTokens,
+      totalBadges,
+      totalChallenges,
+      activeChallenges
+    };
+  }
+
+  async getAnnouncementsByClassroom(classroomId: string): Promise<Announcement[]> {
+    return db
+      .select()
+      .from(announcements)
+      .where(eq(announcements.classroomId, classroomId))
+      .orderBy(desc(announcements.createdAt));
+  }
+
+  async getBadgesByClassroom(classroomId: string): Promise<Badge[]> {
+    return db
+      .select()
+      .from(badges)
+      .where(eq(badges.classroomId, classroomId))
+      .orderBy(asc(badges.name));
+  }
+
+  async getBadgeAnalytics(classroomId: string): Promise<any> {
+    const badgesList = await this.getBadgesByClassroom(classroomId);
+    const students = await this.getClassroomStudents(classroomId);
+    
+    // Get badge awards for this classroom
+    const awardedBadges = await db
+      .select({
+        badgeId: studentBadges.badgeId,
+        count: sql<number>`count(*)`.as('count')
+      })
+      .from(studentBadges)
+      .innerJoin(badges, eq(studentBadges.badgeId, badges.id))
+      .where(eq(badges.classroomId, classroomId))
+      .groupBy(studentBadges.badgeId);
+
+    const totalBadges = badgesList.length;
+    const totalStudents = students.length;
+    const totalAwards = awardedBadges.reduce((sum, badge) => sum + badge.count, 0);
+    const avgBadgesPerStudent = totalStudents > 0 ? Math.round(totalAwards / totalStudents) : 0;
+
+    return {
+      totalBadges,
+      totalStudents,
+      totalAwards,
+      avgBadgesPerStudent,
+      popularBadges: awardedBadges.slice(0, 5)
+    };
+  }
+
+  async getBadge(id: string): Promise<Badge | undefined> {
+    const [badge] = await db.select().from(badges).where(eq(badges.id, id)).limit(1);
+    return badge;
+  }
+
+  async awardBadgeToStudent(data: { studentId: string; badgeId: string; awardedBy: string; reason?: string }): Promise<StudentBadge> {
+    const [award] = await db.insert(studentBadges).values([{
+      ...data,
+      awardedAt: new Date()
+    }]).returning();
+    return award;
   }
 }
 

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { groupBuyTemplateData } from "@shared/schema";
+// Removed unused import
 import { useClassroom } from "@/contexts/ClassroomContext";
 import StudentStore from "@/components/student/student-store";
 import { Button } from "@/components/ui/button";

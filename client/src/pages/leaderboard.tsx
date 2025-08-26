@@ -6,10 +6,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import StudentBadges from "@/components/student/student-badges";
 import StudentChallenges from "@/components/student/student-challenges";
 import StudentProgressView from "@/pages/progress";
+import TeacherLeaderboard from "@/pages/teacher-leaderboard";
 
 export default function Leaderboard() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("progress");
+
+  // Show teacher leaderboard management for teachers
+  if (user?.role === 'teacher') {
+    return <TeacherLeaderboard />;
+  }
 
   // Show student leaderboard view for students
   if (user?.role === 'student') {

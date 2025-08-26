@@ -1199,6 +1199,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Student management and awarding routes
+  app.post('/api/students/:id/award-tokens', authenticate, requireRole('teacher'), async (req: AuthenticatedRequest, res) => {
+    try {
+      const studentId = req.params.id;
+      const { amount, reason } = req.body;
+
+      if (!amount || amount <= 0) {
+        return res.status(400).json({ message: "Valid token amount is required" });
+      }
+
+      const student = await storage.getUser(studentId);
+      if (!student || student.role !== 'student') {
+        return res.status(404).json({ message: "Student not found" });
+      }
+
+      const updatedStudent = await storage.updateUserTokens(studentId, (student.tokens || 0) + amount);
+      
+      // Log the award (could be extended with audit trail)
+      console.log(`Teacher ${req.user.id} awarded ${amount} tokens to student ${studentId}. Reason: ${reason}`);
+
+      res.json({
+        success: true,
+        student: updatedStudent,
+        awarded: amount,
+        reason
+      });
+    } catch (error) {
+      console.error('Error awarding tokens:', error);
+      res.status(500).json({ message: "Failed to award tokens" });
+    }
+  });
+
+  app.post('/api/students/:id/award-badge', authenticate, requireRole('teacher'), async (req: AuthenticatedRequest, res) => {
+    try {
+      const studentId = req.params.id;
+      const { badgeId, reason } = req.body;
+
+      if (!badgeId) {
+        return res.status(400).json({ message: "Badge ID is required" });
+      }
+
+      const student = await storage.getUser(studentId);
+      if (!student || student.role !== 'student') {
+        return res.status(404).json({ message: "Student not found" });
+      }
+
+      const badge = await storage.getBadge(badgeId);
+      if (!badge) {
+        return res.status(404).json({ message: "Badge not found" });
+      }
+
+      await storage.awardBadgeToStudent({
+        studentId,
+        badgeId,
+        awardedBy: req.user.id,
+        reason
+      });
+
+      console.log(`Teacher ${req.user.id} awarded badge ${badgeId} to student ${studentId}. Reason: ${reason}`);
+
+      res.json({
+        success: true,
+        badgeId,
+        reason
+      });
+    } catch (error) {
+      console.error('Error awarding badge:', error);
+      res.status(500).json({ message: "Failed to award badge" });
+    }
+  });
+
   app.put('/api/badges/:id', authenticate, async (req: AuthenticatedRequest, res) => {
     try {
       const badgeId = req.params.id;
