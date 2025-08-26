@@ -474,6 +474,34 @@ export const insertProposalNotificationSchema = createInsertSchema(proposalNotif
   createdAt: true
 });
 
+// Group buy template data - templates for creating group buy initiatives
+export const groupBuyTemplateData = [
+  {
+    id: "classroom-supplies",
+    title: "Classroom Supplies Fund",
+    description: "Pool tokens to purchase supplies for the entire classroom",
+    category: "supplies",
+    goalAmount: 500,
+    icon: "📚"
+  },
+  {
+    id: "class-party",
+    title: "Class Celebration Fund",
+    description: "Contribute tokens for a special class celebration or party",
+    category: "events",
+    goalAmount: 300,
+    icon: "🎉"
+  },
+  {
+    id: "learning-materials",
+    title: "Educational Materials",
+    description: "Fund new educational materials and resources for everyone",
+    category: "education",
+    goalAmount: 400,
+    icon: "🎓"
+  }
+];
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;

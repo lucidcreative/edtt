@@ -137,31 +137,32 @@ export default function ProposalsPortal() {
   const queryClient = useQueryClient();
 
   // Fetch proposals for the classroom
-  const { data: proposals = [], isLoading } = useQuery({
-    queryKey: ['/api/proposals/classroom', selectedClassroom?.id],
+  const { data: proposalsData, isLoading } = useQuery({
+    queryKey: ['/api/proposals/classroom', selectedClassroom?.id, selectedStatus, selectedPriority],
     enabled: !!selectedClassroom?.id,
-    queryFn: () => {
+    queryFn: async () => {
       const params = new URLSearchParams();
       if (selectedStatus !== "all") params.append("status", selectedStatus);
       if (selectedPriority !== "all") params.append("priority", selectedPriority);
       const url = `/api/proposals/classroom/${selectedClassroom!.id}${params.toString() ? `?${params.toString()}` : ''}`;
-      return apiRequest(url);
+      return apiRequest(url, 'GET');
     }
   });
 
+  const proposals: Proposal[] = Array.isArray(proposalsData) ? proposalsData : [];
+
   // Fetch notifications
-  const { data: notifications = [] } = useQuery({
+  const { data: notificationsData } = useQuery({
     queryKey: ['/api/notifications'],
-    queryFn: () => apiRequest('/api/notifications?unreadOnly=true')
+    queryFn: async () => apiRequest('/api/notifications?unreadOnly=true', 'GET')
   });
+
+  const notifications: ProposalNotification[] = Array.isArray(notificationsData) ? notificationsData : [];
 
   // Review proposal mutation
   const reviewProposalMutation = useMutation({
     mutationFn: ({ proposalId, action, feedback }: { proposalId: string; action: string; feedback: string }) =>
-      apiRequest(`/api/proposals/${proposalId}/review`, {
-        method: 'POST',
-        body: JSON.stringify({ action, feedback })
-      }),
+      apiRequest(`/api/proposals/${proposalId}/review`, 'POST', { action, feedback }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/proposals/classroom'] });
       setShowDetailsDialog(false);
@@ -172,10 +173,7 @@ export default function ProposalsPortal() {
   // Update progress mutation
   const updateProgressMutation = useMutation({
     mutationFn: ({ proposalId, progressPercentage, completedMilestones }: any) =>
-      apiRequest(`/api/proposals/${proposalId}/progress`, {
-        method: 'PATCH',
-        body: JSON.stringify({ progressPercentage, completedMilestones })
-      }),
+      apiRequest(`/api/proposals/${proposalId}/progress`, 'PATCH', { progressPercentage, completedMilestones }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/proposals/classroom'] });
     }

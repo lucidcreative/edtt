@@ -22,6 +22,7 @@ interface StudentEnrollment {
 
 interface ClassroomContextType {
   currentClassroom: Classroom | null;
+  selectedClassroom: Classroom | null;
   classrooms: Classroom[];
   enrollments: StudentEnrollment[];
   isLoading: boolean;
@@ -85,6 +86,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
   return (
     <ClassroomContext.Provider value={{
       currentClassroom: selectedClassroom,
+      selectedClassroom: selectedClassroom,
       classrooms,
       enrollments: studentEnrollments,
       isLoading,

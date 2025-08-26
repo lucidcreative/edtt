@@ -374,29 +374,32 @@ export default function EnhancedBadges() {
   });
 
   // Fetch classroom badges
-  const { data: badges = [], isLoading: badgesLoading } = useQuery({
+  const { data: badgesData, isLoading: badgesLoading } = useQuery({
     queryKey: [`/api/classrooms/${selectedClassroom?.id}/badges`],
     enabled: !!selectedClassroom?.id
   });
 
+  const badges: ClassroomBadge[] = Array.isArray(badgesData) ? badgesData : [];
+
   // Fetch students
-  const { data: students = [] } = useQuery({
+  const { data: studentsData } = useQuery({
     queryKey: [`/api/classrooms/${selectedClassroom?.id}/students`],
     enabled: !!selectedClassroom?.id
   });
 
+  const students: Student[] = Array.isArray(studentsData) ? studentsData : [];
+
   // Fetch badge analytics
-  const { data: analytics } = useQuery({
+  const { data: analyticsData } = useQuery({
     queryKey: [`/api/classrooms/${selectedClassroom?.id}/badge-analytics`],
     enabled: !!selectedClassroom?.id
   });
 
+  const analytics = analyticsData || { totalAwarded: 0, thisWeek: 0 };
+
   // Create badge mutation
   const createBadgeMutation = useMutation({
-    mutationFn: (data: any) => apiRequest(`/api/classrooms/${selectedClassroom!.id}/badges`, {
-      method: 'POST',
-      body: JSON.stringify(data)
-    }),
+    mutationFn: (data: any) => apiRequest(`/api/classrooms/${selectedClassroom!.id}/badges`, 'POST', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/classrooms/${selectedClassroom?.id}/badges`] });
       setIsCreateDialogOpen(false);
@@ -407,10 +410,7 @@ export default function EnhancedBadges() {
   // Award badge mutation
   const awardBadgeMutation = useMutation({
     mutationFn: ({ badgeId, studentIds }: { badgeId: string; studentIds: string[] }) =>
-      apiRequest(`/api/badges/${badgeId}/award`, {
-        method: 'POST',
-        body: JSON.stringify({ studentIds })
-      }),
+      apiRequest(`/api/badges/${badgeId}/award`, 'POST', { studentIds }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/classrooms/${selectedClassroom?.id}/badge-analytics`] });
       setIsAwardDialogOpen(false);
@@ -754,7 +754,7 @@ export default function EnhancedBadges() {
                   <Trophy className="h-5 w-5 text-purple-500" />
                   <div>
                     <p className="text-sm font-medium">Awarded</p>
-                    <p className="text-2xl font-bold">{analytics?.totalAwarded || 0}</p>
+                    <div className="text-2xl font-bold">{analytics?.totalAwarded || 0}</div>
                   </div>
                 </div>
               </CardContent>
@@ -766,7 +766,7 @@ export default function EnhancedBadges() {
                   <TrendingUp className="h-5 w-5 text-green-500" />
                   <div>
                     <p className="text-sm font-medium">This Week</p>
-                    <p className="text-2xl font-bold">{analytics?.thisWeek || 0}</p>
+                    <div className="text-2xl font-bold">{analytics?.thisWeek || 0}</div>
                   </div>
                 </div>
               </CardContent>

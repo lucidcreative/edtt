@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { apiRequest } from "@/lib/queryClient";
+import { groupBuyTemplateData } from "@shared/schema";
 import TemplateSelector from "@/components/store/template-selector";
 import { ShoppingBag, Users, Plus, Target, Clock, Gift } from "lucide-react";
 
@@ -40,7 +41,7 @@ export default function Store() {
     goalAmount: 100, 
     endsAt: '',
     minContribution: 1,
-    maxContribution: 50
+    maxContribution: 50 as number | null
   });
   
   const [selectedTemplate, setSelectedTemplate] = useState('');
@@ -239,11 +240,11 @@ export default function Store() {
       const template = groupBuyTemplateData.find(t => t.id === templateId);
       if (template) {
         const endDate = new Date();
-        endDate.setDate(endDate.getDate() + template.durationDays);
+        endDate.setDate(endDate.getDate() + 7); // Default 7 days
         setGroupBuyForm({
           title: template.title,
           description: template.description,
-          goalAmount: template.targetAmount,
+          goalAmount: template.goalAmount,
           endsAt: endDate.toISOString().split('T')[0],
           minContribution: 1,
           maxContribution: 50
