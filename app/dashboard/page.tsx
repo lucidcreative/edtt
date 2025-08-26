@@ -1,26 +1,19 @@
-import { Suspense } from 'react'
-import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-import { cookies } from 'next/headers'
-import { Dashboard } from '@/components/dashboard/dashboard'
-
-export default async function DashboardPage() {
-  const cookieStore = cookies()
-  const supabase = createClient(cookieStore)
-  
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    redirect('/auth')
-  }
-
+export default function Dashboard() {
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-      <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
-        <Dashboard user={user} />
-      </Suspense>
-    </main>
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold text-foreground mb-6">
+          Classroom Economy Dashboard
+        </h1>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="bg-card p-6 rounded-lg shadow-sm border">
+            <h2 className="text-xl font-semibold mb-2">Welcome</h2>
+            <p className="text-muted-foreground">
+              Your classroom management system is ready to go!
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
