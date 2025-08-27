@@ -1,8 +1,10 @@
-# Classroom Economy Token Management Platform
+# BizCoin Classroom Token Economy Platform
 
 ## Overview
 
-This is a comprehensive classroom management application that gamifies education through a digital token economy system. The platform enables teachers to create classrooms, manage students, and reward positive behavior through tokens, while students earn and spend tokens in an integrated marketplace. Built as a mobile-first progressive web application using Next.js 14, the system emphasizes educational engagement through economic simulation and peer-to-peer commerce.
+BizCoin is a comprehensive mobile-first educational platform designed to gamify classroom management through a digital token economy system. The application serves as a classroom management tool where teachers can create assignments, manage students, operate virtual stores, and track analytics while students earn tokens through completed assignments and can spend them in the classroom store.
+
+The platform is built as a full-stack React application with TypeScript, featuring a modern, responsive design optimized for mobile devices used in classroom environments. The system supports role-based authentication for teachers and students, with teachers having full administrative capabilities and students accessing a simplified interface focused on earning and spending tokens.
 
 ## User Preferences
 
@@ -11,71 +13,65 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 ### Frontend Architecture
-- **Framework**: Next.js 14 with TypeScript for type safety and modern React features
-- **Styling**: Tailwind CSS with mobile-first responsive design approach
-- **UI Components**: Shadcn/ui component library with Radix UI primitives for accessibility
+- **Framework**: React 18 with TypeScript for type safety and modern development practices
+- **Styling**: Tailwind CSS with mobile-first responsive design approach using custom color variables and themes
+- **UI Components**: Radix UI primitives integrated through shadcn/ui component library for accessible, customizable components
 - **State Management**: TanStack React Query for server state management and caching
-- **Theme System**: Next-themes for dark/light mode support with system preference detection
+- **Routing**: Wouter for lightweight client-side routing
+- **Animation**: Framer Motion for smooth UI transitions and micro-interactions
 
 ### Backend Architecture
-- **Runtime**: Node.js with Express.js for API endpoints
-- **Database ORM**: Drizzle ORM for type-safe database operations
-- **Build System**: Vite for fast development builds and esbuild for production bundling
-- **Middleware**: Custom authentication middleware for route protection
-
-### Authentication & Authorization
-- **Provider**: Supabase Auth for secure user authentication
-- **Session Management**: JWT tokens with 8-hour timeout and refresh token rotation
-- **User Roles**: Role-based access control supporting teacher and student user types
-- **Student Privacy**: PIN-based authentication system for students (no email required)
+- **Runtime**: Node.js with Express.js framework for REST API endpoints
+- **Language**: TypeScript throughout for consistency and type safety
+- **Authentication**: JWT token-based authentication with 8-hour session timeout
+- **Security**: bcrypt for password hashing with 12+ rounds, separate PIN encryption for students
+- **API Design**: RESTful endpoints organized by resource with proper error handling middleware
 
 ### Data Storage Solutions
-- **Primary Database**: PostgreSQL with connection pooling for scalability
-- **ORM**: Drizzle with schema definitions supporting complex relationships
-- **Alternative Database**: Neon Database serverless PostgreSQL for cloud deployment
-- **Schema Design**: Comprehensive relational model supporting classrooms, users, tokens, assignments, marketplace transactions
+- **Database**: PostgreSQL as the primary database with Neon serverless hosting
+- **ORM**: Drizzle ORM with type-safe schema definitions and migrations
+- **Schema Design**: Role-based user system supporting teachers and students with different authentication methods
+- **Connection Pooling**: Neon serverless connection pooling for scalable database access
 
-### Core Educational Features
-- **Token Economy**: Digital wallet system with transaction logging and balance management
-- **Assignment Management**: Link-based submission system with teacher approval workflows
-- **Marketplace System**: Peer-to-peer trading platform with item listings and transaction processing
-- **Request for Proposal**: Project-based assignment system where students submit proposals
-- **Group Buy System**: Collaborative purchasing mechanism for classroom-wide goals
-- **Analytics Dashboard**: Performance tracking and engagement metrics for teachers
+### Authentication and Authorization
+- **Multi-Role System**: Teachers authenticate with email/password, students with nickname/PIN
+- **Session Management**: JWT tokens with configurable expiration (default 8 hours)
+- **Registration Flow**: Email verification for teachers, classroom code-based joining for students
+- **Security Features**: Login attempt tracking, account lockout, and approval workflows
 
-### Mobile-First Design Philosophy
-- **Primary Interface**: Optimized for smartphone usage during class time
-- **Touch Interactions**: Large, accessible touch targets throughout the interface
-- **Responsive Breakpoints**: Adaptive layouts from mobile to tablet to desktop
-- **Performance**: Optimized loading states and offline capabilities where possible
+### Component Architecture
+- **Layout System**: Responsive sidebar navigation with collapsible mobile menu
+- **Page Structure**: Dashboard-driven interface with dedicated pages for student management, assignments, store, and analytics
+- **Reusable Components**: Modular dashboard widgets for metrics, leaderboards, badges, and progress tracking
+- **Form Handling**: React Hook Form integration with Zod validation schemas
+
+### File Organization
+- **Monorepo Structure**: Shared schema definitions between client and server
+- **Path Aliases**: TypeScript path mapping for clean imports (@, @shared, @assets)
+- **Asset Management**: Centralized asset handling with Vite build optimization
+- **Component Structure**: Organized UI components with separation of business logic and presentation
 
 ## External Dependencies
 
-### Authentication Services
-- **Supabase**: Complete authentication solution with user management, session handling, and security features
-- **Supabase SSR**: Server-side rendering support for authenticated routes
+### Cloud Services
+- **Database**: Neon serverless PostgreSQL for scalable database hosting
+- **File Storage**: Google Cloud Storage for handling file uploads and assets
+- **Development**: Replit integration with development tooling and hot reload
 
-### Database & ORM
-- **PostgreSQL**: Relational database for complex educational data relationships
-- **Neon Database**: Serverless PostgreSQL alternative for cloud deployments
-- **Drizzle ORM**: Type-safe database operations with migration support
+### Core Libraries
+- **Frontend**: React, TypeScript, Tailwind CSS, Framer Motion, TanStack React Query
+- **Backend**: Express.js, Drizzle ORM, bcrypt, jsonwebtoken
+- **UI Components**: Radix UI primitives, Lucide React icons, shadcn/ui components
+- **Development**: Vite build system, ESBuild for production builds, TSX for development server
 
-### UI & Styling
-- **Radix UI**: Unstyled, accessible component primitives for complex interactions
-- **Tailwind CSS**: Utility-first CSS framework with mobile-first responsive design
-- **Shadcn/ui**: Pre-built component library built on Radix UI primitives
-- **Lucide React**: Icon library for consistent visual elements
+### Authentication & Security
+- **Password Hashing**: bcrypt for secure password storage
+- **JWT Tokens**: jsonwebtoken for stateless authentication
+- **Input Validation**: Zod schemas for runtime type checking and validation
+- **CORS**: Express CORS middleware for cross-origin request handling
 
-### Development & Build Tools
-- **TypeScript**: Static type checking for reduced runtime errors
-- **ESBuild**: Fast JavaScript bundler for production builds
-- **Vite**: Development server with hot module replacement
-- **PostCSS**: CSS processing with Tailwind integration
-
-### Error Monitoring & Analytics
-- **Sentry**: Error tracking and performance monitoring for production deployments
-- **TanStack React Query**: Client-side caching and synchronization for improved user experience
-
-### Deployment Infrastructure
-- **Vercel**: Optimized deployment platform for Next.js applications
-- **Environment Management**: Secure environment variable handling for API keys and database connections
+### Development Tools
+- **Build System**: Vite with React plugin and TypeScript support
+- **Database Migration**: Drizzle Kit for schema migrations and database management
+- **Code Quality**: TypeScript strict mode with comprehensive type checking
+- **Asset Optimization**: PostCSS with Autoprefixer for CSS processing

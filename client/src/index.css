@@ -1,0 +1,930 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Background colors matching design reference */
+  --background: hsl(210, 20%, 98%);
+  --foreground: hsl(222.2, 84%, 4.9%);
+  
+  /* Card colors */
+  --card: hsl(0, 0%, 100%);
+  --card-foreground: hsl(222.2, 84%, 4.9%);
+  
+  /* Component colors */
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(222.2, 84%, 4.9%);
+  --primary: hsl(221.2, 83.2%, 53.3%);
+  --primary-foreground: hsl(210, 40%, 98%);
+  --secondary: hsl(210, 40%, 96%);
+  --secondary-foreground: hsl(222.2, 84%, 4.9%);
+  --muted: hsl(210, 40%, 96%);
+  --muted-foreground: hsl(215.4, 16.3%, 46.9%);
+  --accent: hsl(210, 40%, 96%);
+  --accent-foreground: hsl(222.2, 84%, 4.9%);
+  --destructive: hsl(0, 84.2%, 60.2%);
+  --destructive-foreground: hsl(210, 40%, 98%);
+  
+  /* Border and input colors */
+  --border: hsl(214.3, 31.8%, 91.4%);
+  --input: hsl(214.3, 31.8%, 91.4%);
+  --ring: hsl(221.2, 83.2%, 53.3%);
+  
+  /* Chart colors */
+  --chart-1: hsl(221.2, 83.2%, 53.3%);
+  --chart-2: hsl(142.1, 76.2%, 36.3%);
+  --chart-3: hsl(45.4, 93.4%, 47.5%);
+  --chart-4: hsl(262.1, 83.3%, 57.8%);
+  --chart-5: hsl(346.8, 77.2%, 49.8%);
+  
+  /* BizCoin brand colors matching the design reference exactly */
+  --bizcoin-blue-50: hsl(214, 100%, 97%);
+  --bizcoin-blue-100: hsl(214, 95%, 93%);
+  --bizcoin-blue-200: hsl(213, 97%, 87%);
+  --bizcoin-blue-300: hsl(212, 96%, 78%);
+  --bizcoin-blue-400: hsl(213, 94%, 68%);
+  --bizcoin-blue-500: hsl(214, 84%, 56%);
+  --bizcoin-blue-600: hsl(224, 76%, 48%);
+  --bizcoin-blue-700: hsl(226, 71%, 40%);
+  --bizcoin-blue-800: hsl(224, 64%, 33%);
+  --bizcoin-blue-900: hsl(224, 64%, 33%);
+  
+  --bizcoin-purple-50: hsl(270, 100%, 98%);
+  --bizcoin-purple-100: hsl(269, 100%, 95%);
+  --bizcoin-purple-200: hsl(269, 100%, 92%);
+  --bizcoin-purple-300: hsl(268, 100%, 86%);
+  --bizcoin-purple-400: hsl(270, 95%, 75%);
+  --bizcoin-purple-500: hsl(262, 83%, 58%);
+  --bizcoin-purple-600: hsl(262, 83%, 58%);
+  --bizcoin-purple-700: hsl(263, 70%, 50%);
+  --bizcoin-purple-800: hsl(263, 70%, 50%);
+  --bizcoin-purple-900: hsl(264, 69%, 42%);
+  
+  --bizcoin-pink-50: hsl(327, 73%, 97%);
+  --bizcoin-pink-100: hsl(326, 78%, 95%);
+  --bizcoin-pink-200: hsl(326, 85%, 90%);
+  --bizcoin-pink-300: hsl(327, 87%, 82%);
+  --bizcoin-pink-400: hsl(329, 86%, 70%);
+  --bizcoin-pink-500: hsl(330, 81%, 60%);
+  --bizcoin-pink-600: hsl(333, 71%, 51%);
+  --bizcoin-pink-700: hsl(335, 78%, 42%);
+  --bizcoin-pink-800: hsl(336, 74%, 35%);
+  --bizcoin-pink-900: hsl(336, 69%, 30%);
+  
+  --bizcoin-rose-500: hsl(351, 95%, 71%);
+  --bizcoin-rose-600: hsl(347, 77%, 50%);
+  
+  --bizcoin-green-50: hsl(151, 81%, 96%);
+  --bizcoin-green-100: hsl(149, 80%, 90%);
+  --bizcoin-green-200: hsl(152, 76%, 80%);
+  --bizcoin-green-300: hsl(156, 72%, 67%);
+  --bizcoin-green-400: hsl(158, 64%, 52%);
+  --bizcoin-green-500: hsl(160, 84%, 39%);
+  --bizcoin-green-600: hsl(160, 84%, 39%);
+  --bizcoin-green-700: hsl(161, 94%, 30%);
+  --bizcoin-green-800: hsl(163, 94%, 24%);
+  --bizcoin-green-900: hsl(164, 86%, 16%);
+  
+  --bizcoin-yellow-50: hsl(54, 92%, 95%);
+  --bizcoin-yellow-100: hsl(55, 97%, 88%);
+  --bizcoin-yellow-200: hsl(53, 98%, 77%);
+  --bizcoin-yellow-300: hsl(50, 98%, 64%);
+  --bizcoin-yellow-400: hsl(48, 96%, 53%);
+  --bizcoin-yellow-500: hsl(45, 93%, 47%);
+  --bizcoin-yellow-600: hsl(25, 95%, 53%);
+  --bizcoin-yellow-700: hsl(25, 95%, 53%);
+  --bizcoin-yellow-800: hsl(21, 90%, 48%);
+  --bizcoin-yellow-900: hsl(18, 88%, 40%);
+  
+  --bizcoin-red-100: hsl(0, 93%, 94%);
+  --bizcoin-red-600: hsl(0, 84%, 60%);
+  
+  /* Gradient variables matching the design reference exactly */
+  --gradient-blue: linear-gradient(135deg, hsl(214, 84%, 56%), hsl(224, 76%, 48%));
+  --gradient-purple: linear-gradient(135deg, hsl(262, 83%, 58%), hsl(263, 70%, 50%));
+  --gradient-pink: linear-gradient(135deg, hsl(330, 81%, 60%), hsl(347, 77%, 50%));
+  --gradient-pink-rose: linear-gradient(135deg, hsl(330, 81%, 60%), hsl(351, 95%, 71%));
+  --gradient-green: linear-gradient(135deg, hsl(160, 84%, 39%), hsl(161, 94%, 30%));
+  --gradient-yellow: linear-gradient(135deg, hsl(55, 97%, 88%), hsl(53, 98%, 77%));
+  --gradient-blue-purple: linear-gradient(135deg, hsl(214, 84%, 56%), hsl(262, 83%, 58%));
+  
+  /* Shadow variables for bento cards matching design */
+  --shadow-bento: 0 4px 20px -2px rgba(0, 0, 0, 0.1), 0 2px 8px -2px rgba(0, 0, 0, 0.04);
+  --shadow-card: 0 2px 12px -2px rgba(0, 0, 0, 0.08), 0 1px 4px -1px rgba(0, 0, 0, 0.04);
+  --shadow-glow-blue: 0 0 20px hsla(214, 84%, 56%, 0.3);
+  --shadow-hover: 0 8px 30px -4px rgba(0, 0, 0, 0.15), 0 4px 12px -2px rgba(0, 0, 0, 0.08);
+  
+  /* Border radius matching design */
+  --radius: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
+  
+  /* Typography */
+  --font-family-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  
+  /* Animation durations */
+  --duration-fast: 200ms;
+  --duration-normal: 300ms;
+  --duration-slow: 500ms;
+  --duration-slower: 800ms;
+}
+
+.dark {
+  /* Dark mode with much better contrast for readability */
+  --background: hsl(222, 47%, 11%);
+  --foreground: hsl(213, 31%, 91%);
+  --card: hsl(221, 39%, 15%);
+  --card-foreground: hsl(213, 31%, 91%);
+  --popover: hsl(221, 39%, 15%);
+  --popover-foreground: hsl(213, 31%, 91%);
+  --primary: hsl(217, 91%, 70%);
+  --primary-foreground: hsl(222, 47%, 11%);
+  --secondary: hsl(215, 27%, 32%);
+  --secondary-foreground: hsl(213, 31%, 91%);
+  --muted: hsl(215, 27%, 32%);
+  --muted-foreground: hsl(215, 20%, 75%);
+  --accent: hsl(215, 27%, 32%);
+  --accent-foreground: hsl(213, 31%, 91%);
+  --destructive: hsl(0, 63%, 55%);
+  --destructive-foreground: hsl(213, 31%, 91%);
+  --border: hsl(215, 27%, 32%);
+  --input: hsl(215, 27%, 32%);
+  --ring: hsl(217, 91%, 70%);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: var(--font-family-sans);
+    line-height: 1.6;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold;
+    line-height: 1.2;
+  }
+
+  h1 {
+    @apply text-3xl lg:text-4xl font-bold;
+  }
+
+  h2 {
+    @apply text-2xl lg:text-3xl font-semibold;
+  }
+
+  h3 {
+    @apply text-xl lg:text-2xl font-semibold;
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Focus styles */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-bizcoin-blue-500 ring-offset-2;
+  }
+
+  /* Selection styles */
+  ::selection {
+    background-color: var(--bizcoin-blue-100);
+    color: var(--bizcoin-blue-900);
+  }
+}
+
+@layer components {
+  /* Bento Box Layout Components matching design reference */
+  .bento-grid {
+    @apply grid gap-6;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+
+  .bento-card {
+    @apply bg-white dark:bg-gray-800 rounded-2xl p-6 transition-all duration-300;
+    box-shadow: var(--shadow-card);
+  }
+
+  .bento-card:hover {
+    box-shadow: var(--shadow-hover);
+    transform: translateY(-2px);
+  }
+
+  .bento-card-interactive {
+    @apply bento-card cursor-pointer;
+  }
+
+  .bento-card-interactive:hover {
+    @apply scale-105;
+    box-shadow: var(--shadow-hover);
+  }
+
+  /* Gradient Cards exactly matching design reference */
+  .gradient-card-blue {
+    background: var(--gradient-blue);
+    @apply text-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300;
+  }
+
+  .gradient-card-purple {
+    background: var(--gradient-purple);
+    @apply text-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300;
+  }
+
+  .gradient-card-pink {
+    background: var(--gradient-pink-rose);
+    @apply text-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300;
+  }
+
+  .gradient-card-green {
+    background: var(--gradient-green);
+    @apply text-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300;
+  }
+
+  .gradient-card-yellow {
+    background: var(--gradient-yellow);
+    @apply text-gray-800 p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300;
+  }
+
+  .gradient-card-blue-purple {
+    background: var(--gradient-blue-purple);
+    @apply text-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300;
+  }
+
+  /* Progress Components matching design reference */
+  .progress-bar {
+    @apply w-full rounded-full h-2 overflow-hidden;
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .progress-bar-white {
+    @apply w-full bg-white/20 rounded-full h-2 overflow-hidden;
+  }
+
+  .progress-fill {
+    @apply h-full rounded-full transition-all duration-1000 ease-out;
+  }
+
+  .progress-fill-blue {
+    @apply progress-fill;
+    background-color: var(--bizcoin-blue-500);
+  }
+
+  .progress-fill-white {
+    @apply progress-fill bg-white;
+  }
+
+  .progress-fill-green {
+    @apply progress-fill;
+    background-color: var(--bizcoin-green-500);
+  }
+
+  .progress-fill-yellow {
+    @apply progress-fill;
+    background-color: var(--bizcoin-yellow-500);
+  }
+
+  /* Navigation matching design reference */
+  .nav-item {
+    @apply flex items-center space-x-3 px-3 py-2 rounded-lg font-medium;
+    @apply text-gray-600 hover:text-gray-800 hover:bg-gray-100;
+    @apply transition-all duration-200 cursor-pointer;
+  }
+
+  .nav-item.active {
+    @apply text-blue-600;
+    background-color: var(--bizcoin-blue-50);
+  }
+
+  .nav-item i {
+    @apply text-lg;
+  }
+
+  /* Category Cards matching design reference */
+  .category-card {
+    @apply p-3 rounded-xl cursor-pointer transition-all duration-200;
+    @apply hover:bg-gray-50 border-2 border-transparent;
+  }
+
+  .category-card.active {
+    background-color: var(--bizcoin-blue-50);
+    border-color: var(--bizcoin-blue-200);
+  }
+
+  /* Avatar Components */
+  .avatar {
+    @apply rounded-full object-cover;
+  }
+
+  .avatar-sm {
+    @apply w-8 h-8;
+  }
+
+  .avatar-md {
+    @apply w-10 h-10;
+  }
+
+  .avatar-lg {
+    @apply w-12 h-12;
+  }
+
+  .avatar-xl {
+    @apply w-16 h-16;
+  }
+
+  /* Badge Components matching design colors */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-primary {
+    background-color: var(--bizcoin-blue-100);
+    color: var(--bizcoin-blue-800);
+  }
+
+  .badge-success {
+    background-color: var(--bizcoin-green-100);
+    color: var(--bizcoin-green-800);
+  }
+
+  .badge-warning {
+    background-color: var(--bizcoin-yellow-100);
+    color: var(--bizcoin-yellow-800);
+  }
+
+  .badge-danger {
+    background-color: var(--bizcoin-red-100);
+    color: var(--bizcoin-red-600);
+  }
+
+  .badge-purple {
+    background-color: var(--bizcoin-purple-100);
+    color: var(--bizcoin-purple-800);
+  }
+
+  .badge-pink {
+    background-color: var(--bizcoin-pink-100);
+    color: var(--bizcoin-pink-800);
+  }
+
+  /* Token Display matching header design */
+  .token-display {
+    @apply inline-flex items-center space-x-2 px-3 py-2 rounded-lg font-medium;
+    background-color: var(--bizcoin-blue-50);
+    color: var(--bizcoin-blue-800);
+  }
+
+  .token-display-yellow {
+    @apply inline-flex items-center space-x-2 px-3 py-2 rounded-lg font-medium;
+    background-color: var(--bizcoin-yellow-100);
+    color: var(--bizcoin-yellow-800);
+  }
+
+  /* Level Indicator */
+  .level-indicator {
+    @apply inline-flex items-center space-x-2 px-3 py-2 rounded-lg font-medium;
+    background-color: var(--bizcoin-purple-50);
+    color: var(--bizcoin-purple-800);
+  }
+
+  /* Leaderboard Special Styling matching design */
+  .leaderboard-item {
+    @apply flex items-center space-x-3 transition-all duration-200;
+  }
+
+  /* Income Card Special Styling matching design reference */
+  .income-card {
+    background: linear-gradient(135deg, 
+      var(--bizcoin-yellow-100), 
+      var(--bizcoin-yellow-200));
+    @apply relative overflow-hidden p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300;
+  }
+
+  /* Chart Components matching design */
+  .chart-container {
+    @apply w-full h-full flex items-end justify-between space-x-2;
+  }
+
+  .chart-bar {
+    @apply flex-1 rounded-t transition-all duration-1000 ease-out;
+    background-color: var(--bizcoin-blue-500);
+  }
+
+  /* Interactive Elements */
+  .interactive {
+    @apply cursor-pointer transition-all duration-200;
+  }
+
+  .interactive:hover {
+    @apply scale-[1.02] shadow-sm;
+  }
+
+  .interactive:active {
+    @apply scale-95;
+  }
+  
+  .link-hover {
+    @apply transition-colors duration-200 hover:text-primary/80;
+  }
+  
+  .icon-hover {
+    @apply transition-all duration-200 hover:scale-110 hover:text-primary;
+  }
+  
+  .card-interactive {
+    @apply transition-all duration-200 hover:shadow-md hover:scale-[1.01] cursor-pointer;
+  }
+
+  /* Loading States */
+  .skeleton {
+    @apply animate-pulse bg-gray-200 rounded;
+  }
+
+  .skeleton-text {
+    @apply skeleton h-4 w-full mb-2;
+  }
+
+  .skeleton-title {
+    @apply skeleton h-6 w-3/4 mb-3;
+  }
+
+  .skeleton-button {
+    @apply skeleton h-10 w-24;
+  }
+
+  .skeleton-avatar {
+    @apply skeleton w-10 h-10 rounded-full;
+  }
+
+  /* Assignment Card Styling */
+  .assignment-card {
+    @apply bg-white rounded-2xl p-6 transition-all duration-300;
+    box-shadow: var(--shadow-card);
+  }
+
+  .assignment-card:hover {
+    box-shadow: var(--shadow-hover);
+    @apply scale-102;
+  }
+
+  /* Store Item Card */
+  .store-item-card {
+    @apply bg-white rounded-2xl overflow-hidden transition-all duration-300 group;
+    box-shadow: var(--shadow-card);
+  }
+
+  .store-item-card:hover {
+    box-shadow: var(--shadow-hover);
+    @apply scale-102;
+  }
+
+  .store-item-image {
+    @apply w-full h-48 object-cover transition-transform duration-300;
+  }
+
+  .store-item-card:hover .store-item-image {
+    @apply scale-105;
+  }
+
+  /* Notification Bubble */
+  .notification-bubble {
+    @apply absolute -top-1 -right-1 text-white text-xs;
+    @apply rounded-full w-5 h-5 flex items-center justify-center;
+    @apply animate-pulse;
+    background-color: var(--bizcoin-red-600);
+  }
+}
+
+@layer utilities {
+  /* Custom animations matching design reference */
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+
+  .animate-bounce-gentle {
+    animation: bounceGentle 2s infinite;
+  }
+
+  .animate-progress-fill {
+    animation: progressFill 1s ease-out;
+  }
+
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  /* Scale utilities */
+  .scale-102 {
+    transform: scale(1.02);
+  }
+
+  .scale-103 {
+    transform: scale(1.03);
+  }
+
+  .scale-98 {
+    transform: scale(0.98);
+  }
+
+  /* Line clamp utilities */
+  .line-clamp-1 {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Gradient backgrounds matching design */
+  .bg-gradient-blue {
+    background: var(--gradient-blue);
+  }
+
+  .bg-gradient-purple {
+    background: var(--gradient-purple);
+  }
+
+  .bg-gradient-pink {
+    background: var(--gradient-pink-rose);
+  }
+
+  .bg-gradient-green {
+    background: var(--gradient-green);
+  }
+
+  .bg-gradient-yellow {
+    background: var(--gradient-yellow);
+  }
+
+  .bg-gradient-blue-purple {
+    background: var(--gradient-blue-purple);
+  }
+
+  /* Shadow utilities */
+  .shadow-bento {
+    box-shadow: var(--shadow-bento);
+  }
+
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+
+  .shadow-hover {
+    box-shadow: var(--shadow-hover);
+  }
+
+  .shadow-glow-blue {
+    box-shadow: var(--shadow-glow-blue);
+  }
+
+  /* Text utilities */
+  .text-gradient-primary {
+    background: var(--gradient-blue-purple);
+    @apply bg-clip-text text-transparent;
+  }
+
+  .text-gradient-blue {
+    background: var(--gradient-blue);
+    @apply bg-clip-text text-transparent;
+  }
+
+  .text-gradient-purple {
+    background: var(--gradient-purple);
+    @apply bg-clip-text text-transparent;
+  }
+
+  /* Color utilities using CSS variables */
+  .text-bizcoin-blue {
+    color: var(--bizcoin-blue-600);
+  }
+
+  .text-bizcoin-purple {
+    color: var(--bizcoin-purple-600);
+  }
+
+  .text-bizcoin-pink {
+    color: var(--bizcoin-pink-600);
+  }
+
+  .text-bizcoin-green {
+    color: var(--bizcoin-green-600);
+  }
+
+  .text-bizcoin-yellow {
+    color: var(--bizcoin-yellow-600);
+  }
+
+  .bg-bizcoin-blue {
+    background-color: var(--bizcoin-blue-500);
+  }
+
+  .bg-bizcoin-purple {
+    background-color: var(--bizcoin-purple-500);
+  }
+
+  .bg-bizcoin-pink {
+    background-color: var(--bizcoin-pink-500);
+  }
+
+  .bg-bizcoin-green {
+    background-color: var(--bizcoin-green-500);
+  }
+
+  .bg-bizcoin-yellow {
+    background-color: var(--bizcoin-yellow-500);
+  }
+
+  /* Background color utilities for badges and components */
+  .bg-blue-50 {
+    background-color: var(--bizcoin-blue-50);
+  }
+
+  .bg-blue-100 {
+    background-color: var(--bizcoin-blue-100);
+  }
+
+  .bg-purple-50 {
+    background-color: var(--bizcoin-purple-50);
+  }
+
+  .bg-purple-100 {
+    background-color: var(--bizcoin-purple-100);
+  }
+
+  .bg-green-100 {
+    background-color: var(--bizcoin-green-100);
+  }
+
+  .bg-yellow-100 {
+    background-color: var(--bizcoin-yellow-100);
+  }
+
+  .bg-yellow-200 {
+    background-color: var(--bizcoin-yellow-200);
+  }
+
+  .bg-red-100 {
+    background-color: var(--bizcoin-red-100);
+  }
+
+  /* Text color utilities */
+  .text-blue-600 {
+    color: var(--bizcoin-blue-600);
+  }
+
+  .text-blue-800 {
+    color: var(--bizcoin-blue-800);
+  }
+
+  .text-purple-600 {
+    color: var(--bizcoin-purple-600);
+  }
+
+  .text-purple-800 {
+    color: var(--bizcoin-purple-800);
+  }
+
+  .text-green-600 {
+    color: var(--bizcoin-green-600);
+  }
+
+  .text-green-800 {
+    color: var(--bizcoin-green-800);
+  }
+
+  .text-yellow-600 {
+    color: var(--bizcoin-yellow-600);
+  }
+
+  .text-yellow-800 {
+    color: var(--bizcoin-yellow-800);
+  }
+
+  .text-red-600 {
+    color: var(--bizcoin-red-600);
+  }
+
+  .text-red-800 {
+    color: var(--bizcoin-red-600);
+  }
+
+  /* Border color utilities */
+  .border-blue-200 {
+    border-color: var(--bizcoin-blue-200);
+  }
+
+  /* Ring color utilities */
+  .ring-blue-500 {
+    --tw-ring-color: var(--bizcoin-blue-500);
+  }
+}
+
+/* Keyframe Animations matching design reference */
+@keyframes fadeIn {
+  0% { 
+    opacity: 0; 
+    transform: translateY(10px); 
+  }
+  100% { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+@keyframes slideUp {
+  0% { 
+    transform: translateY(100%); 
+  }
+  100% { 
+    transform: translateY(0); 
+  }
+}
+
+@keyframes bounceGentle {
+  0%, 100% { 
+    transform: translateY(0); 
+  }
+  50% { 
+    transform: translateY(-5px); 
+  }
+}
+
+@keyframes progressFill {
+  0% { 
+    width: 0%; 
+  }
+  100% { 
+    width: var(--progress-width, 100%); 
+  }
+}
+
+@keyframes float {
+  0%, 100% { 
+    transform: translateY(0px); 
+  }
+  50% { 
+    transform: translateY(-10px); 
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ping {
+  75%, 100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(-25%);
+    animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+  }
+  50% {
+    transform: translateY(0);
+    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 640px) {
+  .bento-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .bento-card,
+  .gradient-card-blue,
+  .gradient-card-purple,
+  .gradient-card-pink,
+  .gradient-card-green,
+  .gradient-card-yellow,
+  .gradient-card-blue-purple {
+    @apply p-4;
+  }
+}
+
+/* Custom Scrollbar for Webkit browsers */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--muted);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--muted-foreground);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border);
+}
+
+/* Loading spinner */
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--muted);
+  border-top: 3px solid var(--bizcoin-blue-500);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-slide-up,
+  .animate-bounce-gentle,
+  .animate-progress-fill,
+  .animate-float {
+    animation: none;
+  }
+  
+  .transition-all,
+  .transition-colors,
+  .transition-transform {
+    transition: none;
+  }
+  
+  .interactive:hover,
+  .bento-card:hover,
+  .store-item-card:hover .store-item-image {
+    transform: none;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .shadow-lg,
+  .shadow-xl,
+  .shadow-2xl,
+  .shadow-bento,
+  .shadow-card,
+  .shadow-hover {
+    box-shadow: none;
+  }
+  
+  .gradient-card-blue,
+  .gradient-card-purple,
+  .gradient-card-pink,
+  .gradient-card-green,
+  .gradient-card-yellow,
+  .gradient-card-blue-purple {
+    background: white !important;
+    color: black !important;
+    border: 1px solid black;
+  }
+}
