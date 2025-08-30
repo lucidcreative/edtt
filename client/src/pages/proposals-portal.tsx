@@ -50,14 +50,7 @@ import {
   Star,
   Target,
   Lightbulb,
-  Award,
-  DollarSign,
-  Crown,
-  Coins,
-  Wallet,
-  Shield,
-  CreditCard,
-  CheckCircle2
+  Award
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
@@ -68,7 +61,7 @@ interface Proposal {
   title: string;
   content: string;
   scopeOfWork?: string;
-  status: 'draft' | 'submitted' | 'pending' | 'under_review' | 'needs_revision' | 'approved' | 'rejected' | 'in_progress' | 'completed' | 'winner_selected';
+  status: 'draft' | 'submitted' | 'pending' | 'under_review' | 'needs_revision' | 'approved' | 'rejected' | 'in_progress' | 'completed';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   progressPercentage: number;
   milestones?: string[];
@@ -78,14 +71,6 @@ interface Proposal {
   approvedAt?: string;
   createdAt: string;
   updatedAt: string;
-  // Winner selection and payment fields
-  isWinner?: boolean;
-  selectedAt?: string;
-  selectedBy?: string;
-  projectBudget?: number;
-  paymentType?: 'full_payment' | 'split_payment';
-  paymentSchedule?: any[];
-  escrowStatus?: 'pending' | 'in_escrow' | 'partially_released' | 'fully_released' | 'disputed';
   student: {
     id: string;
     nickname?: string;
@@ -130,8 +115,7 @@ const statusConfig = {
   approved: { color: "bg-green-500", label: "Approved", icon: CheckCircle },
   rejected: { color: "bg-red-500", label: "Rejected", icon: XCircle },
   in_progress: { color: "bg-indigo-500", label: "In Progress", icon: TrendingUp },
-  completed: { color: "bg-emerald-500", label: "Completed", icon: Award },
-  winner_selected: { color: "bg-yellow-600", label: "Winner Selected", icon: Crown }
+  completed: { color: "bg-emerald-500", label: "Completed", icon: Award }
 };
 
 const priorityConfig = {
@@ -150,17 +134,6 @@ export default function ProposalsPortal() {
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [reviewAction, setReviewAction] = useState<string>("");
   const [reviewFeedback, setReviewFeedback] = useState("");
-  
-  // Winner selection and payment management state
-  const [showWinnerDialog, setShowWinnerDialog] = useState(false);
-  const [projectBudget, setProjectBudget] = useState<number>(100);
-  const [paymentType, setPaymentType] = useState<'full_payment' | 'split_payment'>('full_payment');
-  const [paymentSchedule, setPaymentSchedule] = useState<Array<{title: string, description: string, percentage: number, dueDate: string}>>([
-    { title: "Phase 1 - Initial Setup", description: "Project setup and planning", percentage: 50, dueDate: "" },
-    { title: "Phase 2 - Completion", description: "Final deliverables and review", percentage: 50, dueDate: "" }
-  ]);
-  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
-  
   const queryClient = useQueryClient();
 
   // Fetch proposals for the classroom
@@ -206,70 +179,11 @@ export default function ProposalsPortal() {
     }
   });
 
-  // Winner selection mutation
-  const selectWinnerMutation = useMutation({
-    mutationFn: ({ proposalId, budget, paymentType, schedules }: { 
-      proposalId: string; 
-      budget: number; 
-      paymentType: 'full_payment' | 'split_payment';
-      schedules?: Array<{title: string, description?: string, percentage: number, dueDate?: string}>;
-    }) =>
-      apiRequest(`/api/proposals/${proposalId}/select-winner`, 'POST', { 
-        budget, 
-        paymentType,
-        schedules: paymentType === 'split_payment' ? schedules : undefined
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/proposals/classroom'] });
-      setShowWinnerDialog(false);
-      setProjectBudget(100);
-      setPaymentType('full_payment');
-    }
-  });
-
-  // Escrow release mutation
-  const releaseEscrowMutation = useMutation({
-    mutationFn: ({ transactionId, notes }: { transactionId: string; notes?: string }) =>
-      apiRequest(`/api/escrow/${transactionId}/release`, 'POST', { notes }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/proposals/classroom'] });
-    }
-  });
-
   const filteredProposals = proposals.filter((proposal: Proposal) => {
     if (selectedStatus !== "all" && proposal.status !== selectedStatus) return false;
     if (selectedPriority !== "all" && proposal.priority !== selectedPriority) return false;
     return true;
   });
-
-  // Helper functions
-  const getStudentName = (student: { nickname?: string; firstName?: string; lastName?: string }) => {
-    if (student.nickname) return student.nickname;
-    if (student.firstName || student.lastName) {
-      return `${student.firstName || ''} ${student.lastName || ''}`.trim();
-    }
-    return 'Unknown Student';
-  };
-
-  const getStatusBadge = (status: string) => {
-    const config = statusConfig[status as keyof typeof statusConfig];
-    const Icon = config?.icon || FileText;
-    return (
-      <Badge className={cn("text-white", config?.color)}>
-        <Icon className="h-3 w-3 mr-1" />
-        {config?.label || status}
-      </Badge>
-    );
-  };
-
-  const getPriorityBadge = (priority: string) => {
-    const config = priorityConfig[priority as keyof typeof priorityConfig];
-    return (
-      <Badge variant="outline" className={cn("text-white", config?.color)}>
-        {config?.label || priority}
-      </Badge>
-    );
-  };
 
   const handleReviewSubmit = () => {
     if (!selectedProposal || !reviewAction || !reviewFeedback.trim()) return;
@@ -279,6 +193,30 @@ export default function ProposalsPortal() {
       action: reviewAction,
       feedback: reviewFeedback
     });
+  };
+
+  const getStatusBadge = (status: string) => {
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.draft;
+    const Icon = config.icon;
+    return (
+      <Badge className={cn("text-white", config.color)}>
+        <Icon className="w-3 h-3 mr-1" />
+        {config.label}
+      </Badge>
+    );
+  };
+
+  const getPriorityBadge = (priority: string) => {
+    const config = priorityConfig[priority as keyof typeof priorityConfig] || priorityConfig.medium;
+    return (
+      <Badge variant="outline" className={cn("text-white border-none", config.color)}>
+        {config.label}
+      </Badge>
+    );
+  };
+
+  const getStudentName = (student: Proposal['student']) => {
+    return student.nickname || `${student.firstName} ${student.lastName}`.trim() || 'Unknown Student';
   };
 
   if (!selectedClassroom) {
@@ -482,30 +420,6 @@ export default function ProposalsPortal() {
                             }}>
                               <CheckCircle className="h-4 w-4 mr-2" />
                               Quick Approve
-                            </DropdownMenuItem>
-                          )}
-                          
-                          {/* Winner Selection for Teachers */}
-                          {user?.role === 'teacher' && proposal.status === 'approved' && !proposal.isWinner && (
-                            <DropdownMenuItem onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedProposal(proposal);
-                              setShowWinnerDialog(true);
-                            }}>
-                              <Crown className="h-4 w-4 mr-2" />
-                              Select as Winner
-                            </DropdownMenuItem>
-                          )}
-                          
-                          {/* Payment Management for Winners */}
-                          {user?.role === 'teacher' && proposal.isWinner && (
-                            <DropdownMenuItem onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedProposal(proposal);
-                              setShowPaymentDialog(true);
-                            }}>
-                              <Wallet className="h-4 w-4 mr-2" />
-                              Manage Payment
                             </DropdownMenuItem>
                           )}
                         </DropdownMenuContent>
@@ -857,264 +771,6 @@ export default function ProposalsPortal() {
                         {reviewProposalMutation.isPending ? "Submitting..." : "Submit Review"}
                       </Button>
                     </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Winner Selection Dialog */}
-      <Dialog open={showWinnerDialog} onOpenChange={setShowWinnerDialog}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center space-x-2">
-              <Crown className="h-5 w-5 text-yellow-600" />
-              <span>Select Winner & Set Budget</span>
-            </DialogTitle>
-          </DialogHeader>
-
-          {selectedProposal && (
-            <div className="space-y-6">
-              {/* Proposal Info */}
-              <div className="bg-muted p-4 rounded-lg">
-                <h3 className="font-medium">{selectedProposal.title}</h3>
-                <p className="text-sm text-muted-foreground">
-                  by {getStudentName(selectedProposal.student)}
-                </p>
-              </div>
-
-              {/* Budget Setting */}
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="budget">Project Budget (Tokens)</Label>
-                  <Input
-                    id="budget"
-                    type="number"
-                    value={projectBudget}
-                    onChange={(e) => setProjectBudget(Number(e.target.value))}
-                    min="1"
-                    className="mt-1"
-                  />
-                </div>
-
-                {/* Payment Type Selection */}
-                <div>
-                  <Label>Payment Type</Label>
-                  <div className="mt-2 space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        id="full_payment"
-                        name="paymentType"
-                        value="full_payment"
-                        checked={paymentType === 'full_payment'}
-                        onChange={(e) => setPaymentType(e.target.value as 'full_payment')}
-                      />
-                      <Label htmlFor="full_payment" className="flex items-center space-x-2">
-                        <CreditCard className="h-4 w-4" />
-                        <span>Full Payment</span>
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        id="split_payment"
-                        name="paymentType"
-                        value="split_payment"
-                        checked={paymentType === 'split_payment'}
-                        onChange={(e) => setPaymentType(e.target.value as 'split_payment')}
-                      />
-                      <Label htmlFor="split_payment" className="flex items-center space-x-2">
-                        <Wallet className="h-4 w-4" />
-                        <span>Split Payment (Milestones)</span>
-                      </Label>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Payment Schedule for Split Payments */}
-                {paymentType === 'split_payment' && (
-                  <div className="space-y-4 border p-4 rounded-lg">
-                    <h4 className="font-medium">Payment Schedule</h4>
-                    {paymentSchedule.map((schedule, index) => (
-                      <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-4 p-3 bg-muted rounded">
-                        <div>
-                          <Label>Milestone Title</Label>
-                          <Input
-                            value={schedule.title}
-                            onChange={(e) => {
-                              const updated = [...paymentSchedule];
-                              updated[index].title = e.target.value;
-                              setPaymentSchedule(updated);
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <Label>Percentage</Label>
-                          <Input
-                            type="number"
-                            value={schedule.percentage}
-                            onChange={(e) => {
-                              const updated = [...paymentSchedule];
-                              updated[index].percentage = Number(e.target.value);
-                              setPaymentSchedule(updated);
-                            }}
-                            min="1"
-                            max="100"
-                          />
-                        </div>
-                        <div>
-                          <Label>Due Date</Label>
-                          <Input
-                            type="date"
-                            value={schedule.dueDate}
-                            onChange={(e) => {
-                              const updated = [...paymentSchedule];
-                              updated[index].dueDate = e.target.value;
-                              setPaymentSchedule(updated);
-                            }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                    <div className="text-sm text-muted-foreground">
-                      Total: {paymentSchedule.reduce((sum, schedule) => sum + schedule.percentage, 0)}%
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Actions */}
-              <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => setShowWinnerDialog(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  onClick={() => {
-                    if (selectedProposal) {
-                      selectWinnerMutation.mutate({
-                        proposalId: selectedProposal.id,
-                        budget: projectBudget,
-                        paymentType,
-                        schedules: paymentType === 'split_payment' ? paymentSchedule : undefined
-                      });
-                    }
-                  }}
-                  disabled={selectWinnerMutation.isPending}
-                  className="bg-yellow-600 hover:bg-yellow-700"
-                >
-                  {selectWinnerMutation.isPending ? 'Selecting...' : 'Select Winner'}
-                  <Crown className="h-4 w-4 ml-2" />
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Payment Management Dialog */}
-      <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center space-x-2">
-              <Wallet className="h-5 w-5 text-green-600" />
-              <span>Payment Management</span>
-            </DialogTitle>
-          </DialogHeader>
-
-          {selectedProposal && (
-            <div className="space-y-6">
-              {/* Project Info */}
-              <div className="bg-muted p-4 rounded-lg">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-medium">{selectedProposal.title}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      by {getStudentName(selectedProposal.student)}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-lg font-bold">{selectedProposal.projectBudget} tokens</p>
-                    <p className="text-sm text-muted-foreground">Total Budget</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Escrow Status */}
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <Shield className="h-5 w-5 text-blue-600" />
-                  <div>
-                    <p className="font-medium">Escrow Status</p>
-                    <p className="text-sm text-muted-foreground">
-                      Funds are securely held until milestone completion
-                    </p>
-                  </div>
-                </div>
-                <Badge variant={selectedProposal.escrowStatus === 'in_escrow' ? 'default' : 'secondary'}>
-                  {selectedProposal.escrowStatus?.replace('_', ' ').toUpperCase()}
-                </Badge>
-              </div>
-
-              {/* Payment Type Display */}
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2">
-                  {selectedProposal.paymentType === 'full_payment' ? (
-                    <>
-                      <CreditCard className="h-4 w-4" />
-                      <span>Full Payment</span>
-                    </>
-                  ) : (
-                    <>
-                      <Wallet className="h-4 w-4" />
-                      <span>Split Payment</span>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Payment Schedule (for split payments) */}
-              {selectedProposal.paymentType === 'split_payment' && (
-                <div className="space-y-4">
-                  <h4 className="font-medium">Payment Schedule</h4>
-                  <div className="space-y-3">
-                    {paymentSchedule.map((schedule, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 border rounded">
-                        <div className="flex-1">
-                          <p className="font-medium">{schedule.title}</p>
-                          <p className="text-sm text-muted-foreground">{schedule.description}</p>
-                        </div>
-                        <div className="text-right space-y-1">
-                          <p className="font-medium">{schedule.percentage}%</p>
-                          <p className="text-sm text-muted-foreground">
-                            {Math.round((selectedProposal.projectBudget || 0) * schedule.percentage / 100)} tokens
-                          </p>
-                        </div>
-                        <div className="ml-4">
-                          <Button size="sm" variant="outline">
-                            Release Payment
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Full Payment Release */}
-              {selectedProposal.paymentType === 'full_payment' && (
-                <div className="p-4 border rounded-lg">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="font-medium">Full Project Payment</p>
-                      <p className="text-sm text-muted-foreground">Release full budget upon completion</p>
-                    </div>
-                    <Button className="bg-green-600 hover:bg-green-700">
-                      <Coins className="h-4 w-4 mr-2" />
-                      Release {selectedProposal.projectBudget} Tokens
-                    </Button>
                   </div>
                 </div>
               )}
