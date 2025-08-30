@@ -188,7 +188,7 @@ export default function EconomyPage() {
     if (!selectedTradeOffer) return;
     
     toast({ 
-      title: `Trade ${action === 'accept' ? 'Accepted' : action === 'decline' ? 'Declined' : 'Counter Offer Sent'}!", 
+      title: `Trade ${action === 'accept' ? 'Accepted' : action === 'decline' ? 'Declined' : 'Counter Offer Sent'}!`, 
       description: `You have ${action}d the trade offer from ${selectedTradeOffer.id}.`
     });
     
