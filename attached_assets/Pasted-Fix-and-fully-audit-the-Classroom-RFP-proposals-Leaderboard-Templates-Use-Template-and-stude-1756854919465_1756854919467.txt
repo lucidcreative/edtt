@@ -1,0 +1,155 @@
+Fix and fully audit the Classroom, RFP (proposals), Leaderboard, Templates (Use Template), and student-data flows so the app shows consistent data for every student and all features work end-to-end.
+
+Problem summary (symptoms to fix):
+
+A classroom contains multiple students but most tabs and components (students list, assignments, badges, challenges, leaderboard, RFP private-selection, etc.) only show one student.
+
+The leaderboard displays a single student instead of the entire class.
+
+Creating an RFP does not add the proposal to the system and throws repeated fetch errors: failures like 'Failed to execute "fetch" on "Window": "/api/proposals/classroom/{id}" is not a valid HTTP method' and similar for assignments and classroom students.
+
+The 'Use Template' button does nothing — selected template items are not inserted into the active tab/list.
+
+Dialogs/modals have accessibility warnings (missing description / aria-describedby).
+
+There are gaps and inconsistencies across portals, tabs, and features — data is not the same everywhere.
+
+High-level goals (what success looks like):
+
+When a classroom has N students, every tab and component that relies on the classroom student list shows all N students consistently (student cards, assignments, badges, challenges, RFP private selection, leaderboard, use-template lists, etc.).
+
+Creating an RFP successfully persists to the backend and appears in the teacher dashboard immediately. Teachers can edit and delete RFPs. Private RFPs present a selectable list of all classroom students and only selected students can view the RFP.
+
+'Use Template' correctly inserts the selected template into the active list and persists if appropriate.
+
+All fetch calls use correct HTTP methods and shapes; remove or fix any broken notification or other leftover systems that cause fetch errors.
+
+No console errors related to invalid fetch usage; no missing aria-describedby warnings.
+
+Real-time / immediate UI updates after add/edit/delete operations without full page reloads.
+
+Detailed frontend requirements (what to change & check):
+
+Ensure a single source of truth for classroom students (ClassroomContext or equivalent). All components must read from that one state. Remove duplicate local student lists or ensure they subscribe to context updates.
+
+Check all components that render students (student cards, assignments lists, badges/challenges lists, RFP private selection UI, leaderboard). Replace any code that assumes 'students[0]' or 'first student only' with a loop/map over the complete students array. Ensure unique keys for list items.
+
+Verify that when students are added/removed/updated, the classroom state is updated and broadcasted to all consumers. Use optimistic UI updates or refetch after mutation; always reconcile with the authoritative backend response.
+
+Fix the leaderboard component to read the full students array, compute metrics (completion %, tokens, points, etc.) using all students, sort correctly, and paginate or truncate only if explicitly requested.
+
+For 'Use Template' button: ensure the click handler adds the selected template object into the active tab’s state list and triggers persistence if templates are stored server-side. After adding, the UI must update live and show the new item in the active list.
+
+RFP create flow: ensure form submission triggers a POST to the proposals create endpoint with the expected payload (title, description, requirements, attachments, visibility, optional selectedStudentIds when private). On success, append the returned proposal to the proposals list and close the modal. On failure, show an informative message and do not leave UI in a broken state.
+
+RFP edit/delete: add edit and delete handlers in the UI that call correct endpoints and update the proposals list on success. Provide confirmation modals for delete.
+
+Private RFP selection UI: when 'private' is selected, display a searchable, scrollable list of all classroom students with checkboxes. The list must reflect the current classroom student array.
+
+Reposition UI elements the teacher complained about (student settings button and similar) to a more logical place — for example, student settings at top-right of the Students tab near the action buttons — and ensure placement is responsive and accessible.
+
+Fix dialog accessibility issues: every dialog content must include a description or aria-describedby id. Ensure modals have proper labels and focus management.
+
+Detailed backend / API checks (what to change & test):
+
+Audit every fetch call that throws 'not a valid HTTP method' — this typically indicates a misuse of fetch arguments or the app accidentally passing the method string as the first parameter. Ensure fetch is always called as fetch(url, { method: 'GET'|'POST'|'PUT'|'DELETE', headers: {...}, body: ... }).
+
+Confirm the classroom students endpoint returns a JSON array of student objects for the given classroom ID. Ensure no filtering or middleware is inadvertently returning a single item.
+
+Confirm the proposals endpoint supports: GET (list for classroom), POST (create), PUT/PATCH (update), DELETE (delete). Ensure POST returns the created proposal with full fields (id, title, visibility, selectedStudentIds, createdAt, createdBy).
+
+Validate that assignment endpoints similarly use correct verbs and payloads.
+
+Ensure server-side validation accepts arrays for selected student IDs and stores them in the proposal record.
+
+Return consistent student object shape across endpoints: id, fullName, username, email, tokens, completionRate, pinStatus, joinedAt, etc. (use consistent field names).
+
+If notifications were removed, make sure no frontend code still attempts to fetch the old notification endpoints. Remove or stub them server-side until frontend is updated.
+
+Data consistency & normalization:
+
+Normalize student objects server-side and on the client so identifiers and field names match across features. If using a client cache, normalize by id and ensure components read from the canonical store.
+
+Where multiple components rely on the same metric (e.g., token count, completion rate), compute from the same source or compute server-side and distribute to avoid mismatches.
+
+Preselected template items (store) — create and include these templates so 'Use Template' can add them:
+
+Badge Templates (preselected):
+
+Perfect Attendance — awarded for attending every session in a week.
+
+Homework Hero — complete all homework on time for 2 weeks.
+
+Team Player — collaborates well on group work.
+
+Most Improved — greatest measurable improvement in assignment scores.
+
+Top Performer of the Month — highest average score that month.
+
+Challenge Templates (preselected):
+
+3 On-Time Streak — complete 3 assignments on time in a row.
+
+Token Sprint — earn 100 tokens in one week.
+
+Peer Helper — give helpful feedback to 3 classmates.
+
+Discussion Pro — post 5 relevant contributions to class discussions.
+
+Extra Credit Submission — submit an optional extra-credit assignment.
+
+RFP / Assignment Templates (preselected):
+
+Landing Page Project — design a class landing page with requirements and assets.
+
+Data Visualization — create a dashboard visualizing supplied data.
+
+Marketing Campaign Plan — prepare a one-week microsite and social mockups.
+
+Science Lab Report — step-by-step lab write-up with deliverables.
+
+Math Problem Set — 20 problems with solutions and rubric.
+
+Include title, short description, suggested points/tokens, and default unlock settings for each template so 'Use Template' can immediately add the item with sensible defaults.
+
+QA and test plan (step-by-step test script):
+
+Backend sanity checks: call classroom students endpoint for classroom X and confirm response is an array with all students.
+
+Frontend load: open Classroom -> Students tab; confirm full student list displays N students (N matches backend).
+
+Cross-tab consistency: navigate to Assignments, Badges, Challenges, Leaderboard, and RFP private-selection; confirm each tab shows the same N students and consistent student names/usernames.
+
+Leaderboard: verify sort order and values for all students. Add or update a student metric and verify leaderboard updates.
+
+RFP create (public): open Create RFP, fill required fields, set visibility public, submit. Expect: success message, server 201, new RFP appears in proposals list immediately.
+
+RFP create (private): open Create RFP, choose private, verify the student selection list shows all N students, select a subset, submit. Expect: only selected students can see the RFP (verify by fetching proposals for a selected and an unselected student).
+
+RFP edit/delete: edit a created RFP title/description and save. Expect: changes persist and reflect in UI. Delete and confirm removal from list.
+
+Use Template: open store/templates, click Use Template for a badge, a challenge, and an RFP template. Expect: each template is added to the active tab and visible immediately. If templates persist server-side, verify persistence.
+
+Student settings: update starting tokens and recurring pay for class; expect server success and immediate UI reflect. No JSON parse errors.
+
+Add/remove student: add a new student to classroom and confirm the student appears across all tabs. Remove a student and confirm they disappear from all tabs.
+
+Modal accessibility: open any modal/dialog and confirm aria attributes present and no console accessibility warnings.
+
+Console check: ensure no 'not a valid HTTP method' errors remain in console during normal app use.
+
+Acceptance criteria (must be satisfied before closing task):
+
+All fetch errors of the form 'not a valid HTTP method' are fixed; no such console errors during normal operation.
+
+Every classroom with N students displays N students consistently across all tabs and components.
+
+Creating, editing, deleting RFPs works reliably; private RFP student selection works and access is restricted to selected students.
+
+'Use Template' successfully adds items to the active list and persists as required.
+
+Leaderboard shows all students and correct computed metrics.
+
+Dialogs have no aria-describedby warnings.
+
+QA test script passes end-to-end with no blocked steps.
