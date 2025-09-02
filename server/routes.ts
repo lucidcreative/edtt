@@ -17,7 +17,7 @@ import {
   type User 
 } from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, and, ne } from "drizzle-orm";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
@@ -511,6 +511,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Bulk add students error:", error);
       res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Remove student from classroom
+  app.delete('/api/classrooms/:classroomId/students/:studentId', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Only teachers can remove students' });
+      }
+
+      const { classroomId, studentId } = req.params;
+      
+      // Verify the teacher owns this classroom
+      const classroom = await db.select().from(classrooms).where(eq(classrooms.id, classroomId)).limit(1);
+      if (classroom.length === 0 || classroom[0].teacherId !== req.user.id) {
+        return res.status(403).json({ message: 'Access denied. You do not own this classroom.' });
+      }
+
+      // Remove enrollment
+      const deletedEnrollment = await db.delete(enrollments)
+        .where(and(eq(enrollments.classroomId, classroomId), eq(enrollments.studentId, studentId)))
+        .returning();
+
+      if (deletedEnrollment.length === 0) {
+        return res.status(404).json({ message: 'Student not found in this classroom' });
+      }
+
+      res.json({ success: true, message: 'Student removed from classroom successfully' });
+    } catch (error) {
+      console.error('Remove student error:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Edit student information
+  app.put('/api/students/:studentId', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Only teachers can edit students' });
+      }
+
+      const { studentId } = req.params;
+      const { username, tokens, requiresPinChange } = req.body;
+      
+      // Verify the student exists and the teacher has access
+      const studentEnrollments = await db.select({
+        enrollment: enrollments,
+        classroom: classrooms
+      })
+      .from(enrollments)
+      .innerJoin(classrooms, eq(enrollments.classroomId, classrooms.id))
+      .where(and(eq(enrollments.studentId, studentId), eq(classrooms.teacherId, req.user.id)))
+      .limit(1);
+
+      if (studentEnrollments.length === 0) {
+        return res.status(403).json({ message: 'Access denied or student not found' });
+      }
+
+      // Prepare update data
+      const updateData: any = { updatedAt: new Date() };
+      if (username !== undefined) {
+        // Check if username already exists (excluding current student)
+        const existingUser = await db.select().from(users)
+          .where(and(eq(users.username, username), ne(users.id, studentId)))
+          .limit(1);
+        if (existingUser.length > 0) {
+          return res.status(400).json({ message: 'Username already exists' });
+        }
+        updateData.username = username;
+      }
+      if (tokens !== undefined) updateData.tokens = tokens;
+      if (requiresPinChange !== undefined) updateData.requiresPinChange = requiresPinChange;
+      
+      // Update student
+      const [updatedStudent] = await db
+        .update(users)
+        .set(updateData)
+        .where(eq(users.id, studentId))
+        .returning();
+      
+      if (!updatedStudent) {
+        return res.status(404).json({ message: 'Student not found' });
+      }
+      
+      res.json({ 
+        success: true, 
+        message: 'Student updated successfully',
+        student: {
+          id: updatedStudent.id,
+          username: updatedStudent.username,
+          name: updatedStudent.name,
+          tokens: updatedStudent.tokens,
+          requiresPinChange: updatedStudent.requiresPinChange
+        }
+      });
+    } catch (error) {
+      console.error('Edit student error:', error);
+      res.status(500).json({ message: 'Internal server error' });
     }
   });
 
