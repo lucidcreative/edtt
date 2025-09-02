@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import QRCode from 'qrcode';
-import { Share2, Copy, QrCode, Download, ExternalLink } from 'lucide-react';
+import { Copy } from 'lucide-react';
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +20,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -63,37 +63,12 @@ interface RosterManagementProps {
 export default function RosterManagement({ classroomId, classroomName, joinCode }: RosterManagementProps) {
   const [selectedTab, setSelectedTab] = useState("approved");
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
-  const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [isAddingStudent, setIsAddingStudent] = useState(false);
   const [isUploadingCSV, setIsUploadingCSV] = useState(false);
-  const [defaultTempPin, setDefaultTempPin] = useState('123456');
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Generate QR code for the join code
-  useEffect(() => {
-    const generateQRCode = async () => {
-      try {
-        const joinUrl = `${window.location.origin}/join?code=${joinCode}`;
-        const qrUrl = await QRCode.toDataURL(joinUrl, {
-          width: 256,
-          margin: 2,
-          color: {
-            dark: '#000000',
-            light: '#FFFFFF'
-          }
-        });
-        setQrCodeUrl(qrUrl);
-      } catch (error) {
-        console.error('Error generating QR code:', error);
-      }
-    };
-
-    if (joinCode) {
-      generateQRCode();
-    }
-  }, [joinCode]);
 
   // Fetch classroom roster
   const { data: enrollments, isLoading } = useQuery<Enrollment[]>({
@@ -211,17 +186,60 @@ export default function RosterManagement({ classroomId, classroomName, joinCode 
 
     try {
       const text = await file.text();
-      const lines = text.trim().split('\n');
+      const lines = text.trim().split('\n').filter(line => line.trim() !== ''); // Remove empty lines
+      
+      if (lines.length === 0) {
+        throw new Error('CSV file is empty');
+      }
+
       const headers = lines[0].split(',').map(h => h.trim());
       
-      if (headers[0] !== 'username' || headers[1] !== 'name' || headers[2] !== 'tempPin') {
+      if (headers.length < 3 || headers[0] !== 'username' || headers[1] !== 'name' || headers[2] !== 'tempPin') {
         throw new Error('Invalid CSV format. Expected columns: username,name,tempPin');
       }
 
-      const students = lines.slice(1).map(line => {
-        const [username, name, tempPin] = line.split(',').map(s => s.trim());
-        return { username, name, tempPin, requiresPinChange: true };
-      });
+      const students = [];
+      const errors = [];
+      const seenUsernames = new Set();
+
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue; // Skip empty lines
+        
+        const columns = line.split(',').map(s => s.trim());
+        
+        if (columns.length < 3) {
+          errors.push(`Row ${i + 1}: Missing required columns`);
+          continue;
+        }
+
+        const [username, name, tempPin] = columns;
+        
+        // Validate required fields
+        if (!username || !name || !tempPin) {
+          errors.push(`Row ${i + 1}: Missing required fields (username, name, or tempPin)`);
+          continue;
+        }
+
+        // Validate PIN format (4 digits)
+        if (!/^\d{4}$/.test(tempPin)) {
+          errors.push(`Row ${i + 1}: PIN must be exactly 4 digits`);
+          continue;
+        }
+
+        // Check for duplicate usernames within the file
+        if (seenUsernames.has(username.toLowerCase())) {
+          errors.push(`Row ${i + 1}: Duplicate username '${username}' in file`);
+          continue;
+        }
+        
+        seenUsernames.add(username.toLowerCase());
+        students.push({ username, name, tempPin, requiresPinChange: true });
+      }
+
+      if (students.length === 0) {
+        throw new Error(`No valid students found. Errors:\n${errors.join('\n')}`);
+      }
 
       const response = await apiRequest('POST', `/api/classrooms/${classroomId}/students/bulk`, {
         students
@@ -232,10 +250,19 @@ export default function RosterManagement({ classroomId, classroomName, joinCode 
         throw new Error(errorData.message || 'Failed to upload students');
       }
 
+      let successMessage = `Successfully added ${students.length} students to the classroom.`;
+      if (errors.length > 0) {
+        successMessage += ` ${errors.length} rows had errors and were skipped.`;
+      }
+
       toast({
         title: "Students Added",
-        description: `Successfully added ${students.length} students to the classroom.`,
+        description: successMessage,
       });
+      
+      if (errors.length > 0) {
+        console.warn('CSV Upload Errors:', errors);
+      }
       
       queryClient.invalidateQueries({ queryKey: ["/api/classrooms", classroomId, "roster"] });
       setIsAddStudentOpen(false);
@@ -284,35 +311,6 @@ export default function RosterManagement({ classroomId, classroomName, joinCode 
     }
   };
 
-  const copyJoinLinkWithPin = async (pin: string) => {
-    try {
-      const joinUrl = `${window.location.origin}/join?code=${joinCode}&pin=${pin}`;
-      await navigator.clipboard.writeText(joinUrl);
-      toast({
-        title: "Copied!",
-        description: "Join link with default PIN copied to clipboard",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to copy join link",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const downloadQRCode = () => {
-    const link = document.createElement('a');
-    link.download = `${classroomName}-qr-code.png`;
-    link.href = qrCodeUrl;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast({
-      title: "Downloaded!",
-      description: "QR code saved to your device",
-    });
-  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -435,12 +433,14 @@ export default function RosterManagement({ classroomId, classroomName, joinCode 
             <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Add Students to Classroom</DialogTitle>
+                <DialogDescription>
+                  Add students individually or upload a CSV file to enroll multiple students at once.
+                </DialogDescription>
               </DialogHeader>
               <Tabs defaultValue="individual" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="individual">Individual Student</TabsTrigger>
                   <TabsTrigger value="bulk">CSV Upload</TabsTrigger>
-                  <TabsTrigger value="share">Share Classroom</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="individual" className="space-y-4">
@@ -475,8 +475,8 @@ export default function RosterManagement({ classroomId, classroomName, joinCode 
                         id="temp-pin"
                         name="tempPin"
                         type="password"
-                        placeholder="123456"
-                        maxLength={6}
+                        placeholder="1234"
+                        maxLength={4}
                         pattern="[0-9]*"
                         required
                         data-testid="input-temp-pin"
@@ -517,8 +517,8 @@ export default function RosterManagement({ classroomId, classroomName, joinCode 
                       </p>
                       <code className="text-xs bg-white px-2 py-1 rounded block">
                         username,name,tempPin<br/>
-                        student1,John Doe,123456<br/>
-                        student2,Jane Smith,654321
+                        student1,John Doe,1234<br/>
+                        student2,Jane Smith,5678
                       </code>
                     </div>
                     
@@ -529,85 +529,6 @@ export default function RosterManagement({ classroomId, classroomName, joinCode 
                       <Button onClick={handleCSVUpload} className="flex-1" disabled={isUploadingCSV}>
                         {isUploadingCSV ? "Uploading..." : "Upload Students"}
                       </Button>
-                    </div>
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="share" className="space-y-4">
-                  <div className="space-y-6">
-                    {/* Default Password Setting */}
-                    <div>
-                      <Label htmlFor="default-pin">Default Temporary PIN for New Students</Label>
-                      <Input
-                        id="default-pin"
-                        value={defaultTempPin}
-                        onChange={(e) => setDefaultTempPin(e.target.value)}
-                        placeholder="123456"
-                        maxLength={6}
-                        pattern="[0-9]*"
-                        className="mt-1 text-center font-mono text-lg"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">Students will be prompted to change this on first login</p>
-                    </div>
-                    
-                    {/* QR Code Section */}
-                    <div className="text-center">
-                      <h3 className="text-lg font-semibold mb-3">QR Code</h3>
-                      {qrCodeUrl && (
-                        <div className="bg-white p-4 rounded-lg border-2 border-gray-200 inline-block shadow-sm">
-                          <img src={qrCodeUrl} alt="QR Code for joining classroom" className="w-40 h-40" />
-                        </div>
-                      )}
-                      <p className="text-sm text-gray-600 mt-2 mb-3">
-                        Students can scan this QR code to join your classroom
-                      </p>
-                      <Button onClick={downloadQRCode} variant="outline" size="sm">
-                        <Download className="h-4 w-4 mr-2" />
-                        Download QR Code
-                      </Button>
-                    </div>
-                    
-                    {/* Join Code Section */}
-                    <div>
-                      <h3 className="text-lg font-semibold mb-3">Join Code</h3>
-                      <div className="flex items-center gap-2 mb-3">
-                        <Input
-                          value={joinCode}
-                          readOnly
-                          className="text-center font-mono text-xl tracking-wider bg-gray-50"
-                        />
-                        <Button onClick={copyJoinCode} variant="outline" size="icon">
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <p className="text-sm text-gray-600">
-                        Share this 6-character code with your students
-                      </p>
-                    </div>
-                    
-                    {/* Join Link Section */}
-                    <div>
-                      <h3 className="text-lg font-semibold mb-3">Direct Link</h3>
-                      <div className="flex items-center gap-2 mb-3">
-                        <Input
-                          value={`${window.location.origin}/join?code=${joinCode}&pin=${defaultTempPin}`}
-                          readOnly
-                          className="text-sm bg-gray-50"
-                        />
-                        <Button onClick={() => copyJoinLinkWithPin(defaultTempPin)} variant="outline" size="icon">
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <p className="text-sm text-gray-600">
-                        Students can click this link to join with the default PIN
-                      </p>
-                    </div>
-                    
-                    <div className="bg-blue-50 p-3 rounded-lg">
-                      <p className="text-blue-800 text-sm">
-                        <i className="fas fa-info-circle mr-2"></i>
-                        <strong>Tip:</strong> The direct link includes your default PIN ({defaultTempPin}) for easy student access.
-                      </p>
                     </div>
                   </div>
                 </TabsContent>

@@ -474,6 +474,12 @@ export const insertProposalNotificationSchema = createInsertSchema(proposalNotif
   createdAt: true
 });
 
+export const insertClassroomEnrollmentSchema = createInsertSchema(classroomEnrollments).omit({
+  id: true,
+  requestedAt: true,
+  reviewedAt: true
+});
+
 // Group buy template data - templates for creating group buy initiatives
 export const groupBuyTemplateData = [
   {
@@ -526,6 +532,9 @@ export type InsertProposalFeedback = z.infer<typeof insertProposalFeedbackSchema
 
 export type ProposalNotification = typeof proposalNotifications.$inferSelect;
 export type InsertProposalNotification = z.infer<typeof insertProposalNotificationSchema>;
+
+export type Enrollment = typeof classroomEnrollments.$inferSelect;
+export type InsertEnrollment = z.infer<typeof insertClassroomEnrollmentSchema>;
 
 // Relations
 export const usersRelations = relations(users, ({ many, one }) => ({

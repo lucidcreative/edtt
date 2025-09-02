@@ -54,7 +54,9 @@ import {
   type Announcement,
   type InsertAnnouncement,
   type AnnouncementRead,
-  type InsertAnnouncementRead
+  type InsertAnnouncementRead,
+  type Enrollment,
+  type InsertEnrollment
 } from "@shared/schema";
 
 import { db } from "./db";
@@ -80,6 +82,7 @@ export interface IStorage {
   // Student-Classroom operations
   getClassroomStudents(classroomId: string): Promise<User[]>;
   getStudentClassrooms(studentId: string): Promise<Classroom[]>;
+  getClassroomEnrollments(classroomId: string): Promise<(Enrollment & { student: User })[]>;
   
   // Assignment operations
   getAssignment(id: string): Promise<Assignment | undefined>;
@@ -242,6 +245,23 @@ export class DatabaseStorage implements IStorage {
       .where(eq(studentClassrooms.studentId, studentId));
     
     return result.map(row => row.classroom);
+  }
+
+  async getClassroomEnrollments(classroomId: string): Promise<(Enrollment & { student: User })[]> {
+    const result = await db
+      .select({
+        enrollment: classroomEnrollments,
+        student: users
+      })
+      .from(classroomEnrollments)
+      .innerJoin(users, eq(classroomEnrollments.studentId, users.id))
+      .where(eq(classroomEnrollments.classroomId, classroomId))
+      .orderBy(desc(classroomEnrollments.requestedAt));
+    
+    return result.map(row => ({
+      ...row.enrollment,
+      student: row.student
+    }));
   }
 
   // Assignment operations
