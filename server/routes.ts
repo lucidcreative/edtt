@@ -619,6 +619,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update classroom settings
+  app.put('/api/classrooms/:classroomId/settings', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Only teachers can update classroom settings' });
+      }
+
+      const { classroomId } = req.params;
+      const { tokensPerHour, maxDailyHours, timeTrackingEnabled } = req.body;
+      
+      // Verify the teacher owns this classroom
+      const classroom = await db.select().from(classrooms).where(eq(classrooms.id, classroomId)).limit(1);
+      if (classroom.length === 0 || classroom[0].teacherId !== req.user.id) {
+        return res.status(403).json({ message: 'Access denied. You do not own this classroom.' });
+      }
+
+      // Prepare update data
+      const updateData: any = { updatedAt: new Date() };
+      if (tokensPerHour !== undefined) updateData.tokensPerHour = tokensPerHour;
+      if (maxDailyHours !== undefined) updateData.maxDailyHours = maxDailyHours;
+      if (timeTrackingEnabled !== undefined) updateData.timeTrackingEnabled = timeTrackingEnabled;
+      
+      // Update classroom
+      const [updatedClassroom] = await db
+        .update(classrooms)
+        .set(updateData)
+        .where(eq(classrooms.id, classroomId))
+        .returning();
+      
+      if (!updatedClassroom) {
+        return res.status(404).json({ message: 'Classroom not found' });
+      }
+      
+      res.json({ 
+        success: true, 
+        message: 'Classroom settings updated successfully',
+        classroom: updatedClassroom
+      });
+    } catch (error) {
+      console.error('Update classroom settings error:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
   // Classroom routes
   app.post('/api/classrooms', authenticate, async (req: any, res) => {
     try {
@@ -800,15 +844,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only teachers can create assignments" });
       }
 
-      const assignment = await storage.createAssignment({
-        ...req.body,
-        teacherId: req.user.id
-      });
+      const { title, description, category, dueDate, tokenReward, link, classroomId } = req.body;
+      
+      // Validate required fields
+      if (!title || !category || !classroomId) {
+        return res.status(400).json({ message: "Title, category, and classroom are required" });
+      }
+
+      // Verify the teacher owns this classroom
+      const classroom = await db.select().from(classrooms).where(eq(classrooms.id, classroomId)).limit(1);
+      if (classroom.length === 0 || classroom[0].teacherId !== req.user.id) {
+        return res.status(403).json({ message: 'Access denied. You do not own this classroom.' });
+      }
+
+      const assignmentData = {
+        id: nanoid(),
+        title: title.trim(),
+        description: description?.trim() || '',
+        category,
+        tokenReward: tokenReward || 10,
+        classroomId,
+        teacherId: req.user.id,
+        dueDate: dueDate ? new Date(dueDate) : null,
+        link: link?.trim() || null,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      const assignment = await storage.createAssignment(assignmentData);
 
       res.status(201).json(assignment);
     } catch (error) {
       console.error("Create assignment error:", error);
-      res.status(500).json({ message: "Internal server error" });
+      res.status(500).json({ message: "Failed to create assignment. Please check all required fields." });
     }
   });
 

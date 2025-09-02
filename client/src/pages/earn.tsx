@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useClassroom } from "@/contexts/ClassroomContext";
@@ -66,6 +66,24 @@ export default function Earn() {
     tokenReward: 10,
     link: ''
   });
+  
+  // Time tracking settings state
+  const [timeSettings, setTimeSettings] = useState({
+    tokensPerHour: currentClassroom?.tokensPerHour || 5,
+    maxDailyHours: currentClassroom?.maxDailyHours || 8,
+    timeTrackingEnabled: currentClassroom?.timeTrackingEnabled || false
+  });
+
+  // Update time settings when classroom data changes
+  useEffect(() => {
+    if (currentClassroom) {
+      setTimeSettings({
+        tokensPerHour: currentClassroom.tokensPerHour || 5,
+        maxDailyHours: currentClassroom.maxDailyHours || 8,
+        timeTrackingEnabled: currentClassroom.timeTrackingEnabled || false
+      });
+    }
+  }, [currentClassroom]);
 
   // Only allow teachers to access this page
   if (user?.role !== 'teacher') {
@@ -104,6 +122,27 @@ export default function Earn() {
     queryKey: ["/api/classrooms", currentClassroom?.id, "stats"],
     enabled: !!currentClassroom
   }) as { data: any };
+
+  // Update classroom settings mutation
+  const updateClassroomSettingsMutation = useMutation({
+    mutationFn: async (settings: { tokensPerHour?: number; maxDailyHours?: number; timeTrackingEnabled?: boolean }) => {
+      return apiRequest("PUT", `/api/classrooms/${currentClassroom?.id}/settings`, settings);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Settings Saved!",
+        description: "Time tracking settings have been updated.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/classrooms", currentClassroom?.id] });
+    },
+    onError: () => {
+      toast({
+        title: "Save Failed",
+        description: "Failed to save settings. Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
 
   // Create assignment mutation
   const createAssignmentMutation = useMutation({
@@ -192,6 +231,73 @@ export default function Earn() {
       return;
     }
     createAssignmentMutation.mutate(assignmentForm);
+  };
+
+  const handleSaveSettings = () => {
+    updateClassroomSettingsMutation.mutate(timeSettings);
+  };
+
+  const handleExportData = () => {
+    const exportData = {
+      classroomInfo: {
+        name: currentClassroom?.name,
+        description: currentClassroom?.description,
+        tokensPerHour: currentClassroom?.tokensPerHour,
+        maxDailyHours: currentClassroom?.maxDailyHours,
+        timeTrackingEnabled: currentClassroom?.timeTrackingEnabled,
+        totalStudents: students.length,
+        totalAssignments: assignments.length
+      },
+      students: students.map(student => ({
+        nickname: student.nickname || `${student.firstName} ${student.lastName}`.trim(),
+        tokens: student.tokens,
+        level: student.level,
+        totalTimeHours: Math.round(timeTracking.filter(t => t.studentId === student.id).reduce((sum, t) => sum + (t.duration || 0), 0) / 60 * 10) / 10
+      })),
+      assignments: assignments.map(assignment => ({
+        title: assignment.title,
+        category: assignment.category,
+        tokenReward: assignment.tokenReward,
+        dueDate: assignment.dueDate,
+        completions: submissions.filter(s => s.assignmentId === assignment.id && s.status === 'approved').length
+      })),
+      analytics: analyticsData
+    };
+
+    // Convert to CSV format
+    const csvData = [
+      'Student Data',
+      'Nickname,Tokens,Level,Total Hours',
+      ...exportData.students.map(s => `"${s.nickname}",${s.tokens},${s.level},${s.totalTimeHours}`),
+      '',
+      'Assignment Data',
+      'Title,Category,Token Reward,Due Date,Completions',
+      ...exportData.assignments.map(a => `"${a.title}","${a.category}",${a.tokenReward},"${a.dueDate || 'No due date'}",${a.completions}`),
+      '',
+      'Classroom Summary',
+      `Total Students,${exportData.classroomInfo.totalStudents}`,
+      `Total Assignments,${exportData.classroomInfo.totalAssignments}`,
+      `Completion Rate,${analyticsData.completionRate}%`,
+      `Tokens Per Hour,${exportData.classroomInfo.tokensPerHour}`,
+      `Max Daily Hours,${exportData.classroomInfo.maxDailyHours}`,
+      `Time Tracking Enabled,${exportData.classroomInfo.timeTrackingEnabled}`
+    ].join('\n');
+
+    // Download CSV
+    const blob = new Blob([csvData], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${currentClassroom?.name || 'classroom'}-data-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+
+    toast({
+      title: "Export Complete!",
+      description: "Classroom data has been downloaded as CSV.",
+    });
   };
 
   return (
@@ -508,7 +614,11 @@ export default function Earn() {
                     <SelectItem value="90">Last 3 months</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button variant="outline">
+                <Button 
+                  variant="outline" 
+                  onClick={handleExportData}
+                  data-testid="button-export-data"
+                >
                   <Download className="w-4 h-4" />
                   Export
                 </Button>
@@ -529,44 +639,47 @@ export default function Earn() {
                     <Label>Tokens per Hour</Label>
                     <Input
                       type="number"
-                      value={currentClassroom?.tokensPerHour || 5}
-                      onChange={(e) => {
-                        // TODO: Update classroom settings
-                      }}
+                      value={timeSettings.tokensPerHour}
+                      onChange={(e) => setTimeSettings(prev => ({ ...prev, tokensPerHour: parseInt(e.target.value) || 5 }))}
                       min={1}
                       max={50}
+                      data-testid="input-tokens-per-hour"
                     />
                   </div>
                   <div>
                     <Label>Max Daily Hours per Student</Label>
                     <Input
                       type="number"
-                      value={currentClassroom?.maxDailyHours || 8}
-                      onChange={(e) => {
-                        // TODO: Update classroom settings
-                      }}
+                      value={timeSettings.maxDailyHours}
+                      onChange={(e) => setTimeSettings(prev => ({ ...prev, maxDailyHours: parseFloat(e.target.value) || 8 }))}
                       min={1}
                       max={12}
                       step={0.5}
+                      data-testid="input-max-daily-hours"
                     />
                   </div>
                   <div className="flex items-end">
                     <label className="flex items-center gap-2">
                       <input
                         type="checkbox"
-                        checked={currentClassroom?.timeTrackingEnabled || false}
-                        onChange={(e) => {
-                          // TODO: Update classroom settings
-                        }}
+                        checked={timeSettings.timeTrackingEnabled}
+                        onChange={(e) => setTimeSettings(prev => ({ ...prev, timeTrackingEnabled: e.target.checked }))}
                         className="rounded"
+                        data-testid="checkbox-time-tracking-enabled"
                       />
                       <span className="text-sm">Enable Time Tracking</span>
                     </label>
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm">
-                    Save Settings
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleSaveSettings}
+                    disabled={updateClassroomSettingsMutation.isPending}
+                    data-testid="button-save-settings"
+                  >
+                    {updateClassroomSettingsMutation.isPending ? 'Saving...' : 'Save Settings'}
                   </Button>
                   <Button variant="outline" size="sm">
                     Pause All Sessions
