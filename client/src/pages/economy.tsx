@@ -197,20 +197,6 @@ export default function EconomyPage() {
     setResponseMessage('');
   };
 
-  // Group buy functionality
-  const handleContributeToGroupBuy = (groupBuy: GroupBuy) => {
-    toast({ 
-      title: "Contribution Sent!", 
-      description: `You have contributed to "${groupBuy.title}". Contribution functionality coming soon!`
-    });
-  };
-
-  const handleViewGroupBuyDetails = (groupBuy: GroupBuy) => {
-    toast({ 
-      title: "Group Buy Details", 
-      description: `Viewing details for "${groupBuy.title}". Details modal coming soon!`
-    });
-  };
 
   // Handle trade initiation
   const handleInitiateTrade = (item: InventoryItem) => {
