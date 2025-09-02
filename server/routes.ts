@@ -844,7 +844,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only teachers can create assignments" });
       }
 
-      const { title, description, category, dueDate, tokenReward, link, classroomId } = req.body;
+      const { title, description, category, dueDate, tokenReward, link, classroomId, isRFP, instructions, visibility } = req.body;
       
       // Validate required fields
       if (!title || !category || !classroomId) {
@@ -868,7 +868,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dueDate: dueDate ? new Date(dueDate) : null,
         resourceUrl: link?.trim() || null,
         isActive: true,
-        isRfp: false,
+        isRfp: isRFP || false,
+        instructions: instructions?.trim() || null,
         resources: {},
         createdAt: new Date(),
         updatedAt: new Date()
@@ -2121,7 +2122,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/proposals/:proposalId/review", authenticate, requireRole('teacher'), async (req: AuthenticatedRequest, res) => {
     try {
       const { proposalId } = req.params;
-      const { action, feedback, internalNotes } = req.body;
+      const { action, feedback, internalNotes, grade, tokensAwarded } = req.body;
       
       const proposal = await storage.getProposal(proposalId);
       if (!proposal) {
@@ -2133,6 +2134,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       switch (action) {
         case 'approve':
           updatedProposal = await storage.updateProposalStatus(proposalId, 'approved', { teacherFeedback: feedback, internalNotes });
+          
+          // Award tokens to student if specified
+          if (tokensAwarded && tokensAwarded > 0) {
+            await storage.updateUserTokens(proposal.studentId, tokensAwarded);
+          }
           break;
         case 'reject':
           updatedProposal = await storage.updateProposalStatus(proposalId, 'rejected', { teacherFeedback: feedback, internalNotes });

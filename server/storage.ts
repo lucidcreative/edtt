@@ -188,10 +188,21 @@ export class DatabaseStorage implements IStorage {
     return updatedUser;
   }
 
-  async updateUserTokens(id: string, tokens: number): Promise<User> {
+  async updateUserTokens(id: string, tokensToAdd: number): Promise<User> {
+    // First get current user to add to existing tokens
+    const [currentUser] = await db.select().from(users).where(eq(users.id, id));
+    if (!currentUser) throw new Error('User not found');
+
+    const newTokenBalance = (currentUser.tokens || 0) + tokensToAdd;
+    const newTotalEarnings = (currentUser.totalEarnings || 0) + tokensToAdd;
+
     const [updatedUser] = await db
       .update(users)
-      .set({ tokens, updatedAt: new Date() })
+      .set({ 
+        tokens: newTokenBalance,
+        totalEarnings: newTotalEarnings,
+        updatedAt: new Date() 
+      })
       .where(eq(users.id, id))
       .returning();
     return updatedUser;

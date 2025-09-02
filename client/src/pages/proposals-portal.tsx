@@ -50,7 +50,10 @@ import {
   Star,
   Target,
   Lightbulb,
-  Award
+  Award,
+  Plus,
+  DollarSign,
+  Download
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
@@ -134,6 +137,16 @@ export default function ProposalsPortal() {
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [reviewAction, setReviewAction] = useState<string>("");
   const [reviewFeedback, setReviewFeedback] = useState("");
+  const [showCreateRFPDialog, setShowCreateRFPDialog] = useState(false);
+  const [rfpTitle, setRfpTitle] = useState("");
+  const [rfpDescription, setRfpDescription] = useState("");
+  const [rfpRequirements, setRfpRequirements] = useState("");
+  const [rfpBudget, setRfpBudget] = useState("");
+  const [rfpDeadline, setRfpDeadline] = useState("");
+  const [rfpVisibility, setRfpVisibility] = useState<"public" | "private">("public");
+  const [rfpTokenReward, setRfpTokenReward] = useState("");
+  const [proposalGrade, setProposalGrade] = useState("");
+  const [proposalTokens, setProposalTokens] = useState("");
   const queryClient = useQueryClient();
 
   // Fetch proposals for the classroom
@@ -179,6 +192,29 @@ export default function ProposalsPortal() {
     }
   });
 
+  // Create RFP mutation
+  const createRFPMutation = useMutation({
+    mutationFn: (rfpData: any) =>
+      apiRequest('/api/assignments', 'POST', {
+        ...rfpData,
+        isRFP: true,
+        classroomId: selectedClassroom?.id,
+        teacherId: user?.id
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/proposals/classroom'] });
+      setShowCreateRFPDialog(false);
+      // Reset form
+      setRfpTitle("");
+      setRfpDescription("");
+      setRfpRequirements("");
+      setRfpBudget("");
+      setRfpDeadline("");
+      setRfpVisibility("public");
+      setRfpTokenReward("");
+    }
+  });
+
   const filteredProposals = proposals.filter((proposal: Proposal) => {
     if (selectedStatus !== "all" && proposal.status !== selectedStatus) return false;
     if (selectedPriority !== "all" && proposal.priority !== selectedPriority) return false;
@@ -188,11 +224,68 @@ export default function ProposalsPortal() {
   const handleReviewSubmit = () => {
     if (!selectedProposal || !reviewAction || !reviewFeedback.trim()) return;
     
-    reviewProposalMutation.mutate({
+    const reviewData: any = {
       proposalId: selectedProposal.id,
       action: reviewAction,
       feedback: reviewFeedback
+    };
+
+    // Add grading data if provided and approving
+    if (reviewAction === 'approve' && (proposalGrade || proposalTokens)) {
+      reviewData.grade = proposalGrade ? parseFloat(proposalGrade) : undefined;
+      reviewData.tokensAwarded = proposalTokens ? parseInt(proposalTokens) : undefined;
+    }
+    
+    reviewProposalMutation.mutate(reviewData);
+  };
+
+  const handleCreateRFP = () => {
+    if (!rfpTitle.trim() || !rfpDescription.trim() || !rfpTokenReward.trim()) return;
+    
+    createRFPMutation.mutate({
+      title: rfpTitle,
+      description: rfpDescription,
+      instructions: rfpRequirements,
+      tokenReward: parseInt(rfpTokenReward),
+      dueDate: rfpDeadline ? new Date(rfpDeadline).toISOString() : null,
+      category: 'project', // Default category for RFPs
+      visibility: rfpVisibility
     });
+  };
+
+  const handleExportProposals = () => {
+    if (!proposals || proposals.length === 0) return;
+
+    const csvData = proposals.map(proposal => ({
+      'Proposal Title': proposal.title,
+      'Student Name': getStudentName(proposal.student),
+      'Assignment': proposal.assignment.title,
+      'Status': proposal.status,
+      'Priority': proposal.priority,
+      'Progress': `${proposal.progressPercentage}%`,
+      'Submitted At': proposal.submittedAt ? format(new Date(proposal.submittedAt), 'yyyy-MM-dd HH:mm') : '',
+      'Approved At': proposal.approvedAt ? format(new Date(proposal.approvedAt), 'yyyy-MM-dd HH:mm') : '',
+      'Teacher Feedback': proposal.teacherFeedback || '',
+      'Milestones': proposal.milestones?.join('; ') || '',
+      'Completed Milestones': proposal.completedMilestones?.join('; ') || '',
+      'Created At': format(new Date(proposal.createdAt), 'yyyy-MM-dd HH:mm')
+    }));
+
+    const headers = Object.keys(csvData[0] || {});
+    const csvContent = [
+      headers.join(','),
+      ...csvData.map(row => 
+        headers.map(header => 
+          `"${String(row[header as keyof typeof row] || '').replace(/"/g, '""')}"`
+        ).join(',')
+      )
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `proposals-export-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    link.click();
   };
 
   const getStatusBadge = (status: string) => {
@@ -244,6 +337,18 @@ export default function ProposalsPortal() {
             Comprehensive project management and collaboration platform
           </p>
         </div>
+        
+        {/* Create RFP Button - Teacher Only */}
+        {user?.role === 'teacher' && (
+          <Button
+            onClick={() => setShowCreateRFPDialog(true)}
+            className="bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700"
+            data-testid="create-rfp-button"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Create RFP
+          </Button>
+        )}
         
         {/* Quick Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -537,6 +642,23 @@ export default function ProposalsPortal() {
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-4">
+          {/* Analytics Header with Export */}
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-lg font-semibold">Proposal Analytics</h3>
+              <p className="text-sm text-muted-foreground">Track proposal performance and student engagement</p>
+            </div>
+            <Button
+              onClick={handleExportProposals}
+              disabled={!proposals || proposals.length === 0}
+              className="bg-green-600 hover:bg-green-700 text-white"
+              data-testid="export-proposals-button"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export Data
+            </Button>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card>
               <CardHeader className="pb-2">
@@ -615,6 +737,125 @@ export default function ProposalsPortal() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Create RFP Dialog */}
+      <Dialog open={showCreateRFPDialog} onOpenChange={setShowCreateRFPDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <Target className="h-5 w-5" />
+              <span>Create New RFP (Request for Proposal)</span>
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            {/* Basic Information */}
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="rfp-title" className="text-sm font-medium">Project Title *</Label>
+                <Input
+                  id="rfp-title"
+                  value={rfpTitle}
+                  onChange={(e) => setRfpTitle(e.target.value)}
+                  placeholder="Enter a clear, descriptive project title..."
+                  className="mt-1"
+                  data-testid="rfp-title-input"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="rfp-description" className="text-sm font-medium">Project Description *</Label>
+                <Textarea
+                  id="rfp-description"
+                  value={rfpDescription}
+                  onChange={(e) => setRfpDescription(e.target.value)}
+                  placeholder="Describe the project goals, objectives, and what students will accomplish..."
+                  className="mt-1"
+                  rows={4}
+                  data-testid="rfp-description-input"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="rfp-requirements" className="text-sm font-medium">Requirements & Specifications</Label>
+                <Textarea
+                  id="rfp-requirements"
+                  value={rfpRequirements}
+                  onChange={(e) => setRfpRequirements(e.target.value)}
+                  placeholder="List specific requirements, deliverables, and evaluation criteria..."
+                  className="mt-1"
+                  rows={4}
+                  data-testid="rfp-requirements-input"
+                />
+              </div>
+            </div>
+
+            {/* Project Details */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="rfp-budget" className="text-sm font-medium">Budget/Token Reward *</Label>
+                <div className="mt-1 relative">
+                  <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="rfp-budget"
+                    type="number"
+                    value={rfpTokenReward}
+                    onChange={(e) => setRfpTokenReward(e.target.value)}
+                    placeholder="Token reward amount"
+                    className="pl-10"
+                    data-testid="rfp-token-reward-input"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="rfp-deadline" className="text-sm font-medium">Project Deadline</Label>
+                <Input
+                  id="rfp-deadline"
+                  type="datetime-local"
+                  value={rfpDeadline}
+                  onChange={(e) => setRfpDeadline(e.target.value)}
+                  className="mt-1"
+                  data-testid="rfp-deadline-input"
+                />
+              </div>
+            </div>
+
+            {/* Visibility Settings */}
+            <div>
+              <Label className="text-sm font-medium">RFP Visibility</Label>
+              <Select value={rfpVisibility} onValueChange={(value: "public" | "private") => setRfpVisibility(value)}>
+                <SelectTrigger className="mt-1" data-testid="rfp-visibility-select">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="public">Public - All students can see and submit proposals</SelectItem>
+                  <SelectItem value="private">Private - Only invited students can participate</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end space-x-3">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowCreateRFPDialog(false)}
+                data-testid="cancel-rfp-button"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleCreateRFP}
+                disabled={!rfpTitle.trim() || !rfpDescription.trim() || !rfpTokenReward.trim() || createRFPMutation.isPending}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700"
+                data-testid="submit-rfp-button"
+              >
+                {createRFPMutation.isPending ? "Creating..." : "Create RFP"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Proposal Details Dialog */}
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
@@ -761,6 +1002,54 @@ export default function ProposalsPortal() {
                           rows={4}
                         />
                       </div>
+
+                      {/* Grading Section - Only show when approving */}
+                      {reviewAction === 'approve' && (
+                        <div className="space-y-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                          <div className="flex items-center space-x-2">
+                            <Award className="h-4 w-4 text-green-600" />
+                            <Label className="text-sm font-medium text-green-800">Grade & Reward Assignment</Label>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor="proposal-grade" className="text-sm font-medium">Grade (0-100)</Label>
+                              <Input
+                                id="proposal-grade"
+                                type="number"
+                                min="0"
+                                max="100"
+                                value={proposalGrade}
+                                onChange={(e) => setProposalGrade(e.target.value)}
+                                placeholder="85"
+                                className="mt-1"
+                                data-testid="proposal-grade-input"
+                              />
+                            </div>
+                            
+                            <div>
+                              <Label htmlFor="proposal-tokens" className="text-sm font-medium">Bonus Tokens</Label>
+                              <div className="mt-1 relative">
+                                <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                  id="proposal-tokens"
+                                  type="number"
+                                  min="0"
+                                  value={proposalTokens}
+                                  onChange={(e) => setProposalTokens(e.target.value)}
+                                  placeholder="Bonus tokens"
+                                  className="pl-10"
+                                  data-testid="proposal-tokens-input"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <p className="text-xs text-green-700">
+                            Grade and tokens will be automatically recorded when the proposal is approved.
+                          </p>
+                        </div>
+                      )}
 
                       <Button 
                         onClick={handleReviewSubmit}
