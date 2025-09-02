@@ -62,6 +62,7 @@ export default function RosterManagement({ classroomId, classroomName, joinCode 
   const [isUploadingCSV, setIsUploadingCSV] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [pinResetRequested, setPinResetRequested] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -112,13 +113,17 @@ export default function RosterManagement({ classroomId, classroomName, joinCode 
       return response.json();
     },
     onSuccess: () => {
+      const message = pinResetRequested 
+        ? "Student information updated and PIN reset to 0000."
+        : "Student information has been updated successfully.";
       toast({
         title: "Student Updated",
-        description: "Student information has been updated successfully.",
+        description: message,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/classrooms", classroomId, "roster"] });
       setIsEditDialogOpen(false);
       setEditingStudent(null);
+      setPinResetRequested(false);
     },
     onError: (error: any) => {
       toast({
@@ -304,6 +309,7 @@ export default function RosterManagement({ classroomId, classroomName, joinCode 
 
   const handleEditStudent = (student: Student) => {
     setEditingStudent(student);
+    setPinResetRequested(false);
     setIsEditDialogOpen(true);
   };
 
@@ -313,6 +319,10 @@ export default function RosterManagement({ classroomId, classroomName, joinCode 
     }
   };
 
+  const handleResetPin = () => {
+    setPinResetRequested(true);
+  };
+
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingStudent) return;
@@ -320,15 +330,15 @@ export default function RosterManagement({ classroomId, classroomName, joinCode 
     const formData = new FormData(e.currentTarget as HTMLFormElement);
     const username = formData.get('username') as string;
     const tokens = parseInt(formData.get('tokens') as string);
-    const resetPin = formData.get('resetPin') === 'on';
 
     const updates: any = {
       username,
       tokens
     };
 
-    if (resetPin) {
+    if (pinResetRequested) {
       updates.requiresPinChange = true;
+      updates.resetPin = true;
     }
 
     editStudentMutation.mutate({
@@ -343,55 +353,53 @@ export default function RosterManagement({ classroomId, classroomName, joinCode 
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <Card 
-        className="hover:shadow-md transition-shadow duration-200 cursor-pointer"
-        onClick={() => handleEditStudent(enrollment.student)}
-      >
-        <CardContent className="p-4">
+      <Card className="hover:shadow-md transition-all duration-200 border border-gray-200 hover:border-blue-300">
+        <CardContent className="p-5">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
+            <div className="flex items-center space-x-4 flex-1">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-semibold text-lg shadow-sm">
                 {enrollment.student.name?.charAt(0)?.toUpperCase() || enrollment.student.username?.charAt(0)?.toUpperCase() || 'S'}
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-medium text-gray-800" data-testid={`student-name-${enrollment.student.id}`}>
+              
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-3 mb-2">
+                  <h3 className="font-semibold text-gray-900 text-lg truncate" data-testid={`student-name-${enrollment.student.id}`}>
                     {enrollment.student.name || enrollment.student.username}
                   </h3>
-                  <Badge variant="default" className="bg-green-100 text-green-800">Active</Badge>
+                  <Badge variant="default" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs font-medium px-2 py-1">
+                    Active
+                  </Badge>
                 </div>
-                <div className="flex items-center gap-4 mt-1 text-sm text-gray-600">
-                  <span className="flex items-center gap-1">
-                    <i className="fas fa-user text-gray-500"></i>
-                    @{enrollment.student.username}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <i className="fas fa-coins text-yellow-500"></i>
-                    {enrollment.student.tokens} tokens
-                  </span>
-                  <span className="text-xs text-gray-500">
-                    Joined {formatDate(enrollment.enrolledAt)}
-                  </span>
+                
+                <div className="space-y-1">
+                  <div className="flex items-center text-sm text-gray-600">
+                    <i className="fas fa-user w-4 text-center text-gray-400 mr-2"></i>
+                    <span className="font-medium">@{enrollment.student.username}</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center text-sm text-gray-600">
+                      <i className="fas fa-coins w-4 text-center text-yellow-500 mr-2"></i>
+                      <span className="font-medium">{enrollment.student.tokens} tokens</span>
+                    </div>
+                    
+                    <span className="text-xs text-gray-500">
+                      Joined {formatDate(enrollment.enrolledAt)}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
             
-            <div className="flex space-x-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleRemoveStudent(enrollment.student.id, enrollment.student.name || enrollment.student.username);
-                }}
-                disabled={removeStudentMutation.isPending}
-                data-testid={`button-remove-${enrollment.student.id}`}
-                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-              >
-                <i className="fas fa-trash mr-1"></i>
-                Remove
-              </Button>
-            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => handleEditStudent(enrollment.student)}
+              className="p-2 h-auto text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full ml-3"
+              data-testid={`button-edit-${enrollment.student.id}`}
+            >
+              <i className="fas fa-edit text-lg"></i>
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -589,72 +597,149 @@ export default function RosterManagement({ classroomId, classroomName, joinCode 
       
       {/* Edit Student Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Edit Student</DialogTitle>
-            <DialogDescription>
-              Update student information and settings.
+            <DialogTitle className="text-xl font-semibold text-gray-900">
+              Edit Student: {editingStudent?.name || editingStudent?.username}
+            </DialogTitle>
+            <DialogDescription className="text-gray-600">
+              Update student information, manage tokens, and account settings.
             </DialogDescription>
           </DialogHeader>
+          
           {editingStudent && (
-            <form onSubmit={handleEditSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="edit-username">Username</Label>
-                <Input
-                  id="edit-username"
-                  name="username"
-                  defaultValue={editingStudent.username}
-                  required
-                  data-testid="input-edit-username"
-                  className="mt-1"
-                />
+            <div className="space-y-6">
+              {/* Student Info Section */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="flex items-center space-x-3 mb-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-semibold">
+                    {editingStudent.name?.charAt(0)?.toUpperCase() || editingStudent.username?.charAt(0)?.toUpperCase() || 'S'}
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-gray-900">{editingStudent.name}</h4>
+                    <p className="text-sm text-gray-600">@{editingStudent.username}</p>
+                  </div>
+                </div>
+                <div className="text-sm text-gray-600">
+                  <div className="flex justify-between">
+                    <span>Current tokens:</span>
+                    <span className="font-medium">{editingStudent.tokens}</span>
+                  </div>
+                </div>
               </div>
-              
-              <div>
-                <Label htmlFor="edit-tokens">Token Balance</Label>
-                <Input
-                  id="edit-tokens"
-                  name="tokens"
-                  type="number"
-                  min="0"
-                  defaultValue={editingStudent.tokens}
-                  required
-                  data-testid="input-edit-tokens"
-                  className="mt-1"
-                />
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="reset-pin"
-                  name="resetPin"
-                  className="rounded"
-                  data-testid="checkbox-reset-pin"
-                />
-                <Label htmlFor="reset-pin" className="text-sm">
-                  Reset PIN (student will be required to set a new PIN on next login)
-                </Label>
-              </div>
-              
-              <div className="flex gap-2">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  className="flex-1" 
-                  onClick={() => setIsEditDialogOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  type="submit" 
-                  className="flex-1" 
-                  disabled={editStudentMutation.isPending}
-                >
-                  {editStudentMutation.isPending ? "Saving..." : "Save Changes"}
-                </Button>
-              </div>
-            </form>
+
+              <form onSubmit={handleEditSubmit} className="space-y-5">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="edit-username" className="text-sm font-medium text-gray-700">
+                      Username
+                    </Label>
+                    <Input
+                      id="edit-username"
+                      name="username"
+                      defaultValue={editingStudent.username}
+                      required
+                      data-testid="input-edit-username"
+                      className="mt-1"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="edit-tokens" className="text-sm font-medium text-gray-700">
+                      Token Balance
+                    </Label>
+                    <Input
+                      id="edit-tokens"
+                      name="tokens"
+                      type="number"
+                      min="0"
+                      defaultValue={editingStudent.tokens}
+                      required
+                      data-testid="input-edit-tokens"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+                
+                {/* PIN Reset Section */}
+                <div className="space-y-3 p-4 bg-orange-50 rounded-lg border border-orange-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm font-medium text-orange-800">PIN Management</h4>
+                      <p className="text-xs text-orange-700 mt-1">
+                        Reset student's PIN to default (0000)
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleResetPin}
+                      disabled={editStudentMutation.isPending || pinResetRequested}
+                      className={`${
+                        pinResetRequested 
+                          ? 'bg-orange-100 text-orange-700 border-orange-300' 
+                          : 'text-orange-600 border-orange-300 hover:bg-orange-50'
+                      }`}
+                      data-testid="button-reset-pin"
+                    >
+                      <i className="fas fa-key mr-1"></i>
+                      {pinResetRequested ? 'PIN will be reset' : 'Reset PIN'}
+                    </Button>
+                  </div>
+                  {pinResetRequested && (
+                    <div className="text-xs text-orange-700 bg-orange-100 p-2 rounded">
+                      ✓ PIN will be reset to 0000 when you save changes. Student must change it on next login.
+                    </div>
+                  )}
+                </div>
+                
+                {/* Action Buttons */}
+                <div className="flex gap-3 pt-4">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    className="flex-1" 
+                    onClick={() => {
+                      setIsEditDialogOpen(false);
+                      setPinResetRequested(false);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    className="flex-1 bg-blue-600 hover:bg-blue-700" 
+                    disabled={editStudentMutation.isPending}
+                  >
+                    {editStudentMutation.isPending ? (
+                      <><i className="fas fa-spinner fa-spin mr-2"></i>Saving...</>
+                    ) : (
+                      'Save Changes'
+                    )}
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="destructive" 
+                    onClick={() => {
+                      if (window.confirm(`Are you sure you want to remove ${editingStudent?.name || editingStudent?.username} from the classroom? This action cannot be undone.`)) {
+                        handleRemoveStudent(editingStudent!.id, editingStudent!.name || editingStudent!.username);
+                        setIsEditDialogOpen(false);
+                        setPinResetRequested(false);
+                      }
+                    }}
+                    disabled={removeStudentMutation.isPending}
+                    className="px-4"
+                  >
+                    {removeStudentMutation.isPending ? (
+                      <i className="fas fa-spinner fa-spin"></i>
+                    ) : (
+                      <><i className="fas fa-trash mr-1"></i>Remove</>
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </div>
           )}
         </DialogContent>
       </Dialog>

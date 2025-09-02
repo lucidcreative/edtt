@@ -13,6 +13,7 @@ import {
   insertProposalFeedbackSchema,
   insertProposalNotificationSchema,
   users,
+  classrooms,
   enrollments,
   type User 
 } from "@shared/schema";
@@ -553,7 +554,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { studentId } = req.params;
-      const { username, tokens, requiresPinChange } = req.body;
+      const { username, tokens, requiresPinChange, resetPin } = req.body;
       
       // Verify the student exists and the teacher has access
       const studentEnrollments = await db.select({
@@ -583,6 +584,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       if (tokens !== undefined) updateData.tokens = tokens;
       if (requiresPinChange !== undefined) updateData.requiresPinChange = requiresPinChange;
+      if (resetPin) {
+        // Reset PIN to 0000
+        const defaultPinHash = await bcrypt.hash('0000', 12);
+        updateData.pinHash = defaultPinHash;
+        updateData.requiresPinChange = true;
+      }
       
       // Update student
       const [updatedStudent] = await db
