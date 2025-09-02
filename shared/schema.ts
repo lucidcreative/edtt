@@ -117,6 +117,11 @@ export const assignments = pgTable("assignments", {
   isRFP: boolean("is_rfp").default(false),
   resourceUrl: varchar("resource_url", { length: 1000 }),
   learningObjectives: text("learning_objectives").array(),
+  // Launch scheduling fields
+  launchType: varchar("launch_type", { length: 20 }).default('immediate').$type<'immediate' | 'scheduled' | 'manual'>(),
+  scheduledUnlockDate: timestamp("scheduled_unlock_date"),
+  visibility: varchar("visibility", { length: 20 }).default('public').$type<'public' | 'private'>(),
+  selectedStudents: jsonb("selected_students").default([]),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
 }, (table) => ({

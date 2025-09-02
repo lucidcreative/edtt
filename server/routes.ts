@@ -2197,29 +2197,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get user notifications
-  app.get("/api/notifications", authenticate, async (req: AuthenticatedRequest, res) => {
-    try {
-      const { unreadOnly } = req.query;
-      const notifications = await storage.getProposalNotifications(req.user.id, unreadOnly === 'true');
-      res.json(notifications);
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
-      res.status(500).json({ message: "Failed to fetch notifications" });
-    }
-  });
-  
-  // Mark notification as read
-  app.patch("/api/notifications/:notificationId/read", authenticate, async (req: AuthenticatedRequest, res) => {
-    try {
-      const { notificationId } = req.params;
-      await storage.markNotificationAsRead(notificationId);
-      res.json({ success: true });
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
-      res.status(500).json({ message: "Failed to mark notification as read" });
-    }
-  });
 
   // RFP PROPOSAL ROUTES
   

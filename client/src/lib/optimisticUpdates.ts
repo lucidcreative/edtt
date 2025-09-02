@@ -115,23 +115,7 @@ export const optimisticUpdates = {
     });
   },
 
-  // Read notification optimistic update
-  markNotificationRead: (notificationId: string, studentId: string) => {
-    // Update notification status
-    queryClient.setQueryData(['/api/students', studentId, 'notifications'], (oldData: any) => {
-      if (!oldData) return oldData;
-      return oldData.map((notification: any) => 
-        notification.id === notificationId 
-          ? { ...notification, isRead: true, readAt: new Date().toISOString() }
-          : notification
-      );
-    });
-
-    // Update unread count
-    queryClient.setQueryData(['/api/students', studentId, 'unread-count'], (oldData: any) => {
-      return Math.max(0, (oldData || 0) - 1);
-    });
-  },
+  // Notification system removed - notifications functionality disabled
 
   // Assignment creation optimistic update
   createAssignment: (assignmentData: any, classroomId: string) => {

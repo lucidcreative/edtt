@@ -147,8 +147,13 @@ export default function ProposalsPortal() {
   const [rfpVisibility, setRfpVisibility] = useState<"public" | "private">("public");
   const [rfpTokenReward, setRfpTokenReward] = useState("");
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
+  const [launchType, setLaunchType] = useState<"immediate" | "scheduled" | "manual">("immediate");
+  const [scheduledDate, setScheduledDate] = useState("");
+  const [scheduledTime, setScheduledTime] = useState("");
   const [proposalGrade, setProposalGrade] = useState("");
   const [proposalTokens, setProposalTokens] = useState("");
+  const [editingRFP, setEditingRFP] = useState<any>(null);
+  const [showEditRFPDialog, setShowEditRFPDialog] = useState(false);
   const queryClient = useQueryClient();
 
   // Fetch proposals for the classroom
@@ -166,13 +171,7 @@ export default function ProposalsPortal() {
 
   const proposals: Proposal[] = Array.isArray(proposalsData) ? proposalsData : [];
 
-  // Fetch notifications
-  const { data: notificationsData } = useQuery({
-    queryKey: ['/api/notifications'],
-    queryFn: async () => apiRequest('/api/notifications?unreadOnly=true', 'GET')
-  });
 
-  const notifications: ProposalNotification[] = Array.isArray(notificationsData) ? notificationsData : [];
 
   // Fetch students for private RFP selection
   const { data: studentsData } = useQuery({
@@ -182,6 +181,16 @@ export default function ProposalsPortal() {
   });
 
   const students = Array.isArray(studentsData) ? studentsData : [];
+
+  // Fetch RFP assignments for editing/deleting
+  const { data: rfpAssignments } = useQuery({
+    queryKey: ['/api/assignments', selectedClassroom?.id, 'rfp'],
+    enabled: !!selectedClassroom?.id,
+    queryFn: async () => {
+      const assignments = await apiRequest(`/api/assignments/classroom/${selectedClassroom!.id}`, 'GET');
+      return Array.isArray(assignments) ? assignments.filter((a: any) => a.isRFP) : [];
+    }
+  });
 
   // Review proposal mutation
   const reviewProposalMutation = useMutation({
@@ -224,6 +233,41 @@ export default function ProposalsPortal() {
       setRfpVisibility("public");
       setRfpTokenReward("");
       setSelectedStudents([]);
+      setLaunchType("immediate");
+      setScheduledDate("");
+      setScheduledTime("");
+    }
+  });
+
+  // Delete RFP mutation
+  const deleteRFPMutation = useMutation({
+    mutationFn: (assignmentId: string) =>
+      apiRequest(`/api/assignments/${assignmentId}`, 'DELETE'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/proposals/classroom'] });
+    }
+  });
+
+  // Update RFP mutation
+  const updateRFPMutation = useMutation({
+    mutationFn: ({ assignmentId, rfpData }: { assignmentId: string; rfpData: any }) =>
+      apiRequest(`/api/assignments/${assignmentId}`, 'PATCH', rfpData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/proposals/classroom'] });
+      setShowEditRFPDialog(false);
+      setEditingRFP(null);
+      // Reset form
+      setRfpTitle("");
+      setRfpDescription("");
+      setRfpRequirements("");
+      setRfpBudget("");
+      setRfpDeadline("");
+      setRfpVisibility("public");
+      setRfpTokenReward("");
+      setSelectedStudents([]);
+      setLaunchType("immediate");
+      setScheduledDate("");
+      setScheduledTime("");
     }
   });
 
@@ -260,6 +304,11 @@ export default function ProposalsPortal() {
       return;
     }
     
+    let scheduledUnlockDate = null;
+    if (launchType === 'scheduled' && scheduledDate && scheduledTime) {
+      scheduledUnlockDate = new Date(`${scheduledDate}T${scheduledTime}`).toISOString();
+    }
+
     createRFPMutation.mutate({
       title: rfpTitle,
       description: rfpDescription,
@@ -268,8 +317,65 @@ export default function ProposalsPortal() {
       dueDate: rfpDeadline ? new Date(rfpDeadline).toISOString() : null,
       category: 'project', // Default category for RFPs
       visibility: rfpVisibility,
-      selectedStudents: rfpVisibility === 'private' ? selectedStudents : undefined
+      selectedStudents: rfpVisibility === 'private' ? selectedStudents : undefined,
+      launchType: launchType,
+      scheduledUnlockDate: scheduledUnlockDate,
+      isActive: launchType === 'immediate'
     });
+  };
+
+  const handleEditRFP = (assignment: any) => {
+    setEditingRFP(assignment);
+    setRfpTitle(assignment.title);
+    setRfpDescription(assignment.description);
+    setRfpRequirements(assignment.instructions || "");
+    setRfpTokenReward(assignment.tokenReward?.toString() || "");
+    setRfpDeadline(assignment.dueDate ? new Date(assignment.dueDate).toISOString().split('T')[0] : "");
+    setRfpVisibility(assignment.visibility || "public");
+    setSelectedStudents(assignment.selectedStudents || []);
+    setLaunchType(assignment.launchType || "immediate");
+    if (assignment.scheduledUnlockDate) {
+      const scheduledDate = new Date(assignment.scheduledUnlockDate);
+      setScheduledDate(scheduledDate.toISOString().split('T')[0]);
+      setScheduledTime(scheduledDate.toTimeString().slice(0, 5));
+    }
+    setShowEditRFPDialog(true);
+  };
+
+  const handleUpdateRFP = () => {
+    if (!rfpTitle.trim() || !rfpDescription.trim() || !rfpTokenReward.trim() || !editingRFP) return;
+    
+    if (rfpVisibility === 'private' && selectedStudents.length === 0) {
+      alert('Please select at least one student for private RFPs');
+      return;
+    }
+    
+    let scheduledUnlockDate = null;
+    if (launchType === 'scheduled' && scheduledDate && scheduledTime) {
+      scheduledUnlockDate = new Date(`${scheduledDate}T${scheduledTime}`).toISOString();
+    }
+
+    updateRFPMutation.mutate({
+      assignmentId: editingRFP.id,
+      rfpData: {
+        title: rfpTitle,
+        description: rfpDescription,
+        instructions: rfpRequirements,
+        tokenReward: parseInt(rfpTokenReward),
+        dueDate: rfpDeadline ? new Date(rfpDeadline).toISOString() : null,
+        visibility: rfpVisibility,
+        selectedStudents: rfpVisibility === 'private' ? selectedStudents : undefined,
+        launchType: launchType,
+        scheduledUnlockDate: scheduledUnlockDate,
+        isActive: launchType === 'immediate'
+      }
+    });
+  };
+
+  const handleDeleteRFP = (assignmentId: string) => {
+    if (confirm('Are you sure you want to delete this RFP? This action cannot be undone.')) {
+      deleteRFPMutation.mutate(assignmentId);
+    }
   };
 
   const handleExportProposals = () => {
@@ -451,20 +557,14 @@ export default function ProposalsPortal() {
           </Select>
         </div>
 
-        {/* Notifications Badge */}
-        {notifications.length > 0 && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Bell className="h-4 w-4" />
-            <span>{notifications.length} unread notification(s)</span>
-          </div>
-        )}
       </div>
 
       {/* Main Content */}
       <Tabs defaultValue="proposals" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="proposals">All Proposals</TabsTrigger>
           <TabsTrigger value="active">Active Projects</TabsTrigger>
+          <TabsTrigger value="rfps">Manage RFPs</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
 
@@ -892,6 +992,47 @@ export default function ProposalsPortal() {
                 </p>
               </div>
             )}
+
+            {/* Launch Scheduling Settings */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Launch Settings</Label>
+              <Select value={launchType} onValueChange={(value: "immediate" | "scheduled" | "manual") => setLaunchType(value)}>
+                <SelectTrigger data-testid="launch-type-select">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="immediate">Launch Immediately - RFP is visible right away</SelectItem>
+                  <SelectItem value="scheduled">Schedule Launch - Auto-unlock at specific date/time</SelectItem>
+                  <SelectItem value="manual">Manual Unlock - Teacher unlocks later</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Scheduled Launch Date/Time */}
+              {launchType === 'scheduled' && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium">Launch Date</Label>
+                    <Input
+                      type="date"
+                      value={scheduledDate}
+                      onChange={(e) => setScheduledDate(e.target.value)}
+                      className="mt-1"
+                      data-testid="scheduled-date-input"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium">Launch Time</Label>
+                    <Input
+                      type="time"
+                      value={scheduledTime}
+                      onChange={(e) => setScheduledTime(e.target.value)}
+                      className="mt-1"
+                      data-testid="scheduled-time-input"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Action Buttons */}
             <div className="flex justify-end space-x-3">
