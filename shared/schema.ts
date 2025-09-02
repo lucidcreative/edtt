@@ -64,6 +64,11 @@ export const classrooms = pgTable("classrooms", {
   maxDailyHours: decimal("max_daily_hours", { precision: 4, scale: 2 }).default('8.00'),
   tokensPerHour: integer("tokens_per_hour").default(5),
   minClockInDuration: integer("min_clock_in_duration").default(15), // minutes
+  // Student settings
+  startingTokens: integer("starting_tokens").default(0),
+  recurringPayEnabled: boolean("recurring_pay_enabled").default(false),
+  recurringPayAmount: integer("recurring_pay_amount").default(0),
+  recurringPayFrequency: varchar("recurring_pay_frequency", { length: 20 }).default('weekly').$type<'weekly' | 'biweekly' | 'monthly'>(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
 }, (table) => ({

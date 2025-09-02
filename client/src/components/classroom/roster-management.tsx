@@ -17,6 +17,14 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -63,6 +71,7 @@ export default function RosterManagement({ classroomId, classroomName, joinCode 
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [pinResetRequested, setPinResetRequested] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -70,6 +79,12 @@ export default function RosterManagement({ classroomId, classroomName, joinCode 
   // Fetch classroom roster
   const { data: enrollments, isLoading } = useQuery<Enrollment[]>({
     queryKey: ["/api/classrooms", classroomId, "roster"],
+    enabled: !!classroomId && user?.role === 'teacher'
+  });
+
+  // Fetch classroom details for settings
+  const { data: classroom } = useQuery({
+    queryKey: ["/api/classrooms", classroomId],
     enabled: !!classroomId && user?.role === 'teacher'
   });
 
@@ -129,6 +144,33 @@ export default function RosterManagement({ classroomId, classroomName, joinCode 
       toast({
         title: "Error",
         description: error.message || "Failed to update student",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update classroom settings mutation
+  const updateClassroomMutation = useMutation({
+    mutationFn: async (settings: any) => {
+      const response = await apiRequest('PUT', `/api/classrooms/${classroomId}`, settings);
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: 'Failed to update classroom settings' }));
+        throw new Error(error.message);
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Settings Updated",
+        description: "Classroom settings have been updated successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/classrooms", classroomId] });
+      setIsSettingsOpen(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update settings",
         variant: "destructive",
       });
     },
@@ -323,6 +365,23 @@ export default function RosterManagement({ classroomId, classroomName, joinCode 
     setPinResetRequested(true);
   };
 
+  const handleSettingsSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const formData = new FormData(e.currentTarget as HTMLFormElement);
+    const startingTokens = parseInt(formData.get('startingTokens') as string);
+    const recurringPayEnabled = formData.get('recurringPayEnabled') === 'on';
+    const recurringPayAmount = parseInt(formData.get('recurringPayAmount') as string);
+    const recurringPayFrequency = formData.get('recurringPayFrequency') as string;
+
+    updateClassroomMutation.mutate({
+      startingTokens,
+      recurringPayEnabled,
+      recurringPayAmount,
+      recurringPayFrequency
+    });
+  };
+
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingStudent) return;
@@ -428,6 +487,91 @@ export default function RosterManagement({ classroomId, classroomName, joinCode 
               <strong>Join Code:</strong> <code className="bg-blue-100 px-2 py-1 rounded font-mono">{joinCode}</code>
             </p>
           </div>
+          
+          <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" data-testid="button-student-settings">
+                <i className="fas fa-cog mr-2"></i>
+                Settings
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Student Settings</DialogTitle>
+                <DialogDescription>
+                  Configure default token allocation and recurring payments for new and existing students.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleSettingsSubmit} className="space-y-6">
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="starting-tokens">Starting Tokens</Label>
+                    <Input
+                      id="starting-tokens"
+                      name="startingTokens"
+                      type="number"
+                      min="0"
+                      defaultValue={classroom?.startingTokens || 0}
+                      data-testid="input-starting-tokens"
+                      className="mt-1"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Tokens given to new students when they join</p>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="recurring-pay">Recurring Pay</Label>
+                      <Switch
+                        id="recurring-pay"
+                        name="recurringPayEnabled"
+                        defaultChecked={classroom?.recurringPayEnabled || false}
+                        data-testid="switch-recurring-pay"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500">Give students tokens on a regular schedule</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="recurring-amount">Amount</Label>
+                      <Input
+                        id="recurring-amount"
+                        name="recurringPayAmount"
+                        type="number"
+                        min="0"
+                        defaultValue={classroom?.recurringPayAmount || 0}
+                        data-testid="input-recurring-amount"
+                        className="mt-1"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="recurring-frequency">Frequency</Label>
+                      <Select name="recurringPayFrequency" defaultValue={classroom?.recurringPayFrequency || 'weekly'}>
+                        <SelectTrigger className="mt-1" data-testid="select-recurring-frequency">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="weekly">Weekly</SelectItem>
+                          <SelectItem value="biweekly">Bi-weekly</SelectItem>
+                          <SelectItem value="monthly">Monthly</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex gap-2 pt-4">
+                  <Button type="button" variant="outline" className="flex-1" onClick={() => setIsSettingsOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" className="flex-1" disabled={updateClassroomMutation.isPending}>
+                    {updateClassroomMutation.isPending ? "Saving..." : "Save Settings"}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
           
           <Dialog open={isAddStudentOpen} onOpenChange={setIsAddStudentOpen}>
             <DialogTrigger asChild>

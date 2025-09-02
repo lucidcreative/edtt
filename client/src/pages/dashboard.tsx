@@ -14,6 +14,8 @@ import Challenges from "@/components/dashboard/challenges";
 import IncomeCard from "@/components/dashboard/income-card";
 import CreateClassroomModal from "@/components/classroom/create-classroom-modal";
 import StudentMainDashboard from "@/components/student/student-main-dashboard";
+import AnnouncementFeed from "@/components/announcements/announcement-feed";
+import CreateAnnouncementModal from "@/components/announcements/create-announcement-modal";
 import { Button } from "@/components/ui/button";
 
 export default function Dashboard() {
@@ -140,7 +142,7 @@ export default function Dashboard() {
         >
           <MetricCard
             title="Completion Rate"
-            value={stats ? `${completionPercentage}%` : "No data"}
+            value={`${completionPercentage}%`}
             subtitle={stats ? `${stats.completedAssignments} completed` : "Create assignments to track progress"}
             icon="fas fa-check-circle"
             gradient="from-blue-500 to-blue-600"
@@ -199,6 +201,39 @@ export default function Dashboard() {
           <Leaderboard students={students} />
         </motion.div>
       </div>
+
+      {/* Announcements Section */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.6 }}
+      >
+        <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-2">
+              <i className="fas fa-bullhorn text-blue-500"></i>
+              <h3 className="text-lg font-semibold text-gray-800">Announcements</h3>
+            </div>
+            {user?.role === 'teacher' && (
+              <CreateAnnouncementModal classroomId={currentClassroom.id}>
+                <Button 
+                  size="sm" 
+                  className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white"
+                  data-testid="button-create-announcement"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  New
+                </Button>
+              </CreateAnnouncementModal>
+            )}
+          </div>
+          <AnnouncementFeed 
+            classroomId={currentClassroom.id} 
+            maxAnnouncements={3} 
+            showCreateButton={false}
+          />
+        </div>
+      </motion.div>
 
       {/* Classroom Management Tools */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

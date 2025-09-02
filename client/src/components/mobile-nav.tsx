@@ -7,7 +7,6 @@ const teacherMobileNav = [
   { path: '/students', name: 'Students', icon: 'fas fa-users' },
   { path: '/earn', name: 'Earn', icon: 'fas fa-coins' },
   { path: '/proposals', name: 'Proposals', icon: 'fas fa-lightbulb' },
-  { path: '/announcements', name: 'News', icon: 'fas fa-bullhorn' },
   { path: '/store', name: 'Store', icon: 'fas fa-store' },
   { path: '/leaderboard', name: 'Leaders', icon: 'fas fa-trophy' },
 ];
@@ -18,7 +17,6 @@ const studentMobileNav = [
   { path: '/proposals', name: 'Projects', icon: 'fas fa-lightbulb' },
   { path: '/store', name: 'Store', icon: 'fas fa-store' },
   { path: '/economy', name: 'Economy', icon: 'fas fa-exchange-alt' },
-  { path: '/announcements', name: 'News', icon: 'fas fa-bullhorn' },
   { path: '/leaderboard', name: 'Leaders', icon: 'fas fa-trophy' },
 ];
 
