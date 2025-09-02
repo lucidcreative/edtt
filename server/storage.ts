@@ -3,7 +3,7 @@ import {
   users,
   classrooms,
   studentClassrooms,
-  classroomEnrollments,
+  enrollments,
   assignments,
   assignmentResources,
   submissions,
@@ -250,13 +250,13 @@ export class DatabaseStorage implements IStorage {
   async getClassroomEnrollments(classroomId: string): Promise<(Enrollment & { student: User })[]> {
     const result = await db
       .select({
-        enrollment: classroomEnrollments,
+        enrollment: enrollments,
         student: users
       })
-      .from(classroomEnrollments)
-      .innerJoin(users, eq(classroomEnrollments.studentId, users.id))
-      .where(eq(classroomEnrollments.classroomId, classroomId))
-      .orderBy(desc(classroomEnrollments.requestedAt));
+      .from(enrollments)
+      .innerJoin(users, eq(enrollments.studentId, users.id))
+      .where(eq(enrollments.classroomId, classroomId))
+      .orderBy(desc(enrollments.enrolledAt));
     
     return result.map(row => ({
       ...row.enrollment,

@@ -86,18 +86,18 @@ export const studentClassrooms = pgTable("student_classrooms", {
 }));
 
 // Classroom enrollment requests
-export const classroomEnrollments = pgTable("classroom_enrollments", {
+export const enrollments = pgTable("enrollments", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   studentId: uuid("student_id").references(() => users.id).notNull(),
   classroomId: uuid("classroom_id").references(() => classrooms.id).notNull(),
   enrollmentStatus: varchar("enrollment_status", { length: 20 }).notNull().$type<'pending' | 'approved' | 'rejected'>().default('pending'),
-  requestedAt: timestamp("requested_at").defaultNow(),
-  reviewedAt: timestamp("reviewed_at"),
+  enrolledAt: timestamp("enrolled_at").defaultNow(),
+  approvedAt: timestamp("approved_at"),
   approvedBy: uuid("approved_by").references(() => users.id)
 }, (table) => ({
-  studentIdIdx: index("classroom_enrollments_student_id_idx").on(table.studentId),
-  classroomIdIdx: index("classroom_enrollments_classroom_id_idx").on(table.classroomId),
-  enrollmentStatusIdx: index("classroom_enrollments_status_idx").on(table.enrollmentStatus),
+  studentIdIdx: index("enrollments_student_id_idx").on(table.studentId),
+  classroomIdIdx: index("enrollments_classroom_id_idx").on(table.classroomId),
+  enrollmentStatusIdx: index("enrollments_status_idx").on(table.enrollmentStatus),
   uniqueStudentClassroomEnrollment: unique("unique_student_classroom_enrollment").on(table.studentId, table.classroomId)
 }));
 
@@ -475,10 +475,10 @@ export const insertProposalNotificationSchema = createInsertSchema(proposalNotif
   createdAt: true
 });
 
-export const insertClassroomEnrollmentSchema = createInsertSchema(classroomEnrollments).omit({
+export const insertEnrollmentSchema = createInsertSchema(enrollments).omit({
   id: true,
-  requestedAt: true,
-  reviewedAt: true
+  enrolledAt: true,
+  approvedAt: true
 });
 
 // Group buy template data - templates for creating group buy initiatives
@@ -534,14 +534,14 @@ export type InsertProposalFeedback = z.infer<typeof insertProposalFeedbackSchema
 export type ProposalNotification = typeof proposalNotifications.$inferSelect;
 export type InsertProposalNotification = z.infer<typeof insertProposalNotificationSchema>;
 
-export type Enrollment = typeof classroomEnrollments.$inferSelect;
-export type InsertEnrollment = z.infer<typeof insertClassroomEnrollmentSchema>;
+export type Enrollment = typeof enrollments.$inferSelect;
+export type InsertEnrollment = z.infer<typeof insertEnrollmentSchema>;
 
 // Relations
 export const usersRelations = relations(users, ({ many, one }) => ({
   teacherClassrooms: many(classrooms),
   studentClassrooms: many(studentClassrooms),
-  classroomEnrollments: many(classroomEnrollments),
+  enrollments: many(enrollments),
   assignments: many(assignments),
   submissions: many(submissions),
   proposals: many(proposals),
