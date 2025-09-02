@@ -481,6 +481,56 @@ export const insertEnrollmentSchema = createInsertSchema(enrollments).omit({
   approvedAt: true
 });
 
+export const insertStoreItemSchema = createInsertSchema(storeItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertPurchaseSchema = createInsertSchema(purchases).omit({
+  id: true,
+  purchasedAt: true,
+  fulfilledAt: true
+});
+
+export const insertTimeEntrySchema = createInsertSchema(timeEntries).omit({
+  id: true,
+  validatedAt: true
+});
+
+export const insertBadgeSchema = createInsertSchema(badges).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertStudentBadgeSchema = createInsertSchema(studentBadges).omit({
+  id: true,
+  earnedAt: true
+});
+
+export const insertChallengeSchema = createInsertSchema(challenges).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertChallengeProgressSchema = createInsertSchema(challengeProgress).omit({
+  id: true,
+  updatedAt: true
+});
+
+export const insertAnnouncementSchema = createInsertSchema(announcements).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertAnnouncementReadSchema = createInsertSchema(announcementReads).omit({
+  id: true,
+  readAt: true
+});
+
 // Group buy template data - templates for creating group buy initiatives
 export const groupBuyTemplateData = [
   {
@@ -536,6 +586,33 @@ export type InsertProposalNotification = z.infer<typeof insertProposalNotificati
 
 export type Enrollment = typeof enrollments.$inferSelect;
 export type InsertEnrollment = z.infer<typeof insertEnrollmentSchema>;
+
+export type StoreItem = typeof storeItems.$inferSelect;
+export type InsertStoreItem = z.infer<typeof insertStoreItemSchema>;
+
+export type Purchase = typeof purchases.$inferSelect;
+export type InsertPurchase = z.infer<typeof insertPurchaseSchema>;
+
+export type TimeEntry = typeof timeEntries.$inferSelect;
+export type InsertTimeEntry = z.infer<typeof insertTimeEntrySchema>;
+
+export type Badge = typeof badges.$inferSelect;
+export type InsertBadge = z.infer<typeof insertBadgeSchema>;
+
+export type StudentBadge = typeof studentBadges.$inferSelect;
+export type InsertStudentBadge = z.infer<typeof insertStudentBadgeSchema>;
+
+export type Challenge = typeof challenges.$inferSelect;
+export type InsertChallenge = z.infer<typeof insertChallengeSchema>;
+
+export type ChallengeProgress = typeof challengeProgress.$inferSelect;
+export type InsertChallengeProgress = z.infer<typeof insertChallengeProgressSchema>;
+
+export type Announcement = typeof announcements.$inferSelect;
+export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
+
+export type AnnouncementRead = typeof announcementReads.$inferSelect;
+export type InsertAnnouncementRead = z.infer<typeof insertAnnouncementReadSchema>;
 
 // Relations
 export const usersRelations = relations(users, ({ many, one }) => ({

@@ -12,7 +12,8 @@ import {
   insertProposalSchema,
   insertProposalFeedbackSchema,
   insertProposalNotificationSchema,
-  users, 
+  users,
+  enrollments,
   type User 
 } from "@shared/schema";
 import { db } from "./db";
