@@ -866,8 +866,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         classroomId,
         teacherId: req.user.id,
         dueDate: dueDate ? new Date(dueDate) : null,
-        link: link?.trim() || null,
+        resourceUrl: link?.trim() || null,
         isActive: true,
+        isRfp: false,
+        resources: {},
         createdAt: new Date(),
         updatedAt: new Date()
       };
