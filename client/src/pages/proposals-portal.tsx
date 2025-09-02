@@ -32,6 +32,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   FileText, 
   Eye, 
@@ -145,6 +146,7 @@ export default function ProposalsPortal() {
   const [rfpDeadline, setRfpDeadline] = useState("");
   const [rfpVisibility, setRfpVisibility] = useState<"public" | "private">("public");
   const [rfpTokenReward, setRfpTokenReward] = useState("");
+  const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [proposalGrade, setProposalGrade] = useState("");
   const [proposalTokens, setProposalTokens] = useState("");
   const queryClient = useQueryClient();
@@ -171,6 +173,15 @@ export default function ProposalsPortal() {
   });
 
   const notifications: ProposalNotification[] = Array.isArray(notificationsData) ? notificationsData : [];
+
+  // Fetch students for private RFP selection
+  const { data: studentsData } = useQuery({
+    queryKey: ['/api/classrooms', selectedClassroom?.id, 'students'],
+    enabled: !!selectedClassroom?.id && rfpVisibility === 'private',
+    queryFn: async () => apiRequest(`/api/classrooms/${selectedClassroom!.id}/students`, 'GET')
+  });
+
+  const students = Array.isArray(studentsData) ? studentsData : [];
 
   // Review proposal mutation
   const reviewProposalMutation = useMutation({
@@ -212,6 +223,7 @@ export default function ProposalsPortal() {
       setRfpDeadline("");
       setRfpVisibility("public");
       setRfpTokenReward("");
+      setSelectedStudents([]);
     }
   });
 
@@ -242,6 +254,12 @@ export default function ProposalsPortal() {
   const handleCreateRFP = () => {
     if (!rfpTitle.trim() || !rfpDescription.trim() || !rfpTokenReward.trim()) return;
     
+    // Validate private RFP has selected students
+    if (rfpVisibility === 'private' && selectedStudents.length === 0) {
+      alert('Please select at least one student for private RFPs');
+      return;
+    }
+    
     createRFPMutation.mutate({
       title: rfpTitle,
       description: rfpDescription,
@@ -249,7 +267,8 @@ export default function ProposalsPortal() {
       tokenReward: parseInt(rfpTokenReward),
       dueDate: rfpDeadline ? new Date(rfpDeadline).toISOString() : null,
       category: 'project', // Default category for RFPs
-      visibility: rfpVisibility
+      visibility: rfpVisibility,
+      selectedStudents: rfpVisibility === 'private' ? selectedStudents : undefined
     });
   };
 
@@ -328,27 +347,29 @@ export default function ProposalsPortal() {
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-6">
       {/* Header Section */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Proposals & Special Projects Portal
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Comprehensive project management and collaboration platform
-          </p>
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              Proposals & Special Projects Portal
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Comprehensive project management and collaboration platform
+            </p>
+          </div>
+          
+          {/* Create RFP Button - Teacher Only */}
+          {user?.role === 'teacher' && (
+            <Button
+              onClick={() => setShowCreateRFPDialog(true)}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 shrink-0"
+              data-testid="create-rfp-button"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Create RFP
+            </Button>
+          )}
         </div>
-        
-        {/* Create RFP Button - Teacher Only */}
-        {user?.role === 'teacher' && (
-          <Button
-            onClick={() => setShowCreateRFPDialog(true)}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700"
-            data-testid="create-rfp-button"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Create RFP
-          </Button>
-        )}
         
         {/* Quick Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -740,12 +761,15 @@ export default function ProposalsPortal() {
 
       {/* Create RFP Dialog */}
       <Dialog open={showCreateRFPDialog} onOpenChange={setShowCreateRFPDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" aria-describedby="create-rfp-description">
           <DialogHeader>
             <DialogTitle className="flex items-center space-x-2">
               <Target className="h-5 w-5" />
               <span>Create New RFP (Request for Proposal)</span>
             </DialogTitle>
+            <p id="create-rfp-description" className="text-sm text-muted-foreground">
+              Create a new Request for Proposal to assign special projects to students
+            </p>
           </DialogHeader>
 
           <div className="space-y-6">
@@ -835,6 +859,40 @@ export default function ProposalsPortal() {
               </Select>
             </div>
 
+            {/* Student Selection for Private RFPs */}
+            {rfpVisibility === 'private' && students.length > 0 && (
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Select Students for Private RFP</Label>
+                <div className="max-h-40 overflow-y-auto border rounded-lg p-3 space-y-2">
+                  {students.map((student: any) => (
+                    <div key={student.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`student-${student.id}`}
+                        checked={selectedStudents.includes(student.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedStudents([...selectedStudents, student.id]);
+                          } else {
+                            setSelectedStudents(selectedStudents.filter(id => id !== student.id));
+                          }
+                        }}
+                        data-testid={`checkbox-student-${student.id}`}
+                      />
+                      <Label 
+                        htmlFor={`student-${student.id}`} 
+                        className="text-sm cursor-pointer"
+                      >
+                        {student.nickname || `${student.firstName} ${student.lastName}`.trim()}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {selectedStudents.length} student(s) selected
+                </p>
+              </div>
+            )}
+
             {/* Action Buttons */}
             <div className="flex justify-end space-x-3">
               <Button 
@@ -846,7 +904,13 @@ export default function ProposalsPortal() {
               </Button>
               <Button 
                 onClick={handleCreateRFP}
-                disabled={!rfpTitle.trim() || !rfpDescription.trim() || !rfpTokenReward.trim() || createRFPMutation.isPending}
+                disabled={
+                  !rfpTitle.trim() || 
+                  !rfpDescription.trim() || 
+                  !rfpTokenReward.trim() || 
+                  (rfpVisibility === 'private' && selectedStudents.length === 0) ||
+                  createRFPMutation.isPending
+                }
                 className="bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700"
                 data-testid="submit-rfp-button"
               >
@@ -859,7 +923,7 @@ export default function ProposalsPortal() {
 
       {/* Proposal Details Dialog */}
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" aria-describedby="proposal-details-description">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               <span className="flex items-center space-x-2">
@@ -868,6 +932,9 @@ export default function ProposalsPortal() {
               </span>
               {selectedProposal && getStatusBadge(selectedProposal.status)}
             </DialogTitle>
+            <p id="proposal-details-description" className="text-sm text-muted-foreground">
+              View and manage proposal details, progress, and provide feedback
+            </p>
           </DialogHeader>
 
           {selectedProposal && (
