@@ -456,6 +456,12 @@ export const insertAssignmentSchema = createInsertSchema(assignments).omit({
   updatedAt: true
 });
 
+export const insertAssignmentAdvancedSchema = createInsertSchema(assignments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
 export const insertAssignmentResourceSchema = createInsertSchema(assignmentResources).omit({
   id: true,
   createdAt: true,
@@ -522,7 +528,7 @@ export const insertChallengeSchema = createInsertSchema(challenges).omit({
 
 export const insertChallengeProgressSchema = createInsertSchema(challengeProgress).omit({
   id: true,
-  updatedAt: true
+  lastUpdated: true
 });
 
 export const insertAnnouncementSchema = createInsertSchema(announcements).omit({

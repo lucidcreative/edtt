@@ -289,6 +289,35 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(assignments.createdAt));
   }
 
+  async getStudentAssignments(studentId: string, classroomId: string): Promise<Assignment[]> {
+    const allAssignments = await db
+      .select()
+      .from(assignments)
+      .where(and(
+        eq(assignments.classroomId, classroomId),
+        eq(assignments.isActive, true)
+      ))
+      .orderBy(desc(assignments.createdAt));
+
+    // Filter assignments based on visibility
+    const accessibleAssignments = allAssignments.filter(assignment => {
+      // Public assignments are visible to all students
+      if (assignment.visibility === 'public') {
+        return true;
+      }
+      
+      // Private assignments are only visible to selected students
+      if (assignment.visibility === 'private' && assignment.selectedStudents) {
+        const selectedStudentIds = assignment.selectedStudents as string[];
+        return selectedStudentIds.includes(studentId);
+      }
+      
+      return false;
+    });
+
+    return accessibleAssignments;
+  }
+
   async createAssignment(assignment: InsertAssignment): Promise<Assignment> {
     const [newAssignment] = await db.insert(assignments).values([assignment]).returning();
     return newAssignment;

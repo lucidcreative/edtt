@@ -6,6 +6,7 @@ import {
   insertUserSchema, 
   insertClassroomSchema, 
   insertAssignmentSchema, 
+  insertAssignmentAdvancedSchema,
   insertSubmissionSchema, 
   insertStoreItemSchema, 
   insertAssignmentResourceSchema,
@@ -3716,7 +3717,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         visibleToStudents: visibleToStudents === 'true' ? true : visibleToStudents === 'false' ? false : undefined
       };
       
-      const assignments = await storage.getAssignments(classroomId, filters);
+      const assignments = await storage.getAssignmentsByClassroom(classroomId);
       res.json({ assignments });
     } catch (error) {
       console.error('Get assignments error:', error);
@@ -3736,7 +3737,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         visibleToStudents: visibleToStudents === 'true' ? true : visibleToStudents === 'false' ? false : undefined
       };
       
-      const assignments = await storage.getAssignments(classroomId, filters);
+      const assignments = await storage.getAssignmentsByClassroom(classroomId);
       res.json(assignments);
     } catch (error) {
       console.error('Get assignments error:', error);
@@ -3752,7 +3753,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const classrooms = await storage.getClassroomsByTeacher(req.user.id);
         const allAssignments = [];
         for (const classroom of classrooms) {
-          const assignments = await storage.getAssignments(classroom.id);
+          const assignments = await storage.getAssignmentsByClassroom(classroom.id);
           allAssignments.push(...assignments);
         }
         res.json(allAssignments);
@@ -3761,7 +3762,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const studentClassrooms = await storage.getStudentClassrooms(req.user.id);
         const allAssignments = [];
         for (const sc of studentClassrooms) {
-          const assignments = await storage.getAssignments(sc.classroomId);
+          const assignments = await storage.getAssignmentsByClassroom(sc.classroomId);
           allAssignments.push(...assignments);
         }
         res.json(allAssignments);

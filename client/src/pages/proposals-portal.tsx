@@ -251,7 +251,7 @@ export default function ProposalsPortal() {
   // Update RFP mutation
   const updateRFPMutation = useMutation({
     mutationFn: ({ assignmentId, rfpData }: { assignmentId: string; rfpData: any }) =>
-      apiRequest(`/api/assignments/${assignmentId}`, 'PATCH', rfpData),
+      apiRequest(`/api/assignments/${assignmentId}`, 'PUT', rfpData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/proposals/classroom'] });
       setShowEditRFPDialog(false);
