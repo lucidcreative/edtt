@@ -10,18 +10,23 @@ const teacherNavigation = [
   { path: '/', name: 'Dashboard', icon: 'fas fa-home' },
   { path: '/students', name: 'Students', icon: 'fas fa-users' },
   { path: '/earn', name: 'Earn', icon: 'fas fa-coins' },
-  { path: '/proposals', name: 'Proposals Portal', icon: 'fas fa-lightbulb' },
+  { path: '/proposals', name: 'Proposals', icon: 'fas fa-lightbulb' },
   { path: '/store', name: 'Store', icon: 'fas fa-store' },
-  { path: '/leaderboard', name: 'Leaderboard', icon: 'fas fa-trophy' },
+  { path: '/announcements', name: 'Announcements', icon: 'fas fa-bullhorn' },
+  { path: '/badges', name: 'Badges', icon: 'fas fa-award' },
+  { path: '/challenges', name: 'Challenges', icon: 'fas fa-trophy' },
+  { path: '/leaderboard', name: 'Leaderboard', icon: 'fas fa-chart-line' },
 ];
 
 const studentNavigation = [
   { path: '/', name: 'Dashboard', icon: 'fas fa-home' },
   { path: '/earn', name: 'Earn', icon: 'fas fa-coins' },
-  { path: '/proposals', name: 'Special Projects', icon: 'fas fa-lightbulb' },
-  { path: '/store', name: 'Token Store', icon: 'fas fa-store' },
-  { path: '/economy', name: 'Economy', icon: 'fas fa-exchange-alt' },
-  { path: '/leaderboard', name: 'Leaderboard', icon: 'fas fa-trophy' },
+  { path: '/proposals', name: 'Proposals', icon: 'fas fa-lightbulb' },
+  { path: '/store', name: 'Store', icon: 'fas fa-store' },
+  { path: '/announcements', name: 'Announcements', icon: 'fas fa-bullhorn' },
+  { path: '/badges', name: 'Badges', icon: 'fas fa-award' },
+  { path: '/challenges', name: 'Challenges', icon: 'fas fa-trophy' },
+  { path: '/leaderboard', name: 'Leaderboard', icon: 'fas fa-chart-line' },
 ];
 
 export default function Sidebar() {

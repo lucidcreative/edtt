@@ -147,6 +147,9 @@ export interface IStorage {
   // Store items operations
   getStoreItems(classroomId: string): Promise<any[]>;
   createStoreItem(item: any): Promise<any>;
+  
+  // Student enrollments operations
+  getStudentEnrollments(studentId: string): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1024,6 +1027,32 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error('Error creating store item:', error);
       throw error;
+    }
+  }
+
+  // Student enrollments operations
+  async getStudentEnrollments(studentId: string): Promise<any[]> {
+    try {
+      const result = await db
+        .select({
+          enrollment: enrollments,
+          classroom: classrooms,
+          teacher: users
+        })
+        .from(enrollments)
+        .innerJoin(classrooms, eq(enrollments.classroomId, classrooms.id))
+        .innerJoin(users, eq(classrooms.teacherId, users.id))
+        .where(eq(enrollments.studentId, studentId))
+        .orderBy(desc(enrollments.enrolledAt));
+      
+      return result.map(row => ({
+        ...row.enrollment,
+        classroom: row.classroom,
+        teacher: row.teacher
+      }));
+    } catch (error) {
+      console.error('Error fetching student enrollments:', error);
+      return [];
     }
   }
 }
