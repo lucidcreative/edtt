@@ -54,7 +54,10 @@ import {
   Award,
   Plus,
   DollarSign,
-  Download
+  Download,
+  Edit,
+  Trash2,
+  Shield
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
@@ -219,10 +222,11 @@ export default function ProposalsPortal() {
         ...rfpData,
         isRFP: true,
         classroomId: selectedClassroom?.id,
-        teacherId: user?.id
+        createdBy: user?.id
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/proposals/classroom'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/assignments'] });
       setShowCreateRFPDialog(false);
       // Reset form
       setRfpTitle("");
@@ -760,6 +764,139 @@ export default function ProposalsPortal() {
                 </Card>
               ))}
           </div>
+        </TabsContent>
+
+        <TabsContent value="rfps" className="space-y-4">
+          {user?.role === 'teacher' ? (
+            <>
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-lg font-semibold">Manage RFP Assignments</h3>
+                  <p className="text-sm text-muted-foreground">Create, edit, and manage your RFP assignments</p>
+                </div>
+                <Button
+                  onClick={() => setShowCreateRFPDialog(true)}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700"
+                  data-testid="create-rfp-manage-button"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  New RFP
+                </Button>
+              </div>
+              
+              {rfpAssignments && rfpAssignments.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {rfpAssignments.map((assignment: any) => (
+                    <Card key={assignment.id} className="border-l-4 border-l-purple-500">
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-1 flex-1">
+                            <CardTitle className="text-lg leading-tight">{assignment.title}</CardTitle>
+                            <CardDescription>
+                              {assignment.visibility === 'private' ? 'Private Assignment' : 'Public Assignment'}
+                            </CardDescription>
+                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" data-testid={`rfp-menu-${assignment.id}`}>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleEditRFP(assignment)}>
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit RFP
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleDeleteRFP(assignment.id)}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete RFP
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </CardHeader>
+                      
+                      <CardContent className="space-y-4">
+                        <p className="text-sm text-muted-foreground line-clamp-2">{assignment.description}</p>
+                        
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center space-x-1">
+                            <DollarSign className="h-3 w-3" />
+                            <span>{assignment.tokenReward} tokens</span>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <Calendar className="h-3 w-3" />
+                            <span>
+                              {assignment.dueDate 
+                                ? format(new Date(assignment.dueDate), 'MMM d') 
+                                : 'No deadline'
+                              }
+                            </span>
+                          </div>
+                        </div>
+
+                        {assignment.visibility === 'private' && assignment.selectedStudents && (
+                          <div className="text-xs text-muted-foreground">
+                            <Users className="h-3 w-3 inline mr-1" />
+                            {assignment.selectedStudents.length} selected student(s)
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between">
+                          <Badge variant={assignment.isActive ? "default" : "secondary"}>
+                            {assignment.isActive ? "Active" : "Inactive"}
+                          </Badge>
+                          {assignment.launchType === 'scheduled' && assignment.scheduledUnlockDate && (
+                            <span className="text-xs text-muted-foreground">
+                              Scheduled: {format(new Date(assignment.scheduledUnlockDate), 'MMM d, h:mm a')}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="text-xs text-muted-foreground">
+                          {proposalsData?.filter((p: any) => p.assignmentId === assignment.id).length || 0} proposals submitted
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <Card className="p-8 text-center">
+                  <div className="flex flex-col items-center space-y-4">
+                    <Target className="h-12 w-12 text-muted-foreground" />
+                    <div>
+                      <h3 className="text-lg font-medium">No RFPs Created</h3>
+                      <p className="text-muted-foreground">
+                        Create your first Request for Proposal to assign special projects to students.
+                      </p>
+                    </div>
+                    <Button
+                      onClick={() => setShowCreateRFPDialog(true)}
+                      className="bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create First RFP
+                    </Button>
+                  </div>
+                </Card>
+              )}
+            </>
+          ) : (
+            <Card className="p-8 text-center">
+              <div className="flex flex-col items-center space-y-4">
+                <Shield className="h-12 w-12 text-muted-foreground" />
+                <div>
+                  <h3 className="text-lg font-medium">Teacher Access Required</h3>
+                  <p className="text-muted-foreground">
+                    Only teachers can manage RFP assignments.
+                  </p>
+                </div>
+              </div>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-4">

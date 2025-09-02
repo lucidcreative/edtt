@@ -621,6 +621,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update classroom settings
+  // General classroom update endpoint
+  app.put('/api/classrooms/:classroomId', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ message: 'Only teachers can update classroom settings' });
+      }
+
+      const { classroomId } = req.params;
+      const { startingTokens, recurringPayEnabled, recurringPayAmount, recurringPayFrequency } = req.body;
+      
+      // Verify the teacher owns this classroom
+      const classroom = await db.select().from(classrooms).where(eq(classrooms.id, classroomId)).limit(1);
+      if (classroom.length === 0 || classroom[0].teacherId !== req.user.id) {
+        return res.status(403).json({ message: 'Access denied. You do not own this classroom.' });
+      }
+
+      // Prepare update data
+      const updateData: any = { updatedAt: new Date() };
+      if (startingTokens !== undefined) updateData.startingTokens = startingTokens;
+      if (recurringPayEnabled !== undefined) updateData.recurringPayEnabled = recurringPayEnabled;
+      if (recurringPayAmount !== undefined) updateData.recurringPayAmount = recurringPayAmount;
+      if (recurringPayFrequency !== undefined) updateData.recurringPayFrequency = recurringPayFrequency;
+
+      const [updatedClassroom] = await db
+        .update(classrooms)
+        .set(updateData)
+        .where(eq(classrooms.id, classroomId))
+        .returning();
+
+      res.json(updatedClassroom);
+    } catch (error) {
+      console.error('Update classroom error:', error);
+      res.status(500).json({ message: 'Failed to update classroom settings' });
+    }
+  });
+
   app.put('/api/classrooms/:classroomId/settings', authenticate, async (req: any, res) => {
     try {
       if (req.user.role !== 'teacher') {
@@ -845,11 +881,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only teachers can create assignments" });
       }
 
-      const { title, description, category, dueDate, tokenReward, link, classroomId, isRFP, instructions, visibility } = req.body;
+      const { 
+        title, 
+        description, 
+        category, 
+        dueDate, 
+        tokenReward, 
+        link, 
+        classroomId, 
+        isRFP, 
+        instructions, 
+        visibility,
+        launchType,
+        scheduledUnlockDate,
+        selectedStudents
+      } = req.body;
       
       // Validate required fields
-      if (!title || !category || !classroomId) {
-        return res.status(400).json({ message: "Title, category, and classroom are required" });
+      if (!title || !classroomId) {
+        return res.status(400).json({ message: "Title and classroom are required" });
       }
 
       // Verify the teacher owns this classroom
@@ -862,16 +912,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         id: nanoid(),
         title: title.trim(),
         description: description?.trim() || '',
-        category,
+        category: category || 'project',
         tokenReward: tokenReward || 10,
         classroomId,
         teacherId: req.user.id,
         dueDate: dueDate ? new Date(dueDate) : null,
         resourceUrl: link?.trim() || null,
-        isActive: true,
-        isRfp: isRFP || false,
+        isActive: launchType !== 'manual',
+        isRFP: isRFP || false,
         instructions: instructions?.trim() || null,
-        resources: {},
+        visibility: visibility || 'public',
+        launchType: launchType || 'immediate',
+        scheduledUnlockDate: scheduledUnlockDate ? new Date(scheduledUnlockDate) : null,
+        selectedStudents: selectedStudents || [],
         createdAt: new Date(),
         updatedAt: new Date()
       };
@@ -882,6 +935,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Create assignment error:", error);
       res.status(500).json({ message: "Failed to create assignment. Please check all required fields." });
+    }
+  });
+
+  // Update assignment (PUT)
+  app.put('/api/assignments/:assignmentId', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ message: "Only teachers can update assignments" });
+      }
+
+      const { assignmentId } = req.params;
+      const assignment = await storage.getAssignment(assignmentId);
+      
+      if (!assignment) {
+        return res.status(404).json({ message: "Assignment not found" });
+      }
+
+      // Verify the teacher owns this assignment
+      if (assignment.teacherId !== req.user.id) {
+        return res.status(403).json({ message: 'Access denied. You do not own this assignment.' });
+      }
+
+      const updateData = {
+        ...req.body,
+        updatedAt: new Date()
+      };
+
+      const updatedAssignment = await storage.updateAssignment(assignmentId, updateData);
+      res.json(updatedAssignment);
+    } catch (error) {
+      console.error("Update assignment error:", error);
+      res.status(500).json({ message: "Failed to update assignment" });
+    }
+  });
+
+  // Delete assignment (DELETE)
+  app.delete('/api/assignments/:assignmentId', authenticate, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'teacher') {
+        return res.status(403).json({ message: "Only teachers can delete assignments" });
+      }
+
+      const { assignmentId } = req.params;
+      const assignment = await storage.getAssignment(assignmentId);
+      
+      if (!assignment) {
+        return res.status(404).json({ message: "Assignment not found" });
+      }
+
+      // Verify the teacher owns this assignment
+      if (assignment.teacherId !== req.user.id) {
+        return res.status(403).json({ message: 'Access denied. You do not own this assignment.' });
+      }
+
+      await storage.deleteAssignment(assignmentId);
+      res.json({ message: "Assignment deleted successfully" });
+    } catch (error) {
+      console.error("Delete assignment error:", error);
+      res.status(500).json({ message: "Failed to delete assignment" });
     }
   });
 
@@ -3685,25 +3797,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // PHASE 2A: ASSIGNMENT MANAGEMENT SYSTEM
   
-  // Assignment Management for Teachers
-  app.post('/api/assignments', authenticate, async (req: any, res) => {
-    try {
-      if (req.user.role !== 'teacher') {
-        return res.status(403).json({ message: 'Only teachers can create assignments' });
-      }
-      
-      const assignmentData = insertAssignmentAdvancedSchema.parse(req.body);
-      const assignment = await storage.createAssignment({
-        ...assignmentData,
-        createdBy: req.user.id,
-        classroomId: req.body.classroomId
-      });
-      res.json({ assignment });
-    } catch (error) {
-      console.error('Create assignment error:', error);
-      res.status(400).json({ message: 'Failed to create assignment' });
-    }
-  });
+  // Assignment Management for Teachers - Duplicate endpoint removed
 
   // Get assignments for a classroom (legacy endpoint)
   app.get('/api/assignments/:classroomId', authenticate, async (req: any, res) => {

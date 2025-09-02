@@ -1,0 +1,80 @@
+I need full fixes and functionality testing across my application, especially in proposals (RFP), challenges, badges, and student settings.
+
+RFP Creation:
+
+When I hit 'Create RFP,' the proposal is not being added to the system.
+
+Submitting the form throws errors and the RFP does not appear in the dashboard.
+
+Fix this so creating an RFP works without errors and displays immediately after submission.
+
+Teachers should also be able to edit and delete RFPs after they are created.
+
+RFP Visibility (Private vs. Public):
+
+If a teacher selects 'Private' visibility, they should see a list of students to choose from.
+
+Only selected students should be able to see and access that RFP.
+
+Challenges & Badges Templates:
+
+The 'Use Template' button is not working.
+
+Clicking it should correctly add the selected template (challenge or badge) into the active tab/list for the teacher to manage.
+
+The UI should update live without refresh.
+
+Student Settings:
+
+Saving student settings throws a 'failed to execute JSON' error. Fix this so settings save properly.
+
+Student settings must allow teachers to configure starting tokens, recurring token pay (weekly/biweekly/monthly).
+
+Reposition the 'Student Settings' button so it is intuitive and accessible inside the 'Students' tab.
+
+API Errors:
+
+I’m receiving repeated errors like:
+
+Failed to execute 'fetch' on 'Window': '/api/proposals/classroom/... is not a valid HTTP method.
+Failed to execute 'fetch' on 'Window': '/api/assignments/classroom/... is not a valid HTTP method.
+Failed to execute 'fetch' on 'Window': '/api/classrooms/.../students' is not a valid HTTP method.
+
+
+Fix all backend routes to use the correct HTTP methods:
+
+GET → fetch data
+
+POST → create
+
+PUT/PATCH → update
+
+DELETE → remove
+
+Ensure proposals, assignments, and classroom endpoints all return valid responses.
+
+Testing & Stability:
+
+Test all functionalities across the entire app.
+
+Test every portal, tab, and feature for:
+
+Add functions (creating RFPs, assignments, challenges, badges, announcements).
+
+Edit functions (updating existing records).
+
+Delete functions (removing students, proposals, assignments, etc.).
+
+Confirm data is saving, updating, and displaying properly.
+
+Ensure all modals/dialogs include proper accessibility attributes (no missing aria-describedby errors).
+
+Eliminate console errors and JSON failures.
+
+General Requirements:
+
+Keep the UI uncluttered, clean, and accessible.
+
+Ensure both teacher and student dashboards function smoothly without errors.
+
+Plug any gaps so all features behave reliably and consistently.
