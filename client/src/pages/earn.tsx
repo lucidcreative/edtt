@@ -5,7 +5,7 @@ import { useClassroom } from "@/contexts/ClassroomContext";
 import StudentEarn from "@/components/student/student-earn";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -63,7 +63,7 @@ export default function Earn() {
     category: '',
     dueDate: '',
     tokenReward: 10,
-    isRFP: false
+    link: ''
   });
 
   // Only allow teachers to access this page
@@ -125,7 +125,7 @@ export default function Earn() {
         category: '',
         dueDate: '',
         tokenReward: 10,
-        isRFP: false
+        link: ''
       });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments/classroom", currentClassroom?.id] });
     },
@@ -285,6 +285,9 @@ export default function Earn() {
                       </div>
                       Create New Assignment
                     </DialogTitle>
+                    <DialogDescription>
+                      Create a new assignment for your students to complete and earn tokens.
+                    </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">
                     <div>
@@ -333,30 +336,27 @@ export default function Earn() {
                         />
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium mb-1">Token Reward</label>
-                        <Input
-                          type="number"
-                          value={assignmentForm.tokenReward}
-                          onChange={(e) => setAssignmentForm(prev => ({ ...prev, tokenReward: parseInt(e.target.value) || 0 }))}
-                          placeholder="10"
-                          min={0}
-                          data-testid="input-assignment-tokens"
-                        />
-                      </div>
-                      <div className="flex items-end">
-                        <label className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={assignmentForm.isRFP}
-                            onChange={(e) => setAssignmentForm(prev => ({ ...prev, isRFP: e.target.checked }))}
-                            className="rounded"
-                            data-testid="checkbox-assignment-rfp"
-                          />
-                          <span className="text-sm">Special Project/Proposal</span>
-                        </label>
-                      </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Token Reward</label>
+                      <Input
+                        type="number"
+                        value={assignmentForm.tokenReward}
+                        onChange={(e) => setAssignmentForm(prev => ({ ...prev, tokenReward: parseInt(e.target.value) || 0 }))}
+                        placeholder="10"
+                        min={0}
+                        data-testid="input-assignment-tokens"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Link (Optional)</label>
+                      <Input
+                        type="url"
+                        value={assignmentForm.link}
+                        onChange={(e) => setAssignmentForm(prev => ({ ...prev, link: e.target.value }))}
+                        placeholder="https://example.com/resource"
+                        data-testid="input-assignment-link"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Add a URL for additional resources or instructions</p>
                     </div>
                     <div className="flex gap-2 pt-4">
                       <Button onClick={handleCreateAssignment} disabled={createAssignmentMutation.isPending} className="flex-1" data-testid="button-create-assignment">
@@ -407,7 +407,6 @@ export default function Earn() {
                               <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-1">{assignment.title}</h3>
                               <div className="flex items-center gap-2 mb-2">
                                 <Badge variant="outline">{assignment.category}</Badge>
-                                {assignment.isRFP && <Badge variant="secondary">Special Project</Badge>}
                               </div>
                             </div>
                             <div className="flex gap-1">
@@ -515,6 +514,66 @@ export default function Earn() {
               </div>
             </div>
 
+            {/* Time Tracking Controls */}
+            <Card className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm border border-white/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="w-5 h-5" />
+                  Time Tracking Settings
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label>Tokens per Hour</Label>
+                    <Input
+                      type="number"
+                      value={currentClassroom?.tokensPerHour || 5}
+                      onChange={(e) => {
+                        // TODO: Update classroom settings
+                      }}
+                      min={1}
+                      max={50}
+                    />
+                  </div>
+                  <div>
+                    <Label>Max Daily Hours per Student</Label>
+                    <Input
+                      type="number"
+                      value={currentClassroom?.maxDailyHours || 8}
+                      onChange={(e) => {
+                        // TODO: Update classroom settings
+                      }}
+                      min={1}
+                      max={12}
+                      step={0.5}
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={currentClassroom?.timeTrackingEnabled || false}
+                        onChange={(e) => {
+                          // TODO: Update classroom settings
+                        }}
+                        className="rounded"
+                      />
+                      <span className="text-sm">Enable Time Tracking</span>
+                    </label>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm">
+                    Save Settings
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    Pause All Sessions
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Time Tracking Stats */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm border border-white/20">
@@ -582,7 +641,7 @@ export default function Earn() {
             {/* Time Tracking Table */}
             <Card className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm border border-white/20">
               <CardHeader>
-                <CardTitle>Recent Time Sessions</CardTitle>
+                <CardTitle>Time Tracking Sessions</CardTitle>
               </CardHeader>
               <CardContent>
                 {timeTracking.length === 0 ? (
@@ -596,25 +655,54 @@ export default function Earn() {
                       <thead>
                         <tr className="border-b">
                           <th className="text-left p-2">Student</th>
-                          <th className="text-left p-2">Date</th>
+                          <th className="text-left p-2">Clock In</th>
+                          <th className="text-left p-2">Clock Out</th>
                           <th className="text-left p-2">Duration</th>
                           <th className="text-left p-2">Tokens</th>
                           <th className="text-left p-2">Status</th>
+                          <th className="text-left p-2">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {timeTracking.slice(0, 10).map((entry: any, index: number) => {
+                        {timeTracking.slice(0, 15).map((entry: any, index: number) => {
                           const student = students.find(s => s.id === entry.studentId);
+                          const clockInTime = new Date(entry.clockInTime);
+                          const clockOutTime = entry.clockOutTime ? new Date(entry.clockOutTime) : null;
                           return (
                             <tr key={index} className="border-b">
-                              <td className="p-2">{student?.name || student?.nickname || 'Unknown'}</td>
-                              <td className="p-2">{new Date(entry.clockInTime).toLocaleDateString()}</td>
+                              <td className="p-2 font-medium">{student?.name || student?.nickname || 'Unknown'}</td>
+                              <td className="p-2 text-sm">
+                                <div>{clockInTime.toLocaleDateString()}</div>
+                                <div className="text-gray-500">{clockInTime.toLocaleTimeString()}</div>
+                              </td>
+                              <td className="p-2 text-sm">
+                                {clockOutTime ? (
+                                  <div>
+                                    <div>{clockOutTime.toLocaleDateString()}</div>
+                                    <div className="text-gray-500">{clockOutTime.toLocaleTimeString()}</div>
+                                  </div>
+                                ) : (
+                                  <span className="text-blue-600">Active</span>
+                                )}
+                              </td>
                               <td className="p-2">{Math.round((entry.duration || 0) / 60 * 10) / 10}h</td>
-                              <td className="p-2">{entry.tokensEarned || 0}</td>
+                              <td className="p-2 font-medium">{entry.tokensEarned || 0}</td>
                               <td className="p-2">
-                                <Badge variant={entry.status === 'completed' ? 'default' : 'secondary'}>
+                                <Badge variant={entry.status === 'completed' ? 'default' : entry.status === 'active' ? 'secondary' : 'outline'}>
                                   {entry.status}
                                 </Badge>
+                              </td>
+                              <td className="p-2">
+                                <div className="flex gap-1">
+                                  <Button size="sm" variant="outline" title="Adjust Time">
+                                    <Edit className="w-3 h-3" />
+                                  </Button>
+                                  {entry.status === 'active' && (
+                                    <Button size="sm" variant="outline" title="Force Clock Out">
+                                      <XCircle className="w-3 h-3" />
+                                    </Button>
+                                  )}
+                                </div>
                               </td>
                             </tr>
                           );

@@ -1,0 +1,80 @@
+Teacher Dashboard Fixes & Enhancements
+1. Earn Tab – Assignment Creation
+
+Teachers currently cannot add assignments for students.
+
+Add functionality so teachers can create assignments directly from the Earn tab.
+
+Assignment form must include:
+
+Title
+
+Description
+
+Optional link field (teachers can attach a URL to the assignment).
+
+Remove the “Special Project/Proposal” button from the Earn tab — proposals already have their own page.
+
+2. Time Tracking Enhancements (Teacher Dashboard)
+
+Currently, the time tracking feature only shows analytics. Teachers need full control.
+
+Add teacher controls for time tracking:
+
+Set token earnings per hour (custom rate per class).
+
+Set maximum allowed clock-in time per student per day.
+
+Option to pause/disable clock-in for the whole class (in case of holidays, breaks, etc.).
+
+Add logging so teachers can see when students clock in/out, with timestamps.
+
+Add option for teachers to manually adjust a student’s clocked hours (in case of errors).
+
+3. Student Management – Manual Add Bug
+
+Manual add student still fails with 500 error.
+
+Debug and fix backend issue:
+
+Ensure database insertion works correctly.
+
+Check validation (e.g., duplicate student, missing fields).
+
+Return clear error messages instead of generic 500.
+
+After fix, teachers should be able to add students individually without error.
+
+4. Mobile & Tablet View Uniformity
+
+On mobile and tablet views, the tabs/menus should match desktop view exactly.
+
+Side menu should always contain the same items across all devices (desktop, tablet, mobile).
+
+Maintain uniform layout and navigation across all breakpoints to reduce confusion.
+
+5. (Optional Nice-to-Have Improvements)
+
+Add success/error notifications (toast or modal) whenever teachers create assignments, add students, or update time tracking settings.
+
+Provide teachers a summary dashboard showing:
+
+Active assignments
+
+Total tokens distributed
+
+Student participation rates
+
+✅ Deliverables:
+
+Assignments fully working in Earn tab (with optional link).
+
+"Special Project/Proposal" removed from Earn tab.
+
+Time tracking enhanced with teacher controls (rate, max time, pause, manual adjust).
+
+Manual student add bug fixed (no more 500 error).
+
+Uniform navigation across desktop, mobile, and tablet.
+
+Clear notifications and error handling added.

@@ -115,6 +115,7 @@ export const assignments = pgTable("assignments", {
   dueDate: timestamp("due_date"),
   isActive: boolean("is_active").default(true),
   isRFP: boolean("is_rfp").default(false),
+  resourceUrl: varchar("resource_url", { length: 1000 }),
   learningObjectives: text("learning_objectives").array(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()

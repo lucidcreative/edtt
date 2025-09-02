@@ -412,7 +412,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create student
       const studentResult = await db.insert(users).values({
-        id: nanoid(),
         username,
         name,
         pinHash,
@@ -429,7 +428,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Enroll student in classroom
       await db.insert(enrollments).values({
-        id: nanoid(),
         studentId: student.id,
         classroomId,
         enrollmentStatus: 'approved',
@@ -476,7 +474,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           // Create student
           const studentResult = await db.insert(users).values({
-            id: nanoid(),
             username,
             name,
             pinHash,
@@ -493,7 +490,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           // Enroll student in classroom
           await db.insert(enrollments).values({
-            id: nanoid(),
             studentId: student.id,
             classroomId,
             enrollmentStatus: 'approved',
