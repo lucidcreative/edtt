@@ -168,7 +168,7 @@ export default function ProposalsPortal() {
       if (selectedStatus !== "all") params.append("status", selectedStatus);
       if (selectedPriority !== "all") params.append("priority", selectedPriority);
       const url = `/api/proposals/classroom/${selectedClassroom!.id}${params.toString() ? `?${params.toString()}` : ''}`;
-      return apiRequest(url, 'GET');
+      return apiRequest('GET', url);
     }
   });
 
@@ -180,7 +180,7 @@ export default function ProposalsPortal() {
   const { data: studentsData } = useQuery({
     queryKey: ['/api/classrooms', selectedClassroom?.id, 'students'],
     enabled: !!selectedClassroom?.id && rfpVisibility === 'private',
-    queryFn: async () => apiRequest(`/api/classrooms/${selectedClassroom!.id}/students`, 'GET')
+    queryFn: async () => apiRequest('GET', `/api/classrooms/${selectedClassroom!.id}/students`)
   });
 
   const students = Array.isArray(studentsData) ? studentsData : [];
@@ -190,7 +190,7 @@ export default function ProposalsPortal() {
     queryKey: ['/api/assignments', selectedClassroom?.id, 'rfp'],
     enabled: !!selectedClassroom?.id,
     queryFn: async () => {
-      const assignments = await apiRequest(`/api/assignments/classroom/${selectedClassroom!.id}`, 'GET');
+      const assignments = await apiRequest('GET', `/api/assignments/classroom/${selectedClassroom!.id}`);
       return Array.isArray(assignments) ? assignments.filter((a: any) => a.isRFP) : [];
     }
   });
@@ -198,7 +198,7 @@ export default function ProposalsPortal() {
   // Review proposal mutation
   const reviewProposalMutation = useMutation({
     mutationFn: ({ proposalId, action, feedback }: { proposalId: string; action: string; feedback: string }) =>
-      apiRequest(`/api/proposals/${proposalId}/review`, 'POST', { action, feedback }),
+      apiRequest('POST', `/api/proposals/${proposalId}/review`, { action, feedback }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/proposals/classroom'] });
       setShowDetailsDialog(false);
@@ -209,7 +209,7 @@ export default function ProposalsPortal() {
   // Update progress mutation
   const updateProgressMutation = useMutation({
     mutationFn: ({ proposalId, progressPercentage, completedMilestones }: any) =>
-      apiRequest(`/api/proposals/${proposalId}/progress`, 'PATCH', { progressPercentage, completedMilestones }),
+      apiRequest('PATCH', `/api/proposals/${proposalId}/progress`, { progressPercentage, completedMilestones }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/proposals/classroom'] });
     }
@@ -218,7 +218,7 @@ export default function ProposalsPortal() {
   // Create RFP mutation
   const createRFPMutation = useMutation({
     mutationFn: (rfpData: any) =>
-      apiRequest('/api/assignments', 'POST', {
+      apiRequest('POST', '/api/assignments', {
         ...rfpData,
         isRFP: true,
         classroomId: selectedClassroom?.id,
@@ -246,7 +246,7 @@ export default function ProposalsPortal() {
   // Delete RFP mutation
   const deleteRFPMutation = useMutation({
     mutationFn: (assignmentId: string) =>
-      apiRequest(`/api/assignments/${assignmentId}`, 'DELETE'),
+      apiRequest('DELETE', `/api/assignments/${assignmentId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/proposals/classroom'] });
     }
@@ -255,7 +255,7 @@ export default function ProposalsPortal() {
   // Update RFP mutation
   const updateRFPMutation = useMutation({
     mutationFn: ({ assignmentId, rfpData }: { assignmentId: string; rfpData: any }) =>
-      apiRequest(`/api/assignments/${assignmentId}`, 'PUT', rfpData),
+      apiRequest('PUT', `/api/assignments/${assignmentId}`, rfpData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/proposals/classroom'] });
       setShowEditRFPDialog(false);

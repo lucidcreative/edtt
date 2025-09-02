@@ -14,13 +14,12 @@ interface LeaderboardProps {
 }
 
 export default function Leaderboard({ students = [] }: LeaderboardProps) {
-  // Sort students by tokens (highest first) and take top 3
-  const topStudents = students
-    .sort((a, b) => b.tokens - a.tokens)
-    .slice(0, 3);
+  // Sort students by tokens (highest first) - show all students
+  const allStudents = students
+    .sort((a, b) => b.tokens - a.tokens);
 
   // Only show leaderboard if there are real students
-  if (topStudents.length === 0) {
+  if (allStudents.length === 0) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
         <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Leaderboard</h3>
@@ -36,8 +35,8 @@ export default function Leaderboard({ students = [] }: LeaderboardProps) {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
       <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Leaderboard</h3>
-      <div className="space-y-3">
-        {topStudents.map((student, index) => (
+      <div className="space-y-3 max-h-96 overflow-y-auto">
+        {allStudents.map((student, index) => (
           <motion.div
             key={student.id}
             initial={{ opacity: 0, x: -20 }}
@@ -60,7 +59,7 @@ export default function Leaderboard({ students = [] }: LeaderboardProps) {
               </p>
             </div>
             <span className="text-lg">
-              {index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}
+              {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
             </span>
           </motion.div>
         ))}

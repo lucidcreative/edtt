@@ -140,6 +140,13 @@ export interface IStorage {
   getBadgeAnalytics(classroomId: string): Promise<any>;
   getBadge(id: string): Promise<Badge | undefined>;
   awardBadgeToStudent(data: { studentId: string; badgeId: string; awardedBy: string; reason?: string }): Promise<StudentBadge>;
+  
+  // Store Template operations
+  getStoreItemTemplates(): Promise<any[]>;
+  
+  // Store items operations
+  getStoreItems(classroomId: string): Promise<any[]>;
+  createStoreItem(item: any): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -176,14 +183,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(user: InsertUser): Promise<User> {
-    const [newUser] = await db.insert(users).values([user]).returning();
+    const [newUser] = await db.insert(users).values([{
+      ...user,
+      role: user.role as 'teacher' | 'student' | 'admin'
+    }]).returning();
     return newUser;
   }
 
   async updateUser(id: string, updates: Partial<InsertUser>): Promise<User> {
+    const sanitizedUpdates: any = { ...updates, updatedAt: new Date() };
+    if (sanitizedUpdates.role) {
+      sanitizedUpdates.role = sanitizedUpdates.role as 'teacher' | 'student' | 'admin';
+    }
     const [updatedUser] = await db
       .update(users)
-      .set({ ...updates, updatedAt: new Date() })
+      .set(sanitizedUpdates)
       .where(eq(users.id, id))
       .returning();
     return updatedUser;
@@ -225,14 +239,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createClassroom(classroom: InsertClassroom): Promise<Classroom> {
-    const [newClassroom] = await db.insert(classrooms).values([classroom]).returning();
+    const [newClassroom] = await db.insert(classrooms).values([{
+      ...classroom,
+      recurringPayFrequency: classroom.recurringPayFrequency as 'weekly' | 'biweekly' | 'monthly' | null
+    }]).returning();
     return newClassroom;
   }
 
   async updateClassroom(id: string, updates: Partial<InsertClassroom>): Promise<Classroom> {
+    const sanitizedUpdates: any = { ...updates, updatedAt: new Date() };
+    if (sanitizedUpdates.recurringPayFrequency) {
+      sanitizedUpdates.recurringPayFrequency = sanitizedUpdates.recurringPayFrequency as 'weekly' | 'biweekly' | 'monthly' | null;
+    }
     const [updatedClassroom] = await db
       .update(classrooms)
-      .set({ ...updates, updatedAt: new Date() })
+      .set(sanitizedUpdates)
       .where(eq(classrooms.id, id))
       .returning();
     return updatedClassroom;
@@ -320,14 +341,24 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createAssignment(assignment: InsertAssignment): Promise<Assignment> {
-    const [newAssignment] = await db.insert(assignments).values([assignment]).returning();
+    const [newAssignment] = await db.insert(assignments).values([{
+      ...assignment,
+      launchType: assignment.launchType as 'immediate' | 'scheduled' | 'manual' | null
+    }]).returning();
     return newAssignment;
   }
 
   async updateAssignment(id: string, updates: Partial<InsertAssignment>): Promise<Assignment> {
+    const sanitizedUpdates: any = { ...updates, updatedAt: new Date() };
+    if (sanitizedUpdates.launchType) {
+      sanitizedUpdates.launchType = sanitizedUpdates.launchType as 'immediate' | 'scheduled' | 'manual' | null;
+    }
+    if (sanitizedUpdates.visibility) {
+      sanitizedUpdates.visibility = sanitizedUpdates.visibility as 'public' | 'private' | null;
+    }
     const [updatedAssignment] = await db
       .update(assignments)
-      .set({ ...updates, updatedAt: new Date() })
+      .set(sanitizedUpdates)
       .where(eq(assignments.id, id))
       .returning();
     return updatedAssignment;
@@ -353,14 +384,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createAssignmentResource(resource: InsertAssignmentResource): Promise<AssignmentResource> {
-    const [newResource] = await db.insert(assignmentResources).values([resource]).returning();
+    const [newResource] = await db.insert(assignmentResources).values([{
+      ...resource,
+      accessLevel: resource.accessLevel as 'public' | 'classroom' | 'teacher_only'
+    }]).returning();
     return newResource;
   }
 
   async updateAssignmentResource(id: string, updates: Partial<InsertAssignmentResource>): Promise<AssignmentResource> {
+    const sanitizedUpdates: any = { ...updates, updatedAt: new Date() };
+    if (sanitizedUpdates.accessLevel) {
+      sanitizedUpdates.accessLevel = sanitizedUpdates.accessLevel as 'public' | 'classroom' | 'teacher_only';
+    }
     const [updatedResource] = await db
       .update(assignmentResources)
-      .set({ ...updates, updatedAt: new Date() })
+      .set(sanitizedUpdates)
       .where(eq(assignmentResources.id, id))
       .returning();
     return updatedResource;
@@ -396,7 +434,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createSubmission(submission: InsertSubmission): Promise<Submission> {
-    const [newSubmission] = await db.insert(submissions).values([submission]).returning();
+    const [newSubmission] = await db.insert(submissions).values([{
+      ...submission,
+      status: submission.status as 'pending' | 'approved' | 'rejected'
+    }]).returning();
     return newSubmission;
   }
 
@@ -411,7 +452,11 @@ export class DatabaseStorage implements IStorage {
 
   // Enhanced Proposal operations for comprehensive special projects management
   async createProposal(proposal: InsertProposal): Promise<Proposal> {
-    const [newProposal] = await db.insert(proposals).values([proposal]).returning();
+    const [newProposal] = await db.insert(proposals).values([{
+      ...proposal,
+      status: proposal.status as 'draft' | 'submitted' | 'pending' | 'under_review' | 'needs_revision' | 'approved' | 'rejected' | 'in_progress' | 'completed',
+      priority: proposal.priority as 'low' | 'medium' | 'high' | 'urgent' | null
+    }]).returning();
     return newProposal;
   }
 
@@ -484,9 +529,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateProposal(proposalId: string, updates: Partial<InsertProposal>): Promise<Proposal> {
+    const sanitizedUpdates: any = { ...updates, updatedAt: new Date() };
+    if (sanitizedUpdates.status) {
+      sanitizedUpdates.status = sanitizedUpdates.status as 'draft' | 'submitted' | 'pending' | 'under_review' | 'needs_revision' | 'approved' | 'rejected' | 'in_progress' | 'completed';
+    }
+    if (sanitizedUpdates.priority) {
+      sanitizedUpdates.priority = sanitizedUpdates.priority as 'low' | 'medium' | 'high' | 'urgent' | null;
+    }
     const [updatedProposal] = await db
       .update(proposals)
-      .set({ ...updates, updatedAt: new Date() })
+      .set(sanitizedUpdates)
       .where(eq(proposals.id, proposalId))
       .returning();
     return updatedProposal;
@@ -546,7 +598,10 @@ export class DatabaseStorage implements IStorage {
 
   // Proposal Feedback operations
   async createProposalFeedback(feedback: InsertProposalFeedback): Promise<ProposalFeedback> {
-    const [newFeedback] = await db.insert(proposalFeedback).values([feedback]).returning();
+    const [newFeedback] = await db.insert(proposalFeedback).values([{
+      ...feedback,
+      feedbackType: feedback.feedbackType as 'initial_review' | 'revision_request' | 'approval' | 'rejection' | 'student_response' | 'progress_update'
+    }]).returning();
     return newFeedback;
   }
 
@@ -574,7 +629,10 @@ export class DatabaseStorage implements IStorage {
 
   // Proposal Notifications operations
   async createProposalNotification(notification: InsertProposalNotification): Promise<ProposalNotification> {
-    const [newNotification] = await db.insert(proposalNotifications).values([notification]).returning();
+    const [newNotification] = await db.insert(proposalNotifications).values([{
+      ...notification,
+      notificationType: notification.notificationType as 'status_change' | 'feedback_received' | 'deadline_reminder' | 'approval' | 'rejection' | 'revision_request'
+    }]).returning();
     return newNotification;
   }
 
@@ -585,7 +643,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(proposalNotifications.userId, userId));
 
     if (unreadOnly) {
-      query = query.where(eq(proposalNotifications.isRead, false));
+      query = query.where(and(eq(proposalNotifications.userId, userId), eq(proposalNotifications.isRead, false)));
     }
 
     return query.orderBy(desc(proposalNotifications.createdAt));
@@ -608,7 +666,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createChallenge(challenge: InsertChallenge): Promise<Challenge> {
-    const [newChallenge] = await db.insert(challenges).values([challenge]).returning();
+    const [newChallenge] = await db.insert(challenges).values([{
+      ...challenge,
+      type: challenge.type as 'classroom' | 'individual' | 'team',
+      targetMetric: challenge.targetMetric as 'tokens_earned' | 'assignments_completed' | 'attendance_streak' | 'participation_score' | 'time_logged'
+    }]).returning();
     return newChallenge;
   }
 
@@ -771,9 +833,198 @@ export class DatabaseStorage implements IStorage {
   async awardBadgeToStudent(data: { studentId: string; badgeId: string; awardedBy: string; reason?: string }): Promise<StudentBadge> {
     const [award] = await db.insert(studentBadges).values([{
       ...data,
-      awardedAt: new Date()
+      earnedAt: new Date()
     }]).returning();
     return award;
+  }
+
+  // Store Template operations
+  async getStoreItemTemplates(): Promise<any[]> {
+    // Return predefined templates as specified in requirements
+    return [
+      // Badge Templates
+      {
+        id: 'perfect-attendance',
+        title: 'Perfect Attendance',
+        description: 'Awarded for attending every session in a week',
+        suggestedPrice: 50,
+        category: 'badges',
+        itemType: 'digital',
+        icon: '🏆',
+        tags: ['attendance', 'achievement', 'weekly']
+      },
+      {
+        id: 'homework-hero',
+        title: 'Homework Hero',
+        description: 'Complete all homework on time for 2 weeks',
+        suggestedPrice: 75,
+        category: 'badges',
+        itemType: 'digital',
+        icon: '📚',
+        tags: ['homework', 'consistency', 'achievement']
+      },
+      {
+        id: 'team-player',
+        title: 'Team Player',
+        description: 'Collaborates well on group work',
+        suggestedPrice: 60,
+        category: 'badges',
+        itemType: 'digital',
+        icon: '🤝',
+        tags: ['collaboration', 'teamwork', 'social']
+      },
+      {
+        id: 'most-improved',
+        title: 'Most Improved',
+        description: 'Greatest measurable improvement in assignment scores',
+        suggestedPrice: 100,
+        category: 'badges',
+        itemType: 'digital',
+        icon: '📈',
+        tags: ['improvement', 'growth', 'achievement']
+      },
+      {
+        id: 'top-performer',
+        title: 'Top Performer of the Month',
+        description: 'Highest average score that month',
+        suggestedPrice: 150,
+        category: 'badges',
+        itemType: 'digital',
+        icon: '⭐',
+        tags: ['excellence', 'monthly', 'achievement']
+      },
+      
+      // Challenge Templates
+      {
+        id: 'ontime-streak',
+        title: '3 On-Time Streak',
+        description: 'Complete 3 assignments on time in a row',
+        suggestedPrice: 40,
+        category: 'challenges',
+        itemType: 'digital',
+        icon: '⚡',
+        tags: ['streak', 'punctuality', 'achievement']
+      },
+      {
+        id: 'token-sprint',
+        title: 'Token Sprint',
+        description: 'Earn 100 tokens in one week',
+        suggestedPrice: 30,
+        category: 'challenges',
+        itemType: 'digital',
+        icon: '💰',
+        tags: ['tokens', 'weekly', 'challenge']
+      },
+      {
+        id: 'peer-helper',
+        title: 'Peer Helper',
+        description: 'Give helpful feedback to 3 classmates',
+        suggestedPrice: 50,
+        category: 'challenges',
+        itemType: 'digital',
+        icon: '🤲',
+        tags: ['helping', 'feedback', 'social']
+      },
+      {
+        id: 'discussion-pro',
+        title: 'Discussion Pro',
+        description: 'Post 5 relevant contributions to class discussions',
+        suggestedPrice: 45,
+        category: 'challenges',
+        itemType: 'digital',
+        icon: '💬',
+        tags: ['discussion', 'participation', 'engagement']
+      },
+      {
+        id: 'extra-credit',
+        title: 'Extra Credit Submission',
+        description: 'Submit an optional extra-credit assignment',
+        suggestedPrice: 25,
+        category: 'challenges',
+        itemType: 'digital',
+        icon: '📝',
+        tags: ['extra-credit', 'optional', 'bonus']
+      },
+      
+      // RFP / Assignment Templates
+      {
+        id: 'landing-page-project',
+        title: 'Landing Page Project',
+        description: 'Design a class landing page with requirements and assets',
+        suggestedPrice: 200,
+        category: 'assignments',
+        itemType: 'project',
+        icon: '🖥️',
+        tags: ['web-design', 'project', 'creative']
+      },
+      {
+        id: 'data-visualization',
+        title: 'Data Visualization',
+        description: 'Create a dashboard visualizing supplied data',
+        suggestedPrice: 250,
+        category: 'assignments',
+        itemType: 'project',
+        icon: '📊',
+        tags: ['data', 'visualization', 'analysis']
+      },
+      {
+        id: 'marketing-campaign',
+        title: 'Marketing Campaign Plan',
+        description: 'Prepare a one-week microsite and social mockups',
+        suggestedPrice: 180,
+        category: 'assignments',
+        itemType: 'project',
+        icon: '📢',
+        tags: ['marketing', 'social-media', 'planning']
+      },
+      {
+        id: 'science-lab-report',
+        title: 'Science Lab Report',
+        description: 'Step-by-step lab write-up with deliverables',
+        suggestedPrice: 120,
+        category: 'assignments',
+        itemType: 'report',
+        icon: '🔬',
+        tags: ['science', 'lab', 'report']
+      },
+      {
+        id: 'math-problem-set',
+        title: 'Math Problem Set',
+        description: '20 problems with solutions and rubric',
+        suggestedPrice: 100,
+        category: 'assignments',
+        itemType: 'problem-set',
+        icon: '🧮',
+        tags: ['math', 'problems', 'solutions']
+      }
+    ];
+  }
+
+  // Store items operations
+  async getStoreItems(classroomId: string): Promise<any[]> {
+    try {
+      return await db
+        .select()
+        .from(storeItems)
+        .where(and(
+          eq(storeItems.classroomId, classroomId),
+          eq(storeItems.activeStatus, true)
+        ))
+        .orderBy(desc(storeItems.createdAt));
+    } catch (error) {
+      console.error('Error fetching store items:', error);
+      return [];
+    }
+  }
+
+  async createStoreItem(item: any): Promise<any> {
+    try {
+      const [newItem] = await db.insert(storeItems).values([item]).returning();
+      return newItem;
+    } catch (error) {
+      console.error('Error creating store item:', error);
+      throw error;
+    }
   }
 }
 
