@@ -1579,38 +1579,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Challenge routes
-  app.get('/api/classrooms/:id/challenges', authenticate, async (req: AuthenticatedRequest, res) => {
-    try {
-      const classroomId = req.params.id;
-      const challenges = await storage.getChallengesByClassroom(classroomId);
-      res.json(challenges);
-    } catch (error) {
-      console.error("Get challenges error:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.post('/api/classrooms/:id/challenges', authenticate, async (req: AuthenticatedRequest, res) => {
-    try {
-      const classroomId = req.params.id;
-      const classroom = await storage.getClassroom(classroomId);
-      
-      if (!classroom) {
-        return res.status(404).json({ message: "Classroom not found" });
-      }
-      
-      if (req.user.role !== 'teacher' || classroom.teacherId !== req.user.id) {
-        return res.status(403).json({ message: "Only classroom teachers can create challenges" });
-      }
-      
-      const challenge = await storage.createChallenge({ ...req.body, classroomId });
-      res.status(201).json(challenge);
-    } catch (error) {
-      console.error("Create challenge error:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
 
   app.put('/api/challenges/:id', authenticate, async (req: AuthenticatedRequest, res) => {
     try {

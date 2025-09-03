@@ -302,29 +302,17 @@ export default function ProposalsPortal() {
   const handleCreateRFP = () => {
     if (!rfpTitle.trim() || !rfpDescription.trim() || !rfpTokenReward.trim()) return;
     
-    // Validate private RFP has selected students
-    if (rfpVisibility === 'private' && selectedStudents.length === 0) {
-      alert('Please select at least one student for private RFPs');
-      return;
-    }
-    
-    let scheduledUnlockDate = null;
-    if (launchType === 'scheduled' && scheduledDate && scheduledTime) {
-      scheduledUnlockDate = new Date(`${scheduledDate}T${scheduledTime}`).toISOString();
-    }
-
+    // Create immediately without visibility controls - all RFPs are class-wide
     createRFPMutation.mutate({
       title: rfpTitle,
       description: rfpDescription,
       instructions: rfpRequirements,
       tokenReward: parseInt(rfpTokenReward),
       dueDate: rfpDeadline ? new Date(rfpDeadline).toISOString() : null,
-      category: 'project', // Default category for RFPs
-      visibility: rfpVisibility,
-      selectedStudents: rfpVisibility === 'private' ? selectedStudents : undefined,
-      launchType: launchType,
-      scheduledUnlockDate: scheduledUnlockDate,
-      isActive: launchType === 'immediate'
+      category: 'project',
+      visibility: 'public', // Force all RFPs to be public/class-wide
+      launchType: 'immediate', // Force immediate creation
+      isActive: true // Immediately active
     });
   };
 
@@ -670,7 +658,7 @@ export default function ProposalsPortal() {
                           <span className="text-muted-foreground">Progress</span>
                           <span className="font-medium">{proposal.progressPercentage}%</span>
                         </div>
-                        <Progress value={proposal.progressPercentage} className="h-2" />
+                        <Progress value={proposal.progressPercentage || 0} className="h-2" />
                       </div>
                     )}
 
@@ -720,7 +708,7 @@ export default function ProposalsPortal() {
                         <span>Project Progress</span>
                         <span className="font-medium">{proposal.progressPercentage}%</span>
                       </div>
-                      <Progress value={proposal.progressPercentage} />
+                      <Progress value={proposal.progressPercentage || 0} />
                     </div>
 
                     {proposal.milestones && proposal.milestones.length > 0 && (
@@ -857,7 +845,7 @@ export default function ProposalsPortal() {
                         </div>
 
                         <div className="text-xs text-muted-foreground">
-                          {proposalsData?.filter((p: any) => p.assignmentId === assignment.id).length || 0} proposals submitted
+                          {Array.isArray(proposalsData) ? proposalsData.filter((p: any) => p.assignmentId === assignment.id).length : 0} proposals submitted
                         </div>
                       </CardContent>
                     </Card>
@@ -986,7 +974,7 @@ export default function ProposalsPortal() {
                         </span>
                         <span>{count} ({percentage.toFixed(1)}%)</span>
                       </div>
-                      <Progress value={percentage} className="h-1" />
+                      <Progress value={percentage || 0} className="h-1" />
                     </div>
                   );
                 })}
@@ -1139,7 +1127,6 @@ export default function ProposalsPortal() {
                   !rfpTitle.trim() || 
                   !rfpDescription.trim() || 
                   !rfpTokenReward.trim() || 
-                  (rfpVisibility === 'private' && selectedStudents.length === 0) ||
                   createRFPMutation.isPending
                 }
                 className="bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700"
@@ -1226,7 +1213,7 @@ export default function ProposalsPortal() {
                         <span>Completion</span>
                         <span className="font-medium">{selectedProposal.progressPercentage}%</span>
                       </div>
-                      <Progress value={selectedProposal.progressPercentage} />
+                      <Progress value={selectedProposal.progressPercentage || 0} />
                     </div>
                   </div>
 

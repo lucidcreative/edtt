@@ -754,7 +754,7 @@ export default function EnhancedBadges() {
                   <Trophy className="h-5 w-5 text-purple-500" />
                   <div>
                     <p className="text-sm font-medium">Awarded</p>
-                    <div className="text-2xl font-bold">{analytics?.totalAwarded || 0}</div>
+                    <div className="text-2xl font-bold">{(analytics as any)?.totalAwarded || 0}</div>
                   </div>
                 </div>
               </CardContent>
@@ -766,7 +766,7 @@ export default function EnhancedBadges() {
                   <TrendingUp className="h-5 w-5 text-green-500" />
                   <div>
                     <p className="text-sm font-medium">This Week</p>
-                    <div className="text-2xl font-bold">{analytics?.thisWeek || 0}</div>
+                    <div className="text-2xl font-bold">{(analytics as any)?.thisWeek || 0}</div>
                   </div>
                 </div>
               </CardContent>

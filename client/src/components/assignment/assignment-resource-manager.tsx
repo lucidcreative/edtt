@@ -79,15 +79,12 @@ export function AssignmentResourceManager({ assignmentId, classroomId }: Assignm
   // Fetch assignment resources
   const { data: resources = [], isLoading } = useQuery({
     queryKey: ['/api/assignments', assignmentId, 'resources'],
-    queryFn: () => apiRequest(`/api/assignments/${assignmentId}/resources`)
+    queryFn: () => apiRequest('GET', `/api/assignments/${assignmentId}/resources`)
   });
 
   // Create resource mutation
   const createResourceMutation = useMutation({
-    mutationFn: (data: any) => apiRequest(`/api/assignments/${assignmentId}/resources`, {
-      method: 'POST',
-      body: JSON.stringify(data)
-    }),
+    mutationFn: (data: any) => apiRequest('POST', `/api/assignments/${assignmentId}/resources`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/assignments', assignmentId, 'resources'] });
       setIsCreateOpen(false);
@@ -102,10 +99,7 @@ export function AssignmentResourceManager({ assignmentId, classroomId }: Assignm
   // Update resource mutation
   const updateResourceMutation = useMutation({
     mutationFn: ({ resourceId, data }: { resourceId: string; data: any }) => 
-      apiRequest(`/api/assignment-resources/${resourceId}`, {
-        method: 'PUT',
-        body: JSON.stringify(data)
-      }),
+      apiRequest('PUT', `/api/assignment-resources/${resourceId}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/assignments', assignmentId, 'resources'] });
       setEditingResource(null);
@@ -120,7 +114,7 @@ export function AssignmentResourceManager({ assignmentId, classroomId }: Assignm
   // Delete resource mutation
   const deleteResourceMutation = useMutation({
     mutationFn: (resourceId: string) => 
-      apiRequest(`/api/assignment-resources/${resourceId}`, { method: 'DELETE' }),
+      apiRequest('DELETE', `/api/assignment-resources/${resourceId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/assignments', assignmentId, 'resources'] });
       toast({ title: 'Resource deleted successfully!' });

@@ -1,0 +1,104 @@
+Fix RFP Creation, Assignment CRUD, and Full Dashboard Functionality
+1. RFP Creation
+
+Clicking “Create RFP” must add the RFP to the system immediately and display it in the teacher dashboard and the student dashboard (for students in the class).
+
+Remove the broken “visibility” feature; all RFPs should be class-wide by default.
+
+RFP fields: title, description, attachments, due/unlock date, locked status.
+
+Teachers can edit, delete, and unlock/lock RFPs.
+
+Students can view and respond to RFPs assigned to their class only.
+
+Fix all API calls (fetch) to use the correct HTTP methods (POST for create, PUT for edit, DELETE for delete). Ensure error handling for invalid requests.
+
+2. Assignment Functionality
+
+For all assignment cards, implement full CRUD operations:
+
+Manage resources button: add/edit resources for the assignment.
+
+View assignment button: open assignment details (students can view only).
+
+Edit assignment button: teachers can modify title, description, due date, resources.
+
+Delete assignment button: remove assignment permanently.
+
+Ensure UI updates immediately after any change.
+
+Enforce role-based permissions: students cannot edit/delete assignments; teachers can do all.
+
+Fix errors preventing assignments from saving or displaying correctly.
+
+3. Leaderboard & Badges/Challenges Integration
+
+Badges and Challenges must be inside the Leaderboard tab.
+
+Teachers can:
+
+Add badges/challenges (from templates or manually).
+
+Edit each badge/challenge (title, description, points, criteria).
+
+Toggle ON/OFF each badge/challenge without deleting.
+
+Remove badges/challenges.
+
+Students can only view assigned badges/challenges; no create/edit/delete.
+
+4. Student Permissions & Roster
+
+Students cannot create, edit, or delete any items (assignments, RFPs, badges, challenges, store items).
+
+Leaderboard, assignments, RFPs, badges, and challenges must reflect all students in the roster consistently.
+
+Fix cases where multiple students exist but only one is shown.
+
+5. Announcements
+
+Teachers can create, edit, delete, and schedule announcements.
+
+Students can view only.
+
+Display announcements clearly in the dashboard (no separate tab needed).
+
+6. API / Backend Fixes
+
+Ensure all fetch calls use the correct HTTP methods and endpoints:
+
+/api/proposals/classroom/:id → POST for create, PUT for edit, DELETE for remove.
+
+/api/assignments/classroom/:id → POST, PUT, DELETE as above.
+
+Validate server-side authorization to prevent students from performing teacher-only actions.
+
+Ensure all responses return consistent JSON shapes for UI consumption.
+
+Remove any legacy or broken endpoints that throw “not a valid HTTP method.”
+
+7. UI/UX Fixes
+
+All buttons for assignments and RFPs must perform their intended function and provide immediate feedback (e.g., RFP added, assignment updated).
+
+Maintain a consistent look for teacher and student dashboards.
+
+Ensure responsive and accessible design (aria attributes for modals/buttons, focus management).
+
+Leaderboard must show all students; metrics update dynamically after changes.
+
+8. Testing & QA
+
+Create, edit, delete RFPs and assignments as teacher → verify display for both teacher and students.
+
+Students can only view assignments, badges/challenges, and RFPs.
+
+Leaderboard shows all students; completion rate updates accurately.
+
+Badges/challenges can be toggled ON/OFF, edited, or removed by teachers; students see only active items.
+
+Scheduled announcements post correctly; students can view them.
+
+Confirm no console errors (not a valid HTTP method) or broken fetch requests.
+
+Test mobile and desktop layouts for all UI components.
