@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Avatar } from "@/components/ui/avatar";
+import { Switch } from "@/components/ui/switch";
 import { 
   Dialog, 
   DialogContent, 
@@ -37,11 +38,16 @@ import {
   Gift,
   Plus,
   Edit,
-  Zap
+  Zap,
+  MoreHorizontal,
+  Trash2,
+  ToggleLeft,
+  ToggleRight
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { useToast } from "@/hooks/use-toast";
 
 interface LeaderboardEntry {
   id: string;
@@ -58,6 +64,7 @@ export default function TeacherLeaderboard() {
   const { user } = useAuth();
   const { currentClassroom } = useClassroom();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedStudent, setSelectedStudent] = useState<LeaderboardEntry | null>(null);
@@ -66,6 +73,19 @@ export default function TeacherLeaderboard() {
   const [awardAmount, setAwardAmount] = useState(10);
   const [awardReason, setAwardReason] = useState('');
   const [selectedBadgeId, setSelectedBadgeId] = useState('');
+  
+  // Badge Management State
+  const [isBadgeCreateOpen, setIsBadgeCreateOpen] = useState(false);
+  const [badgeFormData, setBadgeFormData] = useState({
+    name: '', description: '', icon: 'fas fa-star', color: '#f59e0b', category: 'academic'
+  });
+  
+  // Challenge Management State
+  const [isChallengeCreateOpen, setIsChallengeCreateOpen] = useState(false);
+  const [challengeFormData, setChallengeFormData] = useState({
+    title: '', description: '', type: 'individual', targetMetric: 'assignments_completed',
+    targetValue: 10, tokenReward: 100, startDate: '', endDate: ''
+  });
 
   // Fetch leaderboard data
   const { data: leaderboard = [], isLoading } = useQuery({
@@ -88,6 +108,18 @@ export default function TeacherLeaderboard() {
   // Fetch student badge analytics
   const { data: badgeAnalytics = {} } = useQuery({
     queryKey: [`/api/classrooms/${currentClassroom?.id}/badge-analytics`],
+    enabled: !!currentClassroom?.id
+  });
+
+  // Fetch challenges for the classroom
+  const { data: challenges = [] } = useQuery({
+    queryKey: [`/api/classrooms/${currentClassroom?.id}/challenges`],
+    enabled: !!currentClassroom?.id
+  });
+
+  // Fetch challenge analytics
+  const { data: challengeAnalytics = {} } = useQuery({
+    queryKey: [`/api/classrooms/${currentClassroom?.id}/challenge-analytics`],
     enabled: !!currentClassroom?.id
   });
 
@@ -121,6 +153,39 @@ export default function TeacherLeaderboard() {
       queryClient.invalidateQueries({ queryKey: [`/api/classrooms/${currentClassroom?.id}/badge-analytics`] });
       setIsAwardDialogOpen(false);
       resetAwardForm();
+    }
+  });
+
+  // Badge creation mutation
+  const createBadgeMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const response = await apiRequest('POST', `/api/classrooms/${currentClassroom?.id}/badges`, data);
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/classrooms/${currentClassroom?.id}/badges`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/classrooms/${currentClassroom?.id}/badge-analytics`] });
+      setIsBadgeCreateOpen(false);
+      setBadgeFormData({ name: '', description: '', icon: 'fas fa-star', color: '#f59e0b', category: 'academic' });
+      toast({ title: "Badge created!", description: "Your new badge has been added to the classroom." });
+    }
+  });
+
+  // Challenge creation mutation
+  const createChallengeMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const response = await apiRequest('POST', `/api/classrooms/${currentClassroom?.id}/challenges`, data);
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/classrooms/${currentClassroom?.id}/challenges`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/classrooms/${currentClassroom?.id}/challenge-analytics`] });
+      setIsChallengeCreateOpen(false);
+      setChallengeFormData({
+        title: '', description: '', type: 'individual', targetMetric: 'assignments_completed',
+        targetValue: 10, tokenReward: 100, startDate: '', endDate: ''
+      });
+      toast({ title: "Challenge created!", description: "Your new challenge has been added to the classroom." });
     }
   });
 
@@ -246,10 +311,23 @@ export default function TeacherLeaderboard() {
 
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="badges">Badges</TabsTrigger>
-          <TabsTrigger value="challenges">Challenges</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="overview" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="badges" className="flex items-center gap-2">
+            <Award className="h-4 w-4" />
+            Badges
+          </TabsTrigger>
+          <TabsTrigger value="challenges" className="flex items-center gap-2">
+            <Target className="h-4 w-4" />
+            Challenges
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            Analytics
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
@@ -345,42 +423,229 @@ export default function TeacherLeaderboard() {
         </TabsContent>
 
         <TabsContent value="badges" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Award className="h-5 w-5 text-purple-500" />
-                Badge Analytics
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="text-center p-4 border rounded-lg">
-                  <h3 className="text-2xl font-bold text-purple-600">
-                    {badgeAnalytics.totalBadges || 0}
-                  </h3>
-                  <p className="text-sm text-gray-600">Total Badges</p>
+          <div className="space-y-6">
+            {/* Badge Analytics Summary */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Award className="h-5 w-5 text-purple-500" />
+                  Badge Management & Analytics
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="text-center p-4 border rounded-lg">
+                    <h3 className="text-2xl font-bold text-purple-600">
+                      {badgeAnalytics.totalBadges || 0}
+                    </h3>
+                    <p className="text-sm text-gray-600">Total Badges</p>
+                  </div>
+                  <div className="text-center p-4 border rounded-lg">
+                    <h3 className="text-2xl font-bold text-green-600">
+                      {badgeAnalytics.totalAwards || 0}
+                    </h3>
+                    <p className="text-sm text-gray-600">Total Awards</p>
+                  </div>
+                  <div className="text-center p-4 border rounded-lg">
+                    <h3 className="text-2xl font-bold text-blue-600">
+                      {badgeAnalytics.avgBadgesPerStudent || 0}
+                    </h3>
+                    <p className="text-sm text-gray-600">Avg per Student</p>
+                  </div>
+                  <div className="text-center p-4 border rounded-lg">
+                    <h3 className="text-2xl font-bold text-orange-600">
+                      {stats.totalStudents || 0}
+                    </h3>
+                    <p className="text-sm text-gray-600">Total Students</p>
+                  </div>
                 </div>
-                <div className="text-center p-4 border rounded-lg">
-                  <h3 className="text-2xl font-bold text-green-600">
-                    {badgeAnalytics.totalAwards || 0}
-                  </h3>
-                  <p className="text-sm text-gray-600">Total Awards</p>
+              </CardContent>
+            </Card>
+            
+            {/* Enhanced Badge Management Section */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Award className="h-5 w-5 text-purple-500" />
+                    Badge Management
+                  </CardTitle>
+                  <Button 
+                    onClick={() => setIsBadgeCreateOpen(true)}
+                    className="bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700"
+                    data-testid="button-create-badge"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Badge
+                  </Button>
                 </div>
-                <div className="text-center p-4 border rounded-lg">
-                  <h3 className="text-2xl font-bold text-blue-600">
-                    {badgeAnalytics.avgBadgesPerStudent || 0}
-                  </h3>
-                  <p className="text-sm text-gray-600">Avg per Student</p>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {badges.map((badge: any) => (
+                    <div key={badge.id} className="flex items-center justify-between p-4 border rounded-lg hover:shadow-md transition-all duration-200">
+                      <div className="flex items-center gap-3">
+                        <div 
+                          className="w-10 h-10 rounded-lg flex items-center justify-center text-white"
+                          style={{ backgroundColor: badge.color }}
+                        >
+                          <i className={badge.icon}></i>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold">{badge.name}</h4>
+                          <p className="text-sm text-gray-600">{badge.description}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Switch 
+                          checked={badge.isActive}
+                          onCheckedChange={(checked) => {
+                            toast({ title: "Badge updated", description: `${badge.name} is now ${checked ? 'active' : 'inactive'}` });
+                          }}
+                          data-testid={`switch-badge-${badge.id}`}
+                        />
+                        <Button size="sm" variant="outline" data-testid={`button-edit-badge-${badge.id}`}>
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                        <Button size="sm" variant="destructive" data-testid={`button-delete-badge-${badge.id}`}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  {badges.length === 0 && (
+                    <div className="text-center py-8">
+                      <Award className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No Badges Created</h3>
+                      <p className="text-gray-600 mb-4">Create your first badge to start recognizing student achievements.</p>
+                      <Button 
+                        onClick={() => setIsBadgeCreateOpen(true)}
+                        className="bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create First Badge
+                      </Button>
+                    </div>
+                  )}
                 </div>
-                <div className="text-center p-4 border rounded-lg">
-                  <h3 className="text-2xl font-bold text-orange-600">
-                    {stats.totalStudents || 0}
-                  </h3>
-                  <p className="text-sm text-gray-600">Total Students</p>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="challenges" className="space-y-6">
+          <div className="space-y-6">
+            {/* Challenge Analytics Summary */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="h-5 w-5 text-green-500" />
+                  Challenge Management & Analytics
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="text-center p-4 border rounded-lg">
+                    <h3 className="text-2xl font-bold text-green-600">
+                      {challengeAnalytics.totalChallenges || 0}
+                    </h3>
+                    <p className="text-sm text-gray-600">Total Challenges</p>
+                  </div>
+                  <div className="text-center p-4 border rounded-lg">
+                    <h3 className="text-2xl font-bold text-blue-600">
+                      {challengeAnalytics.activeChallenges || 0}
+                    </h3>
+                    <p className="text-sm text-gray-600">Active Challenges</p>
+                  </div>
+                  <div className="text-center p-4 border rounded-lg">
+                    <h3 className="text-2xl font-bold text-purple-600">
+                      {challengeAnalytics.completedChallenges || 0}
+                    </h3>
+                    <p className="text-sm text-gray-600">Completed</p>
+                  </div>
+                  <div className="text-center p-4 border rounded-lg">
+                    <h3 className="text-2xl font-bold text-orange-600">
+                      {challengeAnalytics.avgParticipation || 0}%
+                    </h3>
+                    <p className="text-sm text-gray-600">Participation Rate</p>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+            
+            {/* Enhanced Challenge Management Section */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Target className="h-5 w-5 text-green-500" />
+                    Challenge Management
+                  </CardTitle>
+                  <Button 
+                    onClick={() => setIsChallengeCreateOpen(true)}
+                    className="bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700"
+                    data-testid="button-create-challenge"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Challenge
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {challenges.map((challenge: any) => (
+                    <div key={challenge.id} className="flex items-center justify-between p-4 border rounded-lg hover:shadow-md transition-all duration-200">
+                      <div className="flex items-center gap-3">
+                        <div 
+                          className="w-10 h-10 rounded-lg flex items-center justify-center text-white"
+                          style={{ backgroundColor: challenge.color || '#10b981' }}
+                        >
+                          <Target className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <h4 className="font-semibold">{challenge.title}</h4>
+                          <p className="text-sm text-gray-600">{challenge.description}</p>
+                          <div className="flex items-center gap-4 mt-1">
+                            <span className="text-xs text-green-600">🪙 {challenge.tokenReward} tokens</span>
+                            <span className="text-xs text-blue-600">📊 {challenge.type}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Switch 
+                          checked={challenge.isActive}
+                          onCheckedChange={(checked) => {
+                            toast({ title: "Challenge updated", description: `${challenge.title} is now ${checked ? 'active' : 'inactive'}` });
+                          }}
+                          data-testid={`switch-challenge-${challenge.id}`}
+                        />
+                        <Button size="sm" variant="outline" data-testid={`button-edit-challenge-${challenge.id}`}>
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                        <Button size="sm" variant="destructive" data-testid={`button-delete-challenge-${challenge.id}`}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  {challenges.length === 0 && (
+                    <div className="text-center py-8">
+                      <Target className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No Challenges Created</h3>
+                      <p className="text-gray-600 mb-4">Create your first challenge to motivate students with goals and rewards.</p>
+                      <Button 
+                        onClick={() => setIsChallengeCreateOpen(true)}
+                        className="bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create First Challenge
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-6">

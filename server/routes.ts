@@ -1818,16 +1818,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Challenge routes
-  app.get('/api/classrooms/:id/challenges', authenticate, async (req: any, res) => {
-    try {
-      const challenges = await storage.getChallengesByClassroom(req.params.id);
-      res.json(challenges);
-    } catch (error) {
-      console.error("Get challenges error:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
 
   app.get('/api/students/:studentId/challenges/:classroomId', authenticate, async (req: any, res) => {
     try {

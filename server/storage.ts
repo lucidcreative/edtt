@@ -686,6 +686,16 @@ export class DatabaseStorage implements IStorage {
     return updatedChallenge;
   }
 
+  async getStudentChallengeProgress(studentId: string, classroomId: string): Promise<any[]> {
+    // Get challenges for classroom and student progress
+    const challenges = await this.getChallengesByClassroom(classroomId);
+    return challenges.map(challenge => ({
+      ...challenge,
+      progress: 0, // This would be calculated based on actual student data
+      isCompleted: false
+    }));
+  }
+
   async getChallengeAnalytics(classroomId: string): Promise<any> {
     // Get basic challenge counts and completion rates
     const challengesInClassroom = await this.getChallengesByClassroom(classroomId);

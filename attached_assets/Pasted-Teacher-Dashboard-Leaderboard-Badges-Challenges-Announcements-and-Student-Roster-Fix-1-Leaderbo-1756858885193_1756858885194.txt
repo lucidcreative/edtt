@@ -1,0 +1,84 @@
+Teacher Dashboard, Leaderboard, Badges/Challenges, Announcements, and Student Roster Fix
+1. Leaderboard & Student Roster
+
+Ensure all students in the class roster appear in the leaderboard and all student-related views.
+
+The leaderboard must dynamically reflect every student in the class, not just a single student.
+
+Metrics (tokens, completion rate, badges, challenges) must update consistently for all students.
+
+2. Teacher Dashboard — Announcements
+
+Teachers can create, edit, delete, and schedule announcements.
+
+Scheduled announcements: allow teachers to set a date/time to auto-publish.
+
+Students can view announcements only (no edit/delete).
+
+Announcements should display on the dashboard in a clear, accessible list.
+
+3. Badges & Challenges (Teacher Dashboard)
+
+Remove pre-populated badges/challenges; teachers now select and add items manually from the dashboard.
+
+Each badge or challenge should be:
+
+Editable: title, description, points/tokens, criteria.
+
+Toggleable: can be turned ON/OFF without deletion.
+
+Removable: teachers can delete items if needed.
+
+Students can only view badges/challenges assigned to them; cannot create, edit, delete, or toggle items.
+
+4. Permissions & Role Restrictions
+
+Teachers: full CRUD on announcements, badges, challenges, assignments, RFPs.
+
+Students: view only; can interact with permitted items (e.g., submit assignments, purchase store items), but cannot create/edit/delete anything.
+
+Enforce server-side authorization so students cannot bypass UI restrictions.
+
+5. Data Consistency
+
+Ensure all components use a single source of truth for students, assignments, badges, challenges, RFPs, and announcements.
+
+Any update in the dashboard should reflect immediately across all tabs (Leaderboard, Badges, Challenges, Assignments, RFPs).
+
+6. Templates / Store
+
+Teachers can select badges/challenges from templates or create new ones.
+
+“Use Template” button must successfully add the selected template to the active dashboard tab.
+
+Items added via templates must be editable, toggleable, and removable by teachers.
+
+7. QA & Testing Requirements
+
+Verify all students in the roster appear in Leaderboard and student lists.
+
+Teacher can create, edit, delete, and schedule announcements; student view is read-only.
+
+Teacher can add badges/challenges manually or via template, edit all fields, toggle items on/off, and remove them.
+
+Students can only view assigned badges/challenges.
+
+Ensure real-time updates — any change in the dashboard reflects immediately across all relevant tabs.
+
+Confirm server-side authorization prevents students from performing teacher-only actions.
+
+Verify no console errors or broken fetch calls during normal use.
+
+Validate mobile and desktop UI for all added/edited features.
+
+8. Deliverables
+
+Updated dashboard UI (teacher and student views) with described functionality.
+
+Editable and toggleable badges/challenges inside leaderboard.
+
+Full CRUD for announcements with scheduling capability.
+
+All student data consistently reflected across leaderboard and tabs.
+
+QA test results confirming all functionality works as specified.
