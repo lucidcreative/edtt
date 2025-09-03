@@ -1,0 +1,129 @@
+Consolidate Badges/Challenges into Leaderboard, Lock Student Permissions, Remove RFP Visibility, and Fix Everything
+
+Goal: consolidate badge & challenge features inside the Leaderboard tab, remove any student ability to create/edit/delete items, remove the RFP visibility option (it’s breaking the feature), and audit/fix the whole proposals/leaderboard/templates/student-data flows so everything works end-to-end without console/fetch errors.
+
+Summary of required changes (high level)
+
+Move Badges and Challenges out of the sidebar and house them as sections inside the Leaderboard view (Leaderboard → tabs/sections: Overview | Badges | Challenges).
+
+Remove the Create Challenge button and any add/edit/delete controls from student accounts; students can only interact (view, complete, purchase, submit responses) — no create/edit/delete.
+
+Remove RFP visibility options (no private/public toggle). RFPs must be class-wide by default. Delete or ignore visibility / selectedStudentIds UI and backend logic that depend on it.
+
+Enforce server-side authorization for all create/edit/delete operations (only teachers). Do not rely solely on UI hiding.
+
+Audit and fix all fetch/API misuse that results in “not a valid HTTP method” console errors; ensure correct usage of fetch(url, { method, headers, body }).
+
+Run a full end-to-end QA and deliver a short test report.
+
+Frontend requirements (what to change & why)
+
+Leaderboard UI
+
+Replace sidebar tabs “Badges” and “Challenges” with sections inside Leaderboard: Leaderboard → header with controls; under header, three tabs: Overview, Badges, Challenges.
+
+Overview: ranking, tokens, completion %, filters/sort.
+
+Badges: curated list + earned badges for each student; teacher controls for assign/remove (teachers only).
+
+Challenges: curated list + active/completed challenges, progress, and “Use Template” to add new challenges (teachers only).
+
+Ensure responsive layout and accessible controls (aria labels).
+
+Student Permissions
+
+Remove/hide all create/edit/delete UI elements for students (buttons, menus, modals).
+
+Specifically remove the Create Challenge button from student views.
+
+Students should still be able to: view badges/challenges, opt into applicable challenges (if that’s allowed), view progress, purchase store items (read-only for store catalogue, purchase action only).
+
+Where UI elements are hidden, still enforce server-side checks.
+
+RFP UI
+
+Remove the visibility selector and any “Private” UI. The RFP create modal should collect title, description, attachments, due/unlock date, and lock/unlock settings only.
+
+After create, the RFP appears in the proposals list for the class immediately. Students in the class can view and respond per permissions.
+
+Templates / Use Template
+
+Ensure “Use Template” in store/badges/challenges correctly inserts the template into the active list and persists (if templates persisted). Live UI update after insertion.
+
+Accessibility & Console
+
+Fix missing aria-describedby and any modal labels/focus management.
+
+Eliminate all “not a valid HTTP method” console messages by auditing fetch invocations.
+
+Backend & data model changes
+
+Authorization
+
+Add/verify middleware checks: create/update/delete endpoints validate user.role === 'teacher' (or equivalent). Return 403 if unauthorized.
+
+RFP model
+
+Remove visibility and selectedStudentIds fields (or make them ignored). If migration is risky, set default visibility = 'class' and ignore private-selection logic. Ensure schema and validation reflect the change.
+
+Ensure POST /api/proposals/classroom/:id accepts payload: { title, description, attachments, unlockAt, locked } and returns the created proposal object.
+
+API endpoints & fetch usage
+
+Audit all frontend calls and backend route handlers for proposals, assignments, classrooms, templates, badges, and challenges. Ensure:
+
+fetch(url, { method: 'GET'|'POST'|'PUT'|'DELETE', headers: {...}, body: JSON.stringify(...) }) usage is correct.
+
+Backend supports correct HTTP methods and returns consistent JSON shapes with appropriate status codes (200/201/204 as appropriate).
+
+Remove or stub any legacy notification endpoints that the frontend still attempts to call.
+
+Templates store
+
+Add curated template entries for badges/challenges/store items (title, description, default tokens/points, default unlock behavior). Ensure GET /api/templates returns them.
+
+Server-side validation
+
+Reject any create/update request from student accounts for teacher-only resources with clear error messages.
+
+Validate input schemas for challenges/badges/RFPs and return helpful errors used by UI to show inline messages instead of crashing.
+
+QA / Test plan (must pass before closing)
+
+Role tests
+
+As a student: verify there is no Create/Edit/Delete button for Badges/Challenges/Store items/RFPs. Attempt a direct API call to create a challenge → expect 403.
+
+As a teacher: verify full CRUD for badges, challenges, RFPs via UI and API.
+
+Leaderboard consolidation
+3. Confirm Badges & Challenges appear under Leaderboard sections and behave correctly.
+4. Confirm “Use Template” adds templates to the active list (teacher) and persists.
+
+RFP flow
+5. Create an RFP (teacher) — ensure it appears immediately for the class. No visibility toggle exists.
+6. Student can view and respond if applicable. No private-selection logic runs.
+
+API & console
+7. Navigate app and perform common flows — verify no console errors like “not a valid HTTP method.”
+8. Verify modals have no aria-describedby warnings.
+
+Security
+9. Attempt forbidden actions as student via API and UI — must be blocked (403) and not leak data.
+
+Regression
+10. Run previously working flows (assignments, leaderboard sorting, store purchases) and ensure behavior unchanged except UI relocation of badges/challenges.
+
+Acceptance criteria / deliverables
+
+Leaderboard now contains integrated Badges and Challenges sections; sidebar tabs removed.
+
+Students cannot create/edit/delete any teacher-managed items (UI hidden + server enforced). No Create Challenge button visible in student account.
+
+RFP visibility option removed; RFPs are class-wide and creation works reliably (no console errors).
+
+No remaining “not a valid HTTP method” errors; modals have proper accessibility attributes.
+
+A short QA report confirming tests above passed (or listing remaining issues).
+
+A list of code changes (frontend files and backend endpoints modified) and any DB migrations required.

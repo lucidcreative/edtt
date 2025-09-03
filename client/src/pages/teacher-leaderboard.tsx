@@ -59,7 +59,7 @@ export default function TeacherLeaderboard() {
   const { currentClassroom } = useClassroom();
   const queryClient = useQueryClient();
   
-  const [activeTab, setActiveTab] = useState("leaderboard");
+  const [activeTab, setActiveTab] = useState("overview");
   const [selectedStudent, setSelectedStudent] = useState<LeaderboardEntry | null>(null);
   const [isAwardDialogOpen, setIsAwardDialogOpen] = useState(false);
   const [awardType, setAwardType] = useState<'tokens' | 'badge' | 'challenge'>('tokens');
@@ -247,12 +247,12 @@ export default function TeacherLeaderboard() {
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="leaderboard">Student Leaderboard</TabsTrigger>
-          <TabsTrigger value="badges">Badge Management</TabsTrigger>
-          <TabsTrigger value="analytics">Performance Analytics</TabsTrigger>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="badges">Badges</TabsTrigger>
+          <TabsTrigger value="challenges">Challenges</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="leaderboard" className="space-y-6">
+        <TabsContent value="overview" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">

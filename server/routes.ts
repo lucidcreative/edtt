@@ -1366,7 +1366,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/classrooms/:id/badges', authenticate, async (req: AuthenticatedRequest, res) => {
+  app.post('/api/classrooms/:id/badges', authenticate, requireRole('teacher'), async (req: AuthenticatedRequest, res) => {
     try {
       const classroomId = req.params.id;
       const classroom = await storage.getClassroom(classroomId);
@@ -1557,7 +1557,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/badges/:id', authenticate, async (req: AuthenticatedRequest, res) => {
+  app.put('/api/badges/:id', authenticate, requireRole('teacher'), async (req: AuthenticatedRequest, res) => {
     try {
       const badgeId = req.params.id;
       const badge = await storage.getBadge(badgeId);

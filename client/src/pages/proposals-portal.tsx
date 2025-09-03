@@ -1082,53 +1082,6 @@ export default function ProposalsPortal() {
               </div>
             </div>
 
-            {/* Visibility Settings */}
-            <div>
-              <Label className="text-sm font-medium">RFP Visibility</Label>
-              <Select value={rfpVisibility} onValueChange={(value: "public" | "private") => setRfpVisibility(value)}>
-                <SelectTrigger className="mt-1" data-testid="rfp-visibility-select">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="public">Public - All students can see and submit proposals</SelectItem>
-                  <SelectItem value="private">Private - Only invited students can participate</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Student Selection for Private RFPs */}
-            {rfpVisibility === 'private' && students.length > 0 && (
-              <div className="space-y-3">
-                <Label className="text-sm font-medium">Select Students for Private RFP</Label>
-                <div className="max-h-40 overflow-y-auto border rounded-lg p-3 space-y-2">
-                  {students.map((student: any) => (
-                    <div key={student.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`student-${student.id}`}
-                        checked={selectedStudents.includes(student.id)}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setSelectedStudents([...selectedStudents, student.id]);
-                          } else {
-                            setSelectedStudents(selectedStudents.filter(id => id !== student.id));
-                          }
-                        }}
-                        data-testid={`checkbox-student-${student.id}`}
-                      />
-                      <Label 
-                        htmlFor={`student-${student.id}`} 
-                        className="text-sm cursor-pointer"
-                      >
-                        {student.nickname || `${student.firstName} ${student.lastName}`.trim()}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {selectedStudents.length} student(s) selected
-                </p>
-              </div>
-            )}
 
             {/* Launch Scheduling Settings */}
             <div className="space-y-3">

@@ -13,8 +13,6 @@ const teacherNavigation = [
   { path: '/proposals', name: 'Proposals', icon: 'fas fa-lightbulb' },
   { path: '/store', name: 'Store', icon: 'fas fa-store' },
   { path: '/announcements', name: 'Announcements', icon: 'fas fa-bullhorn' },
-  { path: '/badges', name: 'Badges', icon: 'fas fa-award' },
-  { path: '/challenges', name: 'Challenges', icon: 'fas fa-trophy' },
   { path: '/leaderboard', name: 'Leaderboard', icon: 'fas fa-chart-line' },
 ];
 
@@ -24,8 +22,6 @@ const studentNavigation = [
   { path: '/proposals', name: 'Proposals', icon: 'fas fa-lightbulb' },
   { path: '/store', name: 'Store', icon: 'fas fa-store' },
   { path: '/announcements', name: 'Announcements', icon: 'fas fa-bullhorn' },
-  { path: '/badges', name: 'Badges', icon: 'fas fa-award' },
-  { path: '/challenges', name: 'Challenges', icon: 'fas fa-trophy' },
   { path: '/leaderboard', name: 'Leaderboard', icon: 'fas fa-chart-line' },
 ];
 
