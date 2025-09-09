@@ -1,0 +1,35 @@
+{
+    // Schema URL for shadcn/ui component library configuration validation
+    "$schema": "https://ui.shadcn.com/schema.json",
+    // Design style variant - "new-york" provides cleaner, modern styling
+    "style": "new-york",
+    // Disable React Server Components - this is a client-side React app
+    "rsc": false,
+    // Enable TypeScript support for all generated components
+    "tsx": true,
+    "tailwind": {
+      // Path to Tailwind configuration file
+      "config": "tailwind.config.ts",
+      // Path to main CSS file containing Tailwind directives
+      "css": "client/src/index.css",
+      // Base color palette - "neutral" provides gray-scale foundation
+      "baseColor": "neutral",
+      // Use CSS custom properties for theming support (light/dark modes)
+      "cssVariables": true,
+      // No prefix for Tailwind utility classes
+      "prefix": ""
+    },
+    // Path aliases for component imports - matches TypeScript path mapping
+    "aliases": {
+      // Alias for component directory
+      "components": "@/components",
+      // Alias for utility functions
+      "utils": "@/lib/utils",
+      // Alias for UI component library
+      "ui": "@/components/ui",
+      // Alias for library/utility modules
+      "lib": "@/lib",
+      // Alias for custom React hooks
+      "hooks": "@/hooks"
+    }
+}

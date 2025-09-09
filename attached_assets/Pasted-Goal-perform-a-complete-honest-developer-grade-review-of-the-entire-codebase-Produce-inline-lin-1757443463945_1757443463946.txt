@@ -1,0 +1,113 @@
+Goal: perform a complete, honest, developer-grade review of the entire codebase. Produce inline, line-level comments explaining the purpose and function of every line (with an explained strategy for very large files), and deliver two top-level context documents:
+
+codecontext.md — complete technical context for the codebase (architecture, data models, APIs, build/deploy, dependencies, caveats, security, tests, etc.).
+
+featurecontext.md — complete feature-level documentation (user flows, permissions, UI states, edge cases, acceptance criteria, mapping to code locations).
+
+Important global constraints (read before starting):
+
+Do not change runtime behavior or application logic. If you must make a change to add a comment programmatically (for languages where comments require edits), create annotated copies in a separate directory or branch; do not alter production files.
+
+Do not add any sample/mock data to the repo. If demo data exists, note its location and remove or mark it as demo-only in the report; do not reintroduce mock data.
+
+Do not expose secrets. If you find keys, tokens, or sensitive values in code/config, redact them and record their location in the security report — do not include their values in any deliverable.
+
+Keep everything human-readable and searchable. The deliverables must be easy for developers to scan and use.
+
+1) Scope & Files to Annotate
+
+Annotate all source files that are part of the running app and application logic, including but not limited to:
+
+Frontend: src/, client/, pages/, components/, contexts/, hooks/, styles/ (JS/TS/TSX/JSX/HTML/CSS).
+
+Backend: api/, server/, routes/, controllers/, models/, db/, any serverless functions.
+
+Config & DevOps: package.json, vite.config.*, webpack.*, .env.example, Dockerfile, CI configs (.github/workflows/*, GitLab CI, etc.).
+
+Scripts: scripts/ and any build/postinstall or migration scripts.
+
+Tests: __tests__/, test/, or similar – annotate tests to explain intent of each test case.
+
+Ignore: node_modules/, build artifacts (e.g., dist/, .next/), and any large binary assets. If binaries are relevant, list them in the report rather than annotating them.
+
+2) Annotation strategy (how to comment every line without breaking things)
+
+A. Inline commenting policy
+
+Produce inline comments that clearly explain what the line does and why it exists.
+
+For single-line statements, add a short trailing or preceding comment (in the language’s comment syntax) that clarifies intent.
+
+For complex expressions, add a short comment on the line plus a larger explanatory block above the surrounding block explaining the algorithm, edge-cases, and assumptions.
+
+B. Files under 300 lines
+
+Add line-by-line inline comments for every line, making sure comments are concise but explicit: what the line does, why it’s needed, expected inputs/outputs, and side effects (network, DB, localStorage, DOM, etc.)
+
+C. Files over 300 lines
+
+Do function/block-level comments for every exported function, class, or component with:
+
+Purpose / one-line summary.
+
+Inputs (parameters / props), types, and constraints.
+
+Side effects (I/O, network calls, global state, cookies).
+
+Output / return shape.
+
+Error paths and who handles them.
+
+For complex functions, annotate every key step inside the function with short line comments.
+
+Produce a separate annotated copy of the file (keeps original untouched) that contains full line comments.
+
+D. UI/JSX/TSX files
+
+For each component, explain:
+
+What the component renders and why.
+
+Props and their expected shapes.
+
+Local state and derived state.
+
+Hooks used (useEffect, useContext, useQuery) — explain trigger conditions and dependency rationale.
+
+Data fetching: endpoint, payload, caching, optimistic updates.
+
+Event handlers: what events cause which mutations/requests.
+
+Accessibility considerations and any ARIA attributes.
+
+For render logic, explain conditional branches (why certain UI shows under certain states).
+
+E. Backend / API routes
+
+For every endpoint:
+
+Explain URL, allowed HTTP methods, request payload shape, required headers (auth), expected responses (success & error codes).
+
+Detail DB operations performed, transaction boundaries, and rollback conditions.
+
+Describe validation (schema, type coercion) and authorization checks (roles/permissions).
+
+If middleware is used (auth, logging, error handling) explain its role and where it plugs into the request lifecycle.
+
+F. Database models
+
+For each model/table:
+
+Field list with types, constraints, default values, indexes.
+
+Relationships (one-to-many, many-to-many), foreign keys, cascade rules.
+
+Example queries (read/write) and purpose.
+
+G. Tests
+
+For each test file: summarize what behavior the tests assert, test setup/teardown logic, and any mocks/stubs. For each test case provide a one-line explanation.
+
+H. Build & deployment
+
+Explain package scripts (start, build, test, migrate, etc.) and CI steps, what environment variables are required, and deployment target(s) (Vercel, Netlify, Docker, etc.).

@@ -1,0 +1,39 @@
+{
+  // Include patterns for TypeScript compilation - covers all source directories
+  "include": ["client/src/**/*", "shared/**/*", "server/**/*"],
+  // Exclude patterns to skip unnecessary files during compilation
+  "exclude": ["node_modules", "build", "dist", "**/*.test.ts"],
+  "compilerOptions": {
+    // Enable incremental compilation for faster subsequent builds
+    "incremental": true,
+    // Specify where TypeScript stores build information for incremental compilation
+    "tsBuildInfoFile": "./node_modules/typescript/tsbuildinfo",
+    // Don't emit JavaScript files - we use Vite for bundling
+    "noEmit": true,
+    // Use ESNext modules for modern JavaScript features and tree shaking
+    "module": "ESNext",
+    // Enable all strict type checking options for better code quality
+    "strict": true,
+    // Include ESNext and DOM libraries for modern JS and browser APIs
+    "lib": ["esnext", "dom", "dom.iterable"],
+    // Preserve JSX syntax for React components (Vite handles transformation)
+    "jsx": "preserve",
+    // Allow importing CommonJS modules as ES modules for better interop
+    "esModuleInterop": true,
+    // Skip type checking of declaration files to speed up compilation
+    "skipLibCheck": true,
+    // Allow importing TypeScript files with extensions (required for Vite)
+    "allowImportingTsExtensions": true,
+    // Use bundler resolution for modern build tools like Vite
+    "moduleResolution": "bundler",
+    // Set base URL for relative imports
+    "baseUrl": ".",
+    // Include type definitions for Node.js and Vite client
+    "types": ["node", "vite/client"],
+    // Define path mappings for clean imports throughout the application
+    "paths": {
+      "@/*": ["./client/src/*"],     // Maps @/ to client source directory
+      "@shared/*": ["./shared/*"]    // Maps @shared/ to shared types directory
+    }
+  }
+}
